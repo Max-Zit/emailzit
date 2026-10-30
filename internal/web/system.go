@@ -275,12 +275,27 @@ type versionData struct {
 	Zones      []string
 	Zone       string
 	Net        serverNetwork
+	OS         *helper.OSStatus // operating system updates (from the helper)
+	OSLast     *helper.Result   // the last SSH, OS or reboot request
+	SSH        helper.SSHConfig
+	Appliance  bool
 }
 
 func (s *Server) handleVersion(w http.ResponseWriter, r *http.Request) {
 	d := &versionData{Version: s.Version, HelperOK: s.helperOK(), Source: s.updateSource()}
 	if d.HelperOK {
 		d.Zones, d.Zone, d.Net = timeZones(), helper.SystemTimeZone(""), readServerNetwork()
+		d.SSH, d.Appliance = helper.ReadSSH(""), helper.IsAppliance("")
+		if s.DataDir != "" {
+			d.OS, _ = helper.ReadOSStatus(s.DataDir)
+			// the status is refreshed by itself when it is older than half a day
+			if (d.OS == nil || time.Since(d.OS.Checked) > 12*time.Hour) && !helper.Pending(s.DataDir) {
+				_ = helper.Submit(s.DataDir, helper.Request{Action: helper.ActionOSStatus, RequestedBy: "panel"})
+			}
+			if d.OS != nil {
+				d.SSH.Enabled = d.OS.SSHRunning
+			}
+		}
 	}
 	d.Unofficial = d.Source != update.DefaultSource
 	_ = s.store.GetSetting(r.Context(), settingUpdates, &d.S)
@@ -294,8 +309,13 @@ func (s *Server) handleVersion(w http.ResponseWriter, r *http.Request) {
 	if s.DataDir != "" {
 		d.Pending = helper.Pending(s.DataDir)
 	}
-	if res := s.lastHelperResult(); res != nil && res.Action == helper.ActionUpdate {
-		d.Last = res
+	if res := s.lastHelperResult(); res != nil {
+		switch res.Action {
+		case helper.ActionUpdate:
+			d.Last = res
+		case helper.ActionSSH, helper.ActionOSStatus, helper.ActionOSAuto, helper.ActionOSUpgrade, helper.ActionReboot:
+			d.OSLast = res
+		}
 	}
 	s.render(w, r, http.StatusOK, "version", &Page{Title: "Updates and server", Nav: "settings", Data: d})
 }
@@ -341,4 +361,64 @@ func (s *Server) handleVersionSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	s.audit(r, "settings.server-updates", "settings", "automatic EmailZit updates: %v at %02d:00", u.Auto, u.Hour)
 	s.redirect(w, r, "/settings/version", "Saved.")
+}
+
+// ---- operating system updates, server restart and SSH
+
+// handleOS asks the helper for an operating system task: refresh the
+// status, automatic security updates on or off, install all updates, or
+// restart the server.
+func (s *Server) handleOS(w http.ResponseWriter, r *http.Request) {
+	const back = "/settings/version#os"
+	req := helper.Request{}
+	lang := s.lang(r, userFrom(r))
+	msg := ""
+	switch r.FormValue("do") {
+	case "status":
+		req.Action, msg = helper.ActionOSStatus, translate(lang, "Looking for operating system updates; reload the page in a minute.")
+	case "auto-on", "auto-off":
+		req.Action, req.Enable = helper.ActionOSAuto, r.FormValue("do") == "auto-on"
+		msg = translate(lang, "Saved; reload the page in a minute.")
+	case "upgrade":
+		req.Action, msg = helper.ActionOSUpgrade, translate(lang, "The operating system updates are being installed; reload the page in a few minutes.")
+	case "reboot":
+		req.Action, msg = helper.ActionReboot, translate(lang, "The server restarts; the panel is back in a minute or two.")
+	default:
+		s.redirectErr(w, r, back, "Unknown action.")
+		return
+	}
+	if err := s.submit(r, req); err != nil {
+		s.redirectErr(w, r, back, err.Error())
+		return
+	}
+	s.audit(r, "server."+req.Action, "settings", "operating system: %s requested", req.Action)
+	s.redirect(w, r, back, msg)
+}
+
+// handleSSH switches the appliance's SSH server on or off and sets its port.
+func (s *Server) handleSSH(w http.ResponseWriter, r *http.Request) {
+	const back = "/settings/version#ssh"
+	if !helper.IsAppliance("") {
+		s.redirectErr(w, r, back, "SSH of this server is managed by its operating system; it can be changed here only on the EmailZit appliance.")
+		return
+	}
+	port, err := strconv.Atoi(strings.TrimSpace(r.FormValue("port")))
+	c := helper.SSHConfig{Enabled: r.FormValue("enabled") == "1", Port: port}
+	if err == nil {
+		err = c.Validate()
+	}
+	if err != nil {
+		s.redirectErr(w, r, back, "Enter an SSH port between 1 and 65535 that EmailZit does not use.")
+		return
+	}
+	if err := s.submit(r, helper.Request{Action: helper.ActionSSH, SSH: &c}); err != nil {
+		s.redirectErr(w, r, back, err.Error())
+		return
+	}
+	state := "off"
+	if c.Enabled {
+		state = "on, port " + strconv.Itoa(c.Port)
+	}
+	s.audit(r, "settings.ssh", "settings", "SSH of the server: %s", state)
+	s.redirect(w, r, back, "The SSH setting is being applied; reload the page in a few seconds.")
 }

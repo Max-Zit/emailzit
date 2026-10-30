@@ -49,6 +49,28 @@
   <h2>{{template "icon" "refresh"}}{{.T "Restart"}}</h2>
   <p class="small muted">{{.T "Needed after changing the panel port. Mail keeps flowing meanwhile."}}</p>
   <form method="post" action="/settings/restart" data-confirm="{{.T "Restart the EmailZit panel service now? It is away for a few seconds; mail keeps flowing."}}"><button class="secondary">{{template "icon" "refresh"}}{{.T "Restart now"}}</button></form>
+  <form method="post" action="/settings/os" class="mt" data-confirm="{{.T "Restart the whole server now? Mail is not received for a minute or two (other servers deliver it later)."}}"><input type="hidden" name="do" value="reboot"><button class="ghost">{{template "icon" "power"}}{{.T "Restart the server"}}</button></form>
+</section>
+<section class="panel" id="os">
+  <h2>{{template "icon" "package"}}{{.T "Operating system updates"}}</h2>
+  {{with .Data.OS}}
+  <dl class="facts">
+    <div><dt>{{$.T "System"}}</dt><dd>{{.OS}}{{with .Kernel}} · {{$.T "kernel"}} {{.}}{{end}}</dd></div>
+    <div><dt>{{$.T "Waiting updates"}}</dt><dd><b>{{.Pending}}</b>{{if .Security}} · <span class="warntext">{{$.T "%d security" .Security}}</span>{{end}}</dd></div>
+    <div><dt>{{$.T "Automatic security updates"}}</dt><dd>{{if .AutoSecurity}}{{$.T "on"}}{{else}}{{$.T "off"}}{{end}}{{if not .LastAutoRun.IsZero}} · {{$.T "last run"}} {{$.Time .LastAutoRun}}{{end}}</dd></div>
+    <div><dt>{{$.T "Checked"}}</dt><dd>{{$.Time .Checked}}</dd></div>
+  </dl>
+  {{if .RebootRequired}}<p class="flash info mt">{{$.T "The installed updates need a restart of the server."}}</p>{{end}}
+  {{with .Error}}<p class="flash err mt">{{$.T "The last check failed:"}} {{.}}</p>{{end}}
+  {{with .Packages}}<details class="mt"><summary>{{$.T "Packages"}}</summary><pre class="notes">{{range .}}{{.}}
+{{end}}</pre></details>{{end}}
+  {{else}}<p class="small muted">{{.T "Not checked yet."}}</p>{{end}}
+  <div class="row mt">
+    <form method="post" action="/settings/os"><input type="hidden" name="do" value="status"><button class="secondary">{{template "icon" "refresh"}}{{.T "Check now"}}</button></form>
+    {{if and .Data.OS .Data.OS.Pending}}<form method="post" action="/settings/os" data-confirm="{{.T "Install all operating system updates now? This can take a few minutes."}}"><input type="hidden" name="do" value="upgrade"><button class="primary">{{template "icon" "download"}}{{.T "Install all updates"}}</button></form>{{end}}
+    {{if and .Data.OS .Data.OS.AutoSecurity}}<form method="post" action="/settings/os"><input type="hidden" name="do" value="auto-off"><button class="ghost">{{.T "Switch automatic security updates off"}}</button></form>
+    {{else}}<form method="post" action="/settings/os"><input type="hidden" name="do" value="auto-on"><button class="ghost">{{.T "Switch automatic security updates on"}}</button></form>{{end}}
+  </div>
 </section>
 <section class="panel">
   <h2>{{template "icon" "network"}}{{.T "Network of the server"}}</h2>
@@ -70,6 +92,17 @@
   </form>
   {{else}}<p class="small muted">{{.T "The network of this server is managed by its operating system. On the EmailZit appliance it can be changed here."}}</p>{{end}}
 </section>
+{{if .Data.Net.Appliance}}
+<section class="panel" id="ssh">
+  <h2>{{template "icon" "terminal"}}SSH</h2>
+  <p class="small muted">{{.T "Sign-in to the appliance's command line for support. Switch it off when nobody needs it."}}</p>
+  <form method="post" action="/settings/ssh" class="stack">
+    <label class="check"><input type="checkbox" name="enabled" value="1" {{if .Data.SSH.Enabled}}checked{{end}}>{{.T "SSH server on"}}</label>
+    <label>{{.T "Port"}}<input type="number" name="port" value="{{.Data.SSH.Port}}" min="1" max="65535" class="narrow"></label>
+    <div><button class="primary">{{.T "Apply"}}</button> <small class="muted">{{.T "A port the SSH server refuses leaves the previous setting in place."}}</small></div>
+  </form>
+</section>
+{{end}}
 {{end}}
 </div>
 </div>

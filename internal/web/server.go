@@ -361,6 +361,8 @@ func (s *Server) Handler() http.Handler {
 	admin("POST /settings/timezone", s.handleTimeZone)
 	admin("POST /settings/restart", s.handleRestart)
 	admin("POST /settings/server-network", s.handleServerNetwork)
+	admin("POST /settings/os", s.fourEyes("server.os", s.handleOS))
+	admin("POST /settings/ssh", s.fourEyes("settings.ssh", s.handleSSH))
 
 	// mail users (mailbox owners) have their own sign-in and cookie
 	s.mailUserRoutes(mux)

@@ -25,10 +25,15 @@ import (
 
 // Actions.
 const (
-	ActionUpdate   = "update"
-	ActionTimeZone = "timezone"
-	ActionNetwork  = "network"
-	ActionRestart  = "restart"
+	ActionUpdate    = "update"
+	ActionTimeZone  = "timezone"
+	ActionNetwork   = "network"
+	ActionRestart   = "restart"
+	ActionSSH       = "ssh"        // Request.SSH (appliance)
+	ActionOSStatus  = "os-status"  // refresh os-status.json
+	ActionOSAuto    = "os-auto"    // automatic security updates on/off (Enable)
+	ActionOSUpgrade = "os-upgrade" // install all operating system updates
+	ActionReboot    = "reboot"     // restart the server
 )
 
 // Request is what the console asks for.
@@ -37,6 +42,8 @@ type Request struct {
 	Version     string         `json:"version,omitempty"`
 	TimeZone    string         `json:"timezone,omitempty"`
 	Network     *NetworkConfig `json:"network,omitempty"`
+	SSH         *SSHConfig     `json:"ssh,omitempty"`
+	Enable      bool           `json:"enable,omitempty"` // ActionOSAuto
 	RequestedBy string         `json:"requested_by"`
 	At          time.Time      `json:"at"`
 }
@@ -142,6 +149,12 @@ func (h *Helper) Handle(ctx context.Context) error {
 		res = h.network(ctx, req, res)
 	case ActionRestart:
 		res.Status, res.Message, res.restart = "done", "the console restarts", true
+	case ActionSSH:
+		res = h.ssh(ctx, req, res)
+	case ActionOSStatus, ActionOSAuto, ActionOSUpgrade:
+		res = h.osAction(ctx, req, res)
+	case ActionReboot:
+		res.Status, res.Message = "done", "the server restarts"
 	default:
 		res.Status, res.Message = "failed", "unknown action"
 	}
@@ -149,6 +162,9 @@ func (h *Helper) Handle(ctx context.Context) error {
 	// The console reads the time zone and its ports when it starts.
 	if res.restart {
 		_, _ = h.Run(ctx, "systemctl", "restart", "emailzit-server")
+	}
+	if req.Action == ActionReboot && res.Status == "done" {
+		_, _ = h.Run(ctx, "systemctl", "reboot")
 	}
 	return err
 }
@@ -163,7 +179,12 @@ func (h *Helper) finish(res Result) error {
 // the console reads it but cannot fake it for the next run).
 func (h *Helper) write(res Result) error {
 	b, _ := json.MarshalIndent(res, "", "  ")
-	p := filepath.Join(h.dir(), ResultFile)
+	return h.writeFile(ResultFile, b)
+}
+
+// writeFile replaces a file of the helper directory (see write).
+func (h *Helper) writeFile(name string, b []byte) error {
+	p := filepath.Join(h.dir(), name)
 	// The directory belongs to the console user: never follow a link it
 	// may have planted (O_EXCL also refuses an existing link), and replace
 	// result.json by a rename, which replaces a link, not its target.

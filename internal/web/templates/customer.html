@@ -45,6 +45,12 @@
   </form>
   <small class="muted">{{.T "A mailbox can have its own level and its own allowed and blocked senders (mailbox page or the user's mail settings)."}}</small>
 </section>
+<section class="panel" id="export">
+  <h2>{{template "icon" "download"}}{{.T "Export"}}</h2>
+  <p class="muted">{{.T "Packs all mail of the customer and the settings (domains, mailboxes, aliases, filters, spam settings; no passwords or keys) into one file, for BackupZit or for moving to another server. The newest three exports are kept."}}</p>
+  {{if .Data.Exports}}<ul class="plain">{{range .Data.Exports}}<li><a href="/customers/{{$c.ID}}/exports/{{.Name}}">{{.Name}}</a> <span class="muted small">· {{.Human}} · {{$.Time .Time}}</span></li>{{end}}</ul>{{end}}
+  {{if .Data.Exporting}}<p><span class="badge warn">{{.T "An export is running."}}</span></p>{{else if .User.CanWrite}}<form method="post" action="/customers/{{$c.ID}}/export"><button class="secondary">{{template "icon" "download"}}{{.T "Export now"}}</button></form>{{end}}
+</section>
 {{if .Data.Web}}
 <section class="panel">
   <h2>{{template "icon" "mail"}}{{.T "Mail from websites"}}</h2>

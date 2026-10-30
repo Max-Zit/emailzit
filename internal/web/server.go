@@ -30,6 +30,8 @@ type Server struct {
 	guard *loginGuard
 	// approvalHandlers are the handlers a four-eyes approval can run, by action.
 	approvalHandlers map[string]http.HandlerFunc
+	// jobs are running and recent exports.
+	jobs jobList
 
 	// MgmtACL guards the panel listener.
 	MgmtACL *netacl.List
@@ -279,6 +281,8 @@ func (s *Server) Handler() http.Handler {
 	staffWrite("POST /customers/{id}/logins", s.handleCustomerLogin)
 	staffWrite("POST /customers/{id}/web-send", s.handleWebSend)
 	staffWrite("POST /customers/{id}/spam", s.handleCustomerSpam)
+	staffWrite("POST /customers/{id}/export", s.handleCustomerExport)
+	staffWrite("GET /customers/{id}/exports/{name}", s.handleCustomerExportDownload)
 	app("GET /domains", s.handleDomains)
 	write("POST /domains", s.handleDomainCreate)
 	app("GET /domains/{id}", s.handleDomain)

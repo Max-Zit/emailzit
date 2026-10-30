@@ -37,6 +37,8 @@ const (
 	ActionQueue    = "queue"    // list the mail queue, or hold / release / delete / flush messages
 	ActionCert     = "cert"     // install a certificate for the mail services
 	ActionSpam     = "spam"     // write the spam scripts of all mailboxes, a customer's or one mailbox
+	ActionExport   = "export"   // pack a customer's mail and settings for BackupZit or a move
+	ActionStatus   = "status"   // health of the mail system (WatchZit)
 	ActionPing     = "ping"
 )
 
@@ -62,6 +64,9 @@ type Request struct {
 	IDs []string `json:"ids,omitempty"`
 	// cert: PEM chain and key
 	Chain string `json:"chain,omitempty"`
+	// export: file name (time) and the manifest of the customer's settings
+	Name     string `json:"name,omitempty"`
+	Manifest string `json:"manifest,omitempty"`
 	// who asked (for the helper's log)
 	By string `json:"by,omitempty"`
 }
@@ -74,11 +79,12 @@ type Reply struct {
 }
 
 var (
-	uuidRE    = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
-	domainRE  = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$`)
-	localRE   = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9_+-]|\.[a-z0-9_+-]){0,63}$`)
-	selRE     = regexp.MustCompile(`^[a-z0-9]{1,32}$`)
-	queueIDRE = regexp.MustCompile(`^[0-9A-Za-z]{8,20}$`)
+	uuidRE       = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
+	domainRE     = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$`)
+	localRE      = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9_+-]|\.[a-z0-9_+-]){0,63}$`)
+	selRE        = regexp.MustCompile(`^[a-z0-9]{1,32}$`)
+	queueIDRE    = regexp.MustCompile(`^[0-9A-Za-z]{8,20}$`)
+	exportNameRE = regexp.MustCompile(`^[0-9]{8}-[0-9]{6}$`)
 )
 
 // UID range of the customers' mail users.
@@ -135,6 +141,13 @@ func (r *Request) Validate() error {
 			}
 		default:
 			return errors.New("unknown queue operation")
+		}
+		return nil
+	case ActionStatus:
+		return nil
+	case ActionExport:
+		if !uuidRE.MatchString(r.Customer) || !exportNameRE.MatchString(r.Name) || len(r.Manifest) > 4<<20 || !json.Valid([]byte(r.Manifest)) {
+			return errors.New("invalid export")
 		}
 		return nil
 	case ActionSpam:
@@ -230,7 +243,11 @@ func (c *Client) CallData(ctx context.Context, req Request, v any) error {
 		return fmt.Errorf("mail helper not reachable: %w", err)
 	}
 	defer conn.Close()
-	_ = conn.SetDeadline(time.Now().Add(2 * time.Minute))
+	wait := 2 * time.Minute
+	if req.Action == ActionExport {
+		wait = ExportTimeout
+	}
+	_ = conn.SetDeadline(time.Now().Add(wait))
 	if err := json.NewEncoder(conn).Encode(req); err != nil {
 		return err
 	}
@@ -261,4 +278,28 @@ type QueueItem struct {
 type QueueTo struct {
 	Address string `json:"address"`
 	Reason  string `json:"delay_reason,omitempty"`
+}
+
+// ExportDir is where exports are written (in the panel's data directory).
+const ExportDir = "/var/lib/emailzit/exports"
+
+// ExportTimeout is how long an export may take.
+const ExportTimeout = 6 * time.Hour
+
+// ExportResult describes a finished export.
+type ExportResult struct {
+	File      string `json:"file"`
+	Size      int64  `json:"size"`
+	Files     int    `json:"files"`
+	MailBytes int64  `json:"mail_bytes"`
+}
+
+// Status is the health of the mail system.
+type Status struct {
+	Services     map[string]string `json:"services"` // systemd state: active, inactive, failed …
+	Queue        int               `json:"queue"`
+	Deferred     int               `json:"deferred"`
+	DiskTotalMB  int64             `json:"disk_total_mb"`
+	DiskFreeMB   int64             `json:"disk_free_mb"`
+	CertNotAfter *time.Time        `json:"certificate_not_after,omitempty"`
 }

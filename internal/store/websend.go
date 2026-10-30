@@ -88,3 +88,22 @@ func (s *Store) CustomerSendDomain(ctx context.Context, customerID, domain strin
 		customerID, strings.ToLower(domain)).Scan(&ok)
 	return ok, err
 }
+
+// CustomerCounts counts customers by status.
+func (s *Store) CustomerCounts(ctx context.Context) (map[string]int, error) {
+	rows, err := s.db.Query(ctx, `SELECT status, count(*) FROM customers GROUP BY status`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]int{}
+	for rows.Next() {
+		var st string
+		var n int
+		if err := rows.Scan(&st, &n); err != nil {
+			return nil, err
+		}
+		out[st] = n
+	}
+	return out, rows.Err()
+}

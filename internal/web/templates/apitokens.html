@@ -52,7 +52,13 @@ POST /api/v1/customers/{id}/unsuspend
 POST /api/v1/customers/{id}/terminate
 PUT  /api/v1/customers/{id}/package       {"package"}
 GET  /api/v1/customers/{id}/usage
-POST /api/v1/customers/{id}/sso           → {"url","expires_at"} (60 s, one use)</pre>
+POST /api/v1/customers/{id}/sso           → {"url","expires_at"} (60 s, one use)
+PUT  /api/v1/customers/{id}/web-uids      {"uids":[1000012,…]}  (HostZit)
+POST /api/v1/customers/{id}/export        → 202 {"job_id"}  mail + settings, no secrets
+GET  /api/v1/jobs/{job_id}                → {"status":"running|done|failed","result":{"file","size"}}
+GET  /api/v1/customers/{id}/exports       → {"items":[{"name","size","time"}]}
+GET  /api/v1/customers/{id}/exports/{name}  the .tar.gz (customers:write)
+GET  /api/v1/server/status                → services, queue, disk, certificate (WatchZit)</pre>
 </section>
 </div>
 </div>

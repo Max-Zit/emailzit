@@ -112,7 +112,7 @@ func (s *Server) handle(ctx context.Context, c *net.UnixConn) {
 		return
 	}
 	var req Request
-	dec := json.NewDecoder(io.LimitReader(bufio.NewReader(c), 64<<10))
+	dec := json.NewDecoder(io.LimitReader(bufio.NewReader(c), 8<<20)) // an export carries its manifest
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&req); err != nil {
 		reply(errors.New("bad request"))
@@ -121,6 +121,22 @@ func (s *Server) handle(ctx context.Context, c *net.UnixConn) {
 	if err := req.Validate(); err != nil {
 		s.Log.Warn("mail helper: invalid request", "action", req.Action, "err", err)
 		reply(err)
+		return
+	}
+	// long or read-only actions run without the lock
+	switch req.Action {
+	case ActionExport:
+		_ = c.SetDeadline(time.Now().Add(ExportTimeout))
+		res, err := s.export(ctx, req)
+		if err != nil {
+			s.Log.Error("mail helper: export failed", "customer", req.Customer, "err", err)
+		} else {
+			s.Log.Info("mail helper: export", "by", req.By, "customer", req.Customer, "file", res.File, "bytes", res.Size)
+		}
+		reply(err, res)
+		return
+	case ActionStatus:
+		reply(nil, s.status(ctx))
 		return
 	}
 	s.mu.Lock()

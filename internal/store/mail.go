@@ -648,6 +648,9 @@ func ValidLocalPart(l string) error {
 	if !localRE.MatchString(l) || len(l) > 64 {
 		return errors.New("the name may contain letters, digits, dots, dashes, underscores and plus (up to 64), not at the start or end")
 	}
+	if l == DMARCAddress || strings.HasPrefix(l, DMARCAddress+"+") {
+		return errors.New("this name receives the DMARC reports of the domain")
+	}
 	return nil
 }
 
@@ -1247,7 +1250,7 @@ func (s *Store) ServerTotals(ctx context.Context) (Totals, error) {
 // start, so new views get their grants.
 func (s *Store) GrantMailRoles(ctx context.Context) error {
 	grants := map[string][]string{
-		"postfix": {`GRANT SELECT ON mta_domains, mta_mailboxes, mta_aliases, mta_sender_logins TO postfix`},
+		"postfix": {`GRANT SELECT ON mta_domains, mta_mailboxes, mta_aliases, mta_sender_logins, mta_transport TO postfix`},
 		"dovecot": {`GRANT SELECT ON mda_users, mda_logins TO dovecot`},
 		"root": {`GRANT SELECT ON mda_users, mda_spam, customers TO root`, `GRANT SELECT (id, address) ON mailboxes TO root`,
 			`GRANT UPDATE (used_bytes, used_at) ON mailboxes TO root`, `GRANT SELECT ON settings TO root`, `GRANT SELECT (name) ON domains TO root`,

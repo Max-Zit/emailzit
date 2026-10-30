@@ -127,6 +127,7 @@ func Render(s Settings) ([]File, error) {
 		{"mailboxes", `SELECT 1 FROM mta_mailboxes WHERE address = '%s'`},
 		{"aliases", `SELECT destinations FROM mta_aliases WHERE address = '%s'`},
 		{"senders", `SELECT login FROM mta_sender_logins WHERE sender = '%s'`},
+		{"transport", `SELECT transport FROM mta_transport WHERE address = '%s'`},
 		// port 25: nobody may use a domain of this server as sender without
 		// signing in (on submission); the lookup key is the sender's domain
 		{"localsender", `SELECT 'REJECT Sign in to send from this domain' FROM mta_domains WHERE name = '%s'`},

@@ -97,21 +97,24 @@ func withSignature(text, sig string) string {
 	return "\n\n-- \n" + sig + text
 }
 
+// label marks a text the templates translate later (for the catalog check).
+func label(s string) string { return s }
+
 // folderLabel is the name of a folder as webmail shows it (untranslated).
 func folderLabel(f webmail.Folder) string {
 	switch {
 	case f.Name == "INBOX":
-		return "Inbox"
+		return label("Inbox")
 	case f.Special == `\Sent`:
-		return "Sent"
+		return label("Sent")
 	case f.Special == `\Drafts`:
-		return "Drafts"
+		return label("Drafts")
 	case f.Special == `\Junk`:
-		return "Spam"
+		return label("Spam")
 	case f.Special == `\Trash`:
-		return "Trash"
+		return label("Trash")
 	case f.Special == `\Archive`:
-		return "Archive"
+		return label("Archive")
 	}
 	return f.Name
 }

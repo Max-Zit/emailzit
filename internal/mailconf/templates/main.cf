@@ -53,6 +53,8 @@ virtual_mailbox_domains = proxy:pgsql:/etc/postfix/emailzit/domains.cf
 virtual_mailbox_maps = proxy:pgsql:/etc/postfix/emailzit/mailboxes.cf
 virtual_alias_maps = proxy:pgsql:/etc/postfix/emailzit/aliases.cf
 virtual_transport = lmtp:unix:private/dovecot-lmtp
+# dmarc-reports@<domain> goes to the EmailZit server (emailzit-dmarc in master.cf)
+transport_maps = proxy:pgsql:/etc/postfix/emailzit/transport.cf
 smtpd_sender_login_maps = proxy:pgsql:/etc/postfix/emailzit/senders.cf
 proxy_read_maps = $local_recipient_maps $mydestination $virtual_alias_maps $virtual_alias_domains $virtual_mailbox_maps $virtual_mailbox_domains $relay_recipient_maps $relay_domains $canonical_maps $sender_canonical_maps $recipient_canonical_maps $relocated_maps $transport_maps $mynetworks $smtpd_sender_login_maps $smtpd_sender_restrictions
 

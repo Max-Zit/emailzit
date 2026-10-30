@@ -72,6 +72,7 @@ func run() error {
 	restorePass := flag.String("restore-passphrase-file", "", "file with the passphrase of the backup (or set EMAILZIT_BACKUP_PASSPHRASE)")
 	mailHelper := flag.Bool("mail-helper", false, "root mail helper: serve the panel's mail requests (configuration, mail directories) on "+mailhelper.Socket+"; started by emailzit-mail-helper.service")
 	mailRelay := flag.String("mail-relay", os.Getenv("EMAILZIT_MAIL_RELAY"), "mail helper: send all outgoing mail through this host, e.g. [192.168.1.5]:1025 (test labs)")
+	dmarcReport := flag.String("dmarc-report", "", "store the DMARC aggregate reports of the message on standard input, sent to this address, and exit; started by Postfix")
 	publicWeb := flag.String("public-web", "auto", "serve autoconfig, Autodiscover and MTA-STS on the ports 443 and 80: auto (only when no web server is installed and HostZit is not linked) or off")
 	flag.Parse()
 
@@ -89,6 +90,9 @@ func run() error {
 			return errors.New("database URL required (--db or EMAILZIT_DB)")
 		}
 		return restoreBackup(ctx, *restoreFile, *restorePass, *dataDir, *dbURL)
+	}
+	if *dmarcReport != "" {
+		os.Exit(runDMARCReport(*dbURL, *dmarcReport))
 	}
 	if *mailHelper {
 		return runMailHelper(ctx, *dbURL, *mailRelay)

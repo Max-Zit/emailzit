@@ -9,6 +9,7 @@ import (
 	"net/netip"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/max-zit/emailzit/internal/sieve"
 	"github.com/max-zit/emailzit/internal/store"
@@ -490,6 +491,7 @@ type domainData struct {
 	Checked   map[int]string // index in Records → ok, missing, different (after "Check DNS")
 	Mail      MailSettings
 	Staff     bool
+	DMARC     *store.DMARCSummary // reports of the last 30 days
 }
 
 func (s *Server) loadDomain(w http.ResponseWriter, r *http.Request) *store.Domain {
@@ -525,6 +527,9 @@ func (s *Server) handleDomain(w http.ResponseWriter, r *http.Request) {
 	d.Records = mailRecords(dom, d.Mail, k)
 	if r.Method == http.MethodPost {
 		d.Checked = s.checkRecords(r.Context(), d.Records)
+	}
+	if d.DMARC, err = s.store.DMARCSummary(r.Context(), dom.ID, s.now().Add(-30*24*time.Hour)); err != nil {
+		s.log.Warn("dmarc summary", "domain", dom.Name, "err", err)
 	}
 	s.render(w, r, http.StatusOK, "domain", &Page{Title: dom.Unicode(), Nav: "domains", Data: d})
 }

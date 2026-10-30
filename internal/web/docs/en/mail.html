@@ -2,6 +2,7 @@
 <h2>Domains</h2>
 <p>On a shared server a customer's new domain receives mail only after it is <b>verified</b>: the domain page shows a TXT record (<code>_emailzit.example.com</code>) to put at the domain's DNS provider; then <b>Check now</b>. Staff can mark a domain verified by hand when they know it belongs to the customer; on a dedicated server domains need no verification (Settings → Mail server).</p>
 <p>The domain page lists the <b>DNS records</b> the domain needs: MX (mail to this server), SPF, DMARC, and the records that let mail programs find their settings (autoconfig, autodiscover, SRV). Required records are marked.</p>
+<p><b>DMARC reports</b>: the suggested DMARC record sends the receivers' daily reports to <code>dmarc-reports@&lt;domain&gt;</code>. EmailZit takes that address itself (no mailbox or alias can use it), reads the reports and shows on the domain page, for the last 30 days, which servers sent mail with the domain as sender and how much of it passed DMARC. Your own servers should pass; mail that fails from unknown addresses is usually forged. Once all your senders pass, the policy can go from <code>p=none</code> to <code>quarantine</code> or <code>reject</code>. Reports are kept for 180 days.</p>
 <p><b>Catch-all</b> (mail for unknown addresses) is off by default: unknown addresses are refused during the SMTP dialogue, which keeps spam and backscatter away. Turn it on only when really needed.</p>
 <h2>Mailboxes</h2>
 <ul>

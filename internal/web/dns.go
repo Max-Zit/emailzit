@@ -39,7 +39,7 @@ func mailRecords(d *store.Domain, m MailSettings, k *store.DKIMKey) []DNSRecord 
 		DNSRecord{Name: d.Name, Type: "MX", Value: "10 " + h + ".", Required: true, Note: "Mail for the domain is delivered to this server."},
 		DNSRecord{Name: d.Name, Type: "TXT", Value: "v=spf1 mx ~all", Required: true, Note: "SPF: only this server sends mail for the domain."},
 		// DKIM after SPF (filled below when the domain has a key)
-		DNSRecord{Name: "_dmarc." + d.Name, Type: "TXT", Value: "v=DMARC1; p=none; adkim=s; aspf=s", Note: "DMARC: how receivers treat mail that fails SPF and DKIM (start with p=none, later quarantine or reject)."},
+		DNSRecord{Name: "_dmarc." + d.Name, Type: "TXT", Value: "v=DMARC1; p=none; adkim=s; aspf=s; rua=mailto:" + store.DMARCAddress + "@" + d.Name, Note: "DMARC: how receivers treat mail that fails SPF and DKIM (start with p=none, later quarantine or reject); receivers send their daily reports to EmailZit, which shows them on this page."},
 		DNSRecord{Name: "autoconfig." + d.Name, Type: "CNAME", Value: h + ".", Note: "Thunderbird and other programs find the settings by themselves."},
 		DNSRecord{Name: "autodiscover." + d.Name, Type: "CNAME", Value: h + ".", Note: "Outlook finds the settings by itself."},
 		DNSRecord{Name: "_imaps._tcp." + d.Name, Type: "SRV", Value: "0 1 993 " + h + ".", Note: "IMAP over TLS (RFC 6186)."},

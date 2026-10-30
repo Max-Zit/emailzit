@@ -121,12 +121,12 @@ func (s *Server) handleCustomerSpam(w http.ResponseWriter, r *http.Request) {
 func spamErr(err error) string {
 	switch {
 	case errors.Is(err, sieve.ErrTooManySenders):
-		return "At most 200 entries per list."
+		return label("At most 200 entries per list.")
 	case errors.Is(err, sieve.ErrBadSender):
-		return "Each entry must be an address (ana@example.com) or a whole domain (example.com)."
+		return label("Each entry must be an address (ana@example.com) or a whole domain (example.com).")
 	}
 	if e, ok := err.(errUser); ok {
 		return string(e)
 	}
-	return "The spam settings could not be saved."
+	return label("The spam settings could not be saved.")
 }

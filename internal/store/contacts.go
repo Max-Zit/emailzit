@@ -46,10 +46,10 @@ func cleanContact(name, email string) (string, string, error) {
 	email = strings.ToLower(strings.TrimSpace(email))
 	a, err := mail.ParseAddress(email)
 	if err != nil || a.Address != email || len(email) > 254 {
-		return "", "", errors.New("This is not a valid email address.")
+		return "", "", errors.New("this is not a valid email address")
 	}
 	if utf8.RuneCountInString(name) > 100 || strings.ContainsAny(name, "\r\n\x00<>\"") {
-		return "", "", errors.New("The name is too long or contains characters that are not allowed.")
+		return "", "", errors.New("the name is too long or contains characters that are not allowed")
 	}
 	return name, email, nil
 }
@@ -79,7 +79,7 @@ func (s *Store) SaveContact(ctx context.Context, mailboxID, name, email string, 
 		var exists bool
 		_ = s.db.QueryRow(ctx, `SELECT true FROM contacts WHERE mailbox_id=$1 AND email=$2`, mailboxID, email).Scan(&exists)
 		if !exists {
-			return errors.New("The address book is full.")
+			return errors.New("the address book is full")
 		}
 	}
 	_, err = s.db.Exec(ctx, `INSERT INTO contacts (mailbox_id, name, email) VALUES ($1, $2, $3)
@@ -104,7 +104,7 @@ func (s *Store) Signature(ctx context.Context, mailboxID string) (string, error)
 func (s *Store) SetSignature(ctx context.Context, mailboxID, sig string) error {
 	sig = strings.TrimRight(strings.ReplaceAll(sig, "\r\n", "\n"), " \n")
 	if utf8.RuneCountInString(sig) > MaxSignature || strings.ContainsRune(sig, 0) {
-		return errors.New("The signature is too long.")
+		return errors.New("the signature is too long")
 	}
 	_, err := s.db.Exec(ctx, `UPDATE mailboxes SET signature=$2 WHERE id=$1`, mailboxID, sig)
 	return err

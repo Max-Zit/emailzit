@@ -87,6 +87,23 @@
   </div>
   {{else}}<p class="muted">{{.T "The administrator has not set the host name of the mail server yet; the records are shown after that."}}</p>{{end}}
 </section>
+{{with .Data.DMARC}}
+<section class="panel" id="dmarc">
+  <div class="panelhead"><h2>{{template "icon" "policy"}}{{$.T "DMARC reports"}}</h2><span class="muted small">{{$.T "last 30 days"}}</span></div>
+  {{if .Reports}}
+  <p>{{$.T "%d reports from receivers: %d messages with this domain as sender, %d of them passed DMARC (%d%%)." .Reports .Messages .Passed (pct .Passed .Messages)}}</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>{{$.T "Sending server"}}</th><th class="num">{{$.T "Messages"}}</th><th class="num">{{$.T "Passed"}}</th><th class="num hide-sm">DKIM</th><th class="num hide-sm">SPF</th><th class="num">{{$.T "Quarantined or refused"}}</th><th class="hide-sm">{{$.T "Reported by"}}</th></tr></thead>
+    <tbody>{{range .Sources}}<tr>
+      <td class="mono">{{.IP}}</td><td class="num">{{.Messages}}</td>
+      <td class="num">{{if eq .Passed .Messages}}<span class="badge ok"><i></i>{{.Passed}}</span>{{else if eq .Passed 0}}<span class="badge bad"><i></i>0</span>{{else}}<span class="badge warn"><i></i>{{.Passed}}</span>{{end}}</td>
+      <td class="num hide-sm">{{.DKIM}}</td><td class="num hide-sm">{{.SPF}}</td><td class="num">{{.Rejected}}</td><td class="hide-sm small muted">{{.Reporters}}</td>
+    </tr>{{end}}</tbody>
+  </table></div>
+  <small class="muted">{{$.T "Mail that fails DMARC from an address that is not yours is usually forged; your own servers (this one, a website, a newsletter service) should pass. A sender of yours that fails needs its SPF record or DKIM signing fixed before the policy becomes stricter."}}</small>
+  {{else}}<p class="muted">{{$.T "No reports yet. Receivers send them once a day to %s when the DMARC record above is in place." (print "dmarc-reports@" $.Data.D.Name)}}</p>{{end}}
+</section>
+{{end}}
 {{if .User.CanWrite}}
 <section class="panel">
   <h2>{{template "icon" "trash"}}{{.T "Delete the domain"}}</h2>

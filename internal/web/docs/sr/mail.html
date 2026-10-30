@@ -2,6 +2,7 @@
 <h2>Domeni</h2>
 <p>Na deljenom serveru novi domen kupca prima poštu tek kada je <b>verifikovan</b>: stranica domena prikazuje TXT zapis (<code>_emailzit.example.com</code>) koji treba upisati kod DNS provajdera domena; zatim <b>Proveri sada</b>. Osoblje može ručno da označi domen kao verifikovan kada zna da pripada kupcu; na namenskom serveru domeni ne trebaju verifikaciju (Podešavanja → Mail server).</p>
 <p>Stranica domena navodi <b>DNS zapise</b> koje domen treba: MX (pošta na ovaj server), SPF, DMARC, i zapise po kojima programi za poštu nalaze svoja podešavanja (autoconfig, autodiscover, SRV). Obavezni zapisi su označeni.</p>
+<p><b>DMARC izveštaji</b>: predloženi DMARC zapis šalje dnevne izveštaje primalaca na <code>dmarc-reports@&lt;domen&gt;</code>. EmailZit sam preuzima tu adresu (nijedan mailbox ni alias ne može da je koristi), čita izveštaje i na stranici domena za poslednjih 30 dana prikazuje koji su serveri slali poštu sa domenom kao pošiljaocem i koliko je prošlo DMARC. Vaši serveri treba da prolaze; pošta koja ne prolazi sa nepoznatih adresa je obično lažna. Kada svi vaši pošiljaoci prolaze, politika može sa <code>p=none</code> preći na <code>quarantine</code> ili <code>reject</code>. Izveštaji se čuvaju 180 dana.</p>
 <p><b>Catch-all</b> (pošta za nepostojeće adrese) je podrazumevano isključen: nepostojeće adrese se odbijaju već tokom SMTP razgovora, što drži podalje spam i povratne poruke. Uključite ga samo kada je zaista potreban.</p>
 <h2>Mailboxi</h2>
 <ul>

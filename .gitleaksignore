@@ -1,0 +1,3 @@
+# False positives (checked by hand).
+# The alphabet of app passwords (letters and digits without look-alikes), not a key.
+dea558628aa4ff709421129dc715fe71dc10527d:internal/store/mail.go:generic-api-key:1008

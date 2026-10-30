@@ -11,6 +11,10 @@
 #   ./build-images.sh emailzit-server_X_amd64.deb
 #
 # Environment: VMID (10190), STORAGE (local-lvm), BRIDGE (vmbr0), OUTDIR (.).
+# DISK=file skips the VM: it converts the disk of an image installation
+# made elsewhere (e.g. a VMware VM installed from build-iso.sh with IMAGE=1
+# and exported as a VMDK); then only qemu-img, xorriso and friends are
+# needed, not Proxmox.
 set -eu
 
 pkg=$(readlink -f "${1:?usage: build-images.sh emailzit-server_X_amd64.deb}")
@@ -25,6 +29,7 @@ iso=/var/lib/vz/template/iso/emailzit-image-installer-$ver.iso
 gb=20
 
 finish() {
+    [ -n "${DISK:-}" ] && return 0
     qm stop "$vmid" >/dev/null 2>&1 || true
     qm destroy "$vmid" --purge >/dev/null 2>&1 || true
     rm -f "$iso"
@@ -32,6 +37,7 @@ finish() {
 trap finish EXIT
 
 # 1. Install into a VM; the installer powers it off when it is done.
+if [ -z "${DISK:-}" ]; then
 IMAGE=1 OUT="$iso" "$src/build-iso.sh" "$pkg" >/dev/null
 qm create "$vmid" --name ez-image-build --ostype l26 --memory 2048 --cores 2 --net0 "virtio,bridge=$bridge" \
     --scsihw virtio-scsi-pci --scsi0 "$storage:$gb" --ide2 "local:iso/$(basename "$iso"),media=cdrom" --boot 'order=scsi0;ide2' >/dev/null
@@ -43,9 +49,14 @@ until [ "$(qm status "$vmid" | awk '{print $2}')" = stopped ]; do
     sleep 10
     waited=$((waited + 10))
 done
+fi
 
 # 2. Convert the disk.
-disk=$(pvesm path "$(qm config "$vmid" | sed -n 's/^scsi0: \([^,]*\).*/\1/p')")
+if [ -n "${DISK:-}" ]; then
+    disk=$(readlink -f "$DISK")
+else
+    disk=$(pvesm path "$(qm config "$vmid" | sed -n 's/^scsi0: \([^,]*\).*/\1/p')")
+fi
 cd "$outdir"
 qemu-img convert -c -O qcow2 "$disk" "$base.qcow2"
 qemu-img convert -O vhdx -o subformat=dynamic "$disk" "$base.vhdx"

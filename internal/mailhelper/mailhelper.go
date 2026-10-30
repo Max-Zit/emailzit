@@ -322,3 +322,7 @@ type ImportResult struct {
 	Mailboxes        []string `json:"mailboxes"`
 	UnknownMailboxes []string `json:"unknown_mailboxes,omitempty"`
 }
+
+// PublicCertDir holds the panel's copy of the mail certificate (for the
+// public web listener on port 443).
+const PublicCertDir = "/var/lib/emailzit/tls"

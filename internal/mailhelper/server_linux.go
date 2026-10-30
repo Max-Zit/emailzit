@@ -494,6 +494,9 @@ func (s *Server) Start(ctx context.Context, r Request) error {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if err := s.syncPublicCert(); err != nil {
+		s.Log.Warn("certificate for the panel's public listener", "err", err)
+	}
 	return s.apply(ctx, r)
 }
 
@@ -828,6 +831,9 @@ func (s *Server) installCert(ctx context.Context, r Request) error {
 			_, _ = s.Run(ctx, "systemctl", "reload-or-restart", svc)
 			return fmt.Errorf("%s: %s", svc, firstLine(out, err))
 		}
+	}
+	if err := s.syncPublicCert(); err != nil {
+		s.Log.Warn("certificate for the panel's public listener", "err", err)
 	}
 	return nil
 }

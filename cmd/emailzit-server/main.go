@@ -72,6 +72,7 @@ func run() error {
 	restorePass := flag.String("restore-passphrase-file", "", "file with the passphrase of the backup (or set EMAILZIT_BACKUP_PASSPHRASE)")
 	mailHelper := flag.Bool("mail-helper", false, "root mail helper: serve the panel's mail requests (configuration, mail directories) on "+mailhelper.Socket+"; started by emailzit-mail-helper.service")
 	mailRelay := flag.String("mail-relay", os.Getenv("EMAILZIT_MAIL_RELAY"), "mail helper: send all outgoing mail through this host, e.g. [192.168.1.5]:1025 (test labs)")
+	publicWeb := flag.String("public-web", "auto", "serve autoconfig, Autodiscover and MTA-STS on the ports 443 and 80: auto (only when no web server is installed and HostZit is not linked) or off")
 	flag.Parse()
 
 	if *showVersion {
@@ -240,6 +241,7 @@ func run() error {
 	servers = append(servers, hs)
 	go func() { errc <- hs.Serve(l) }()
 	log.Info("listening", "listener", "console", "addr", raw.Addr().String())
+	servers = append(servers, startPublic(ctx, *publicWeb, srv, consoleCert, raw.Addr().String(), log)...)
 	if *devHTTP != "" {
 		a, ok := netacl.AddrOf(*devHTTP)
 		if !ok || !a.IsLoopback() {

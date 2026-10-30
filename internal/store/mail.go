@@ -196,6 +196,7 @@ type Customer struct {
 	ID           string
 	Number       int
 	ExternalID   string
+	Username     string // shared with HostZit (optional)
 	Name, Email  string
 	PackageID    int64
 	PackageName  string
@@ -216,7 +217,7 @@ func (c *Customer) UID() int { return 2000000 + c.Number }
 // Active reports an active customer.
 func (c *Customer) Active() bool { return c != nil && c.Status == CustomerActive }
 
-const customerCols = `c.id, c.number, COALESCE(c.external_id, ''), c.name, c.email, c.package_id, p.name, c.status, c.status_reason,
+const customerCols = `c.id, c.number, COALESCE(c.external_id, ''), COALESCE(c.username, ''), c.name, c.email, c.package_id, p.name, c.status, c.status_reason,
 	c.lang, c.created_at, c.status_at,
 	(SELECT count(*) FROM domains d WHERE d.customer_id=c.id),
 	(SELECT count(*) FROM mailboxes m WHERE m.customer_id=c.id),
@@ -226,7 +227,7 @@ const customerCols = `c.id, c.number, COALESCE(c.external_id, ''), c.name, c.ema
 
 func scanCustomer(row pgx.Row) (*Customer, error) {
 	c := &Customer{}
-	err := row.Scan(&c.ID, &c.Number, &c.ExternalID, &c.Name, &c.Email, &c.PackageID, &c.PackageName, &c.Status, &c.StatusReason,
+	err := row.Scan(&c.ID, &c.Number, &c.ExternalID, &c.Username, &c.Name, &c.Email, &c.PackageID, &c.PackageName, &c.Status, &c.StatusReason,
 		&c.Lang, &c.CreatedAt, &c.StatusAt, &c.Domains, &c.Mailboxes, &c.Aliases, &c.QuotaMB, &c.UsedBytes)
 	return c, err
 }

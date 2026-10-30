@@ -1,0 +1,59 @@
+{{template "app" .}}
+{{define "content"}}
+<h1>{{.T "Settings"}}</h1>
+<div class="settings">
+{{template "settingstabs" .}}
+<div class="settings-body">
+<section class="panel">
+  <h2>{{template "icon" "key"}}{{.T "REST API"}}</h2>
+  <p class="muted">{{.T "Billing systems (for example the MaxZit portal) and HostZit create, suspend and terminate customers, change packages, read usage and open the customer panel through the API. Every token has only the permissions you give it; it can be limited to addresses and is shown only once."}}</p>
+  {{with .Data.NewToken}}
+  <div class="notice-ok panel">
+    <p><b>{{$.Data.NewName}}</b> — {{$.T "copy the token now: it is shown only once."}}</p>
+    <pre class="token" id="newtoken">{{.}}</pre>
+    <p><button type="button" class="btn secondary sm" data-copy="#newtoken">{{template "icon" "copy"}}{{$.T "Copy"}}</button></p>
+  </div>
+  {{end}}
+  {{if .Data.List}}
+  <div class="table-wrap"><table>
+    <thead><tr><th>{{.T "Name"}}</th><th>{{.T "Permissions"}}</th><th class="hide-sm">{{.T "Valid until"}}</th><th class="hide-sm">{{.T "Last used"}}</th><th></th></tr></thead>
+    <tbody>{{range .Data.List}}<tr>
+      <td><b>{{.Name}}</b>{{if .AllowedIPs}}<br><small class="muted mono">{{join .AllowedIPs ", "}}</small>{{end}}</td>
+      <td class="small mono">{{join .Scopes ", "}}</td>
+      <td class="hide-sm small">{{if .ExpiresAt}}{{$.Time .ExpiresAt}}{{else}}{{$.T "no limit"}}{{end}}</td>
+      <td class="hide-sm small muted">{{if .LastUsedAt}}{{$.Ago .LastUsedAt}}{{with .LastIP}} · <span class="mono">{{.}}</span>{{end}}{{else}}{{$.T "never"}}{{end}}</td>
+      <td class="actions"><form method="post" action="/settings/api/{{.ID}}/delete" data-confirm="{{$.T "Revoke the token %s? Systems using it stop working." .Name}}"><button class="ghost sm">{{$.T "Revoke"}}</button></form></td>
+    </tr>{{end}}</tbody>
+  </table></div>
+  {{end}}
+  <form method="post" action="/settings/api" class="stack mt">
+    <div class="cols">
+      <label>{{.T "Name"}}<input name="name" required maxlength="100" placeholder="{{.T "for example MaxZit portal"}}"></label>
+      <label>{{.T "Valid for (days)"}}<input type="number" name="days" value="365" min="0" max="3650" class="num-sm"><small>{{.T "0 = no limit"}}</small></label>
+    </div>
+    <fieldset><legend>{{.T "Permissions"}}</legend>
+      {{range .Data.Scopes}}<label class="check"><input type="checkbox" name="scope" value="{{.}}" checked><span class="mono">{{.}}</span></label>{{end}}
+    </fieldset>
+    <label>{{.T "Allowed addresses"}} <small>{{.T "optional"}}</small><textarea name="ips" rows="2" spellcheck="false" placeholder="203.0.113.10"></textarea><small>{{.T "One address or network per line; empty = any address."}}</small></label>
+    <div><button class="primary">{{template "icon" "plus"}}{{.T "Create token"}}</button></div>
+  </form>
+</section>
+<section class="panel">
+  <h2>{{.T "How to use the API"}}</h2>
+  <pre class="small">curl -H "Authorization: Bearer ezt_…" https://{{.Host}}/api/v1/customers
+GET  /api/v1/zit/info                     (no token)
+GET  /api/v1/packages
+GET  /api/v1/customers                    ?q= &amp;status= &amp;limit= &amp;cursor=
+POST /api/v1/customers                    {"id","external_id","username","name","email","package"}  Idempotency-Key
+GET  /api/v1/customers/{id|ext:ID}
+PATCH /api/v1/customers/{id}              {"name","email","external_id","username"}
+POST /api/v1/customers/{id}/suspend       {"reason"}
+POST /api/v1/customers/{id}/unsuspend
+POST /api/v1/customers/{id}/terminate
+PUT  /api/v1/customers/{id}/package       {"package"}
+GET  /api/v1/customers/{id}/usage
+POST /api/v1/customers/{id}/sso           → {"url","expires_at"} (60 s, one use)</pre>
+</section>
+</div>
+</div>
+{{end}}

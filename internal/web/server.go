@@ -47,8 +47,9 @@ type Server struct {
 	HelperAvailable func() bool
 	// Mail applies mail changes that need root (customer directories, DKIM
 	// keys); nil = nothing to apply (development without a mail stack).
-	Mail MailApplier
-	upd  updateState
+	Mail    MailApplier
+	upd     updateState
+	apiRate apiRate
 }
 
 // MailApplier is the part of the root helper the panels use.
@@ -244,6 +245,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /login/enroll", s.handleEnroll)
 	mux.HandleFunc("POST /logout", s.handleLogout)
 	mux.HandleFunc("POST /lang", s.handleLang)
+	mux.HandleFunc("GET /sso/{token}", s.handleSSO)
 
 	// app: any panel login (staff or customer); staff: server staff
 	// (admin, operator, viewer); write: may change mail objects (admin,
@@ -308,6 +310,9 @@ func (s *Server) Handler() http.Handler {
 	})
 	admin("GET /settings/mail", s.handleMailSettings)
 	admin("POST /settings/mail", s.handleMailSettingsSave)
+	admin("GET /settings/api", s.handleAPITokens)
+	admin("POST /settings/api", s.handleAPITokenCreate)
+	admin("POST /settings/api/{id}/delete", s.handleAPITokenDelete)
 	admin("GET /settings/network", s.handleNetwork)
 	admin("POST /settings/network", s.handleNetworkSave)
 	admin("GET /settings/security", s.handleSecurity)
@@ -328,6 +333,8 @@ func (s *Server) Handler() http.Handler {
 	// mail programs ask for their settings without a session or CSRF token
 	auto := http.NewServeMux()
 	s.autoconfigRoutes(auto)
+	// the REST API signs in with tokens only: no session, no CSRF check
+	top.Handle("/api/", s.apiHandler())
 	for _, p := range []string{"/.well-known/autoconfig/", "/mail/config-v1.1.xml", "/autodiscover/", "/Autodiscover/"} {
 		top.Handle(p, auto)
 	}

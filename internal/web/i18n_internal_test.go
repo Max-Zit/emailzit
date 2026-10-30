@@ -31,7 +31,7 @@ func uiTexts(t *testing.T) map[string]bool {
 	}
 	// Go: messages passed to translate/T/redirect/show*/fail and errors.
 	goMsg := regexp.MustCompile(`(?:translate\([^,\n]+, |uiErrf?\(|\.T\(|fail\(|redirect\(w, r, [^\n]*?, |redirectErr\(w, r, [^,\n]+, |show\w+\(w, r, http\.Status\w+, [^"\n]*?|errors\.New\()"((?:[^"\\]|\\.)+)"`)
-	for _, dir := range []string{".", "../store"} {
+	for _, dir := range []string{".", "../store", "../webmail", "../sieve"} {
 		gofiles, _ := filepath.Glob(filepath.Join(dir, "*.go"))
 		for _, f := range gofiles {
 			if strings.HasSuffix(f, "_test.go") {
@@ -49,6 +49,7 @@ func uiTexts(t *testing.T) map[string]bool {
 	out["the password must be between 12 and 256 characters"] = true
 	out["The name is already used."] = true
 	out["Not found."] = true
+	out["The mail server refused the message: %s"] = true
 	// notes of the DNS records
 	for _, r := range mailRecords(&store.Domain{Name: "example.com"}, MailSettings{Hostname: "mail.example.com"}, &store.DKIMKey{Domain: "example.com", Selector: "s"}) {
 		out[r.Note] = true

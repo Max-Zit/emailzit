@@ -121,6 +121,10 @@ func (s *Server) mailUserRoutes(mux *http.ServeMux) {
 	m("POST /mail/password", s.handleMailPassword)
 	m("POST /mail/apppasswords", s.handleMailAppPasswordCreate)
 	m("POST /mail/apppasswords/{id}/delete", s.handleMailAppPasswordDelete)
+	s.webmailRoutes(m)
+	m("GET /mail/mobileconfig", s.handleMobileconfig)
+	m("GET /mail/filters", s.handleFilters)
+	m("POST /mail/filters", s.handleFiltersSave)
 }
 
 // mailLang is the language of a mail user page.
@@ -214,6 +218,10 @@ func (s *Server) finishMailLogin(w http.ResponseWriter, r *http.Request, x *stor
 		return false
 	}
 	s.setMailCookie(w, r, tok, life)
+	// the webmail signs in to IMAP/SMTP with its own short-lived token
+	if wt, err := s.store.CreateWebmailToken(r.Context(), m.ID, life); err == nil {
+		_ = s.store.SetSessionWebmail(r.Context(), auth.HashToken("mailsession", tok), wt)
+	}
 	_ = s.store.MarkMailboxLogin(r.Context(), m.ID)
 	s.guard.success(clientIP(r), "mail:"+m.Address)
 	s.auditAs(r, m.Address, "mail.login", "mailbox:"+m.Address, "signed in (%s)", how)
@@ -324,6 +332,9 @@ func (s *Server) handleMailEnroll(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleMailLogout(w http.ResponseWriter, r *http.Request) {
 	if x := mailSessionFrom(r); x != nil {
+		if wt, err := s.store.SessionWebmail(r.Context(), x.Hash); err == nil && wt != "" {
+			_ = s.store.DeleteWebmailToken(r.Context(), wt)
+		}
 		_ = s.store.DeleteMailSession(r.Context(), x.Hash)
 		if m := mailboxFrom(r); m != nil {
 			s.auditAs(r, m.Address, "mail.logout", "mailbox:"+m.Address, "signed out")

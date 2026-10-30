@@ -936,3 +936,37 @@ ul.plain { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
 fieldset { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 12px 14px; display: grid; gap: 10px; }
 legend { color: var(--muted); font-size: 13px; padding: 0 6px; }
 div.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+
+/* ---- webmail */
+.wm { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 16px; align-items: start; }
+.wm-folders { display: grid; gap: 2px; padding: 8px; position: sticky; top: 76px; }
+.wm-folders a { display: flex; justify-content: space-between; gap: 8px; padding: 7px 10px; border-radius: var(--radius-sm); color: var(--text); text-decoration: none; }
+.wm-folders a:hover { background: var(--panel-2); }
+.wm-folders a.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.wm-folders b { font-size: 12px; background: var(--accent); color: var(--on-accent); border-radius: 10px; padding: 0 7px; }
+.wm-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+.wm-bar form { display: inline-flex; gap: 6px; margin: 0; }
+.wm-search { flex: 1 1 240px; margin: 0; }
+.wm-tools { display: flex; flex-wrap: wrap; gap: 6px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.wm-msgs { list-style: none; margin: 0; padding: 0; }
+.wm-msgs li { display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--line); }
+.wm-msgs li input[type=checkbox] { flex: 0 0 auto; width: 16px; height: 16px; margin: 0 2px; }
+.wm-main { min-width: 0; }
+.wm-msgs li a { flex: 1; display: grid; grid-template-columns: minmax(0, 220px) minmax(0, 1fr) auto; gap: 12px; padding: 10px 4px; color: var(--text); text-decoration: none; min-width: 0; }
+.wm-msgs li a:hover { background: var(--panel-2); }
+.wm-msgs li.unread a { font-weight: 600; }
+.wm-from, .wm-subj { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wm-date { color: var(--muted); font-size: 12.5px; white-space: nowrap; }
+.wm-read h2 { margin-top: 0; }
+.wm-html { width: 100%; min-height: 60vh; border: 1px solid var(--line); border-radius: var(--radius-sm); background: #fff; }
+.wm-text { white-space: pre-wrap; font-family: var(--font); font-size: 14px; background: none; border: 0; }
+.wm-atts { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 16px; }
+.wm-body { font-family: var(--mono); min-height: 300px; }
+.pager { align-items: center; justify-content: center; margin-top: 10px; }
+@media (max-width: 760px) {
+  .wm { grid-template-columns: 1fr; }
+  .wm-folders { position: static; display: flex; overflow-x: auto; }
+  .wm-msgs li a { grid-template-columns: 1fr auto; }
+  .wm-subj { grid-column: 1 / -1; grid-row: 2; }
+}
+.filter-row { margin-bottom: 8px; align-items: center; } .filter-row input { flex: 1 1 160px; min-width: 0; } .filter-row select { flex: 0 1 auto; width: auto; }

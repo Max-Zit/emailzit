@@ -1,0 +1,31 @@
+{{template "mailapp" .}}
+{{define "content"}}
+{{$m := .Data.Msg}}
+<div class="wm">
+  {{template "wmfolders" .}}
+  <section class="wm-main">
+    <div class="wm-bar">
+      <a class="btn ghost" href="/mail/webmail?f={{.Data.Folder}}">{{template "icon" "chevl"}}{{.Data.Folder}}</a>
+      <a class="btn secondary" href="/mail/webmail/compose?f={{.Data.Folder}}&amp;uid={{$m.UID}}&amp;mode=reply">{{.T "Reply"}}</a>
+      <a class="btn secondary" href="/mail/webmail/compose?f={{.Data.Folder}}&amp;uid={{$m.UID}}&amp;mode=replyall">{{.T "Reply to all"}}</a>
+      <a class="btn secondary" href="/mail/webmail/compose?f={{.Data.Folder}}&amp;uid={{$m.UID}}&amp;mode=forward">{{.T "Forward"}}</a>
+      <form method="post" action="/mail/webmail/action"><input type="hidden" name="f" value="{{.Data.Folder}}"><input type="hidden" name="uid" value="{{$m.UID}}">
+        <button class="ghost" name="op" value="delete">{{template "icon" "trash"}}{{.T "Delete"}}</button>
+        {{if eq .Data.Folder "Junk"}}<button class="ghost" name="op" value="notjunk">{{.T "Not spam"}}</button>{{else}}<button class="ghost" name="op" value="junk">{{.T "Spam"}}</button>{{end}}
+      </form>
+    </div>
+    <article class="panel wm-read">
+      <h2>{{if $m.Subject}}{{$m.Subject}}{{else}}{{.T "(no subject)"}}{{end}}</h2>
+      <dl class="facts small">
+        <dt>{{.T "From"}}</dt><dd>{{$m.From}}</dd>
+        <dt>{{.T "To"}}</dt><dd>{{$m.To}}</dd>
+        {{with $m.Cc}}<dt>Cc</dt><dd>{{.}}</dd>{{end}}
+        <dt>{{.T "Date"}}</dt><dd>{{.Time $m.Date}}</dd>
+      </dl>
+      {{if .Data.Body}}<iframe class="wm-html" sandbox="allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer" title="{{.T "Message"}}" srcdoc="{{.Data.Body}}"></iframe>
+      {{else}}<pre class="wm-text">{{$m.Text}}</pre>{{end}}
+      {{if $m.Attachments}}<ul class="wm-atts">{{range $m.Attachments}}<li><a href="/mail/webmail/att?f={{$.Data.Folder}}&amp;uid={{$m.UID}}&amp;i={{.Index}}">{{template "icon" "download"}}{{.Name}}</a> <small class="muted">{{bytes (i64 .Size)}}</small></li>{{end}}</ul>{{end}}
+    </article>
+  </section>
+</div>
+{{end}}

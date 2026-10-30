@@ -623,7 +623,7 @@ func fixOwners() {
 // ---- brute-force guard: token shared with the panel, firewall blocks
 
 // AuthPolicyTokenFile holds the token Dovecot sends to the panel's guard.
-const AuthPolicyTokenFile = "/etc/emailzit/auth-policy.token"
+const AuthPolicyTokenFile = "/etc/emailzit/auth-policy.token" // #nosec G101 -- a file name, not a credential
 
 // authPolicyToken reads (or creates) the token; the panel user may read it.
 func (s *Server) authPolicyToken() string {

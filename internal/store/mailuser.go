@@ -243,3 +243,34 @@ func (s *Store) DeleteWebmailToken(ctx context.Context, pw string) error {
 	_, err := s.db.Exec(ctx, `DELETE FROM app_passwords WHERE kind='webmail' AND hash=$1`, HashAppPassword(pw))
 	return err
 }
+
+// SetSessionWebmail stores the webmail token of a session (sealed).
+func (s *Store) SetSessionWebmail(ctx context.Context, sessionHash, token string) error {
+	_, err := s.db.Exec(ctx, `UPDATE mail_sessions SET webmail=$2 WHERE token_hash=$1`, sessionHash, s.box.seal("mail_sessions.webmail", token))
+	return err
+}
+
+// SessionWebmail returns the webmail token of a session ("" = none).
+func (s *Store) SessionWebmail(ctx context.Context, sessionHash string) (string, error) {
+	var sealed string
+	if err := s.db.QueryRow(ctx, `SELECT webmail FROM mail_sessions WHERE token_hash=$1`, sessionHash).Scan(&sealed); err != nil {
+		return "", notFound(err)
+	}
+	if sealed == "" {
+		return "", nil
+	}
+	return s.box.open("mail_sessions.webmail", sealed)
+}
+
+// MailboxSieve loads the auto-reply and filter settings (JSON).
+func (s *Store) MailboxSieve(ctx context.Context, id string) ([]byte, error) {
+	var raw []byte
+	err := s.db.QueryRow(ctx, `SELECT sieve::text FROM mailboxes WHERE id=$1`, id).Scan(&raw)
+	return raw, notFound(err)
+}
+
+// SetMailboxSieve stores the auto-reply and filter settings (JSON).
+func (s *Store) SetMailboxSieve(ctx context.Context, id string, raw []byte) error {
+	_, err := s.db.Exec(ctx, `UPDATE mailboxes SET sieve=$2 WHERE id=$1`, id, string(raw))
+	return err
+}

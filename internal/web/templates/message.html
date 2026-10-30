@@ -1,0 +1,5 @@
+{{template "mailapp" .}}
+{{define "content"}}
+<h1>{{.T .Title}}</h1>
+<p><a class="btn secondary" href="/mail/webmail">{{template "icon" "refresh"}}{{.T "Try again"}}</a></p>
+{{end}}

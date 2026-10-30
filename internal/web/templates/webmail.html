@@ -1,0 +1,37 @@
+{{template "mailapp" .}}
+{{define "content"}}
+<div class="wm">
+  {{template "wmfolders" .}}
+  <section class="wm-main">
+    <div class="wm-bar">
+      <a class="btn primary" href="/mail/webmail/compose">{{template "icon" "edit"}}{{.T "Write"}}</a>
+      <form method="get" action="/mail/webmail" class="row filters wm-search">
+        <input type="hidden" name="f" value="{{.Data.Folder}}">
+        <input type="search" name="q" value="{{.Data.Q}}" placeholder="{{.T "Search in %s" .Data.Folder}}" aria-label="{{.T "Search"}}">
+      </form>
+    </div>
+    <form method="post" action="/mail/webmail/action" class="panel wm-list">
+      <input type="hidden" name="f" value="{{.Data.Folder}}">
+      <div class="wm-tools">
+        <button class="ghost sm" name="op" value="seen">{{.T "Mark as read"}}</button>
+        <button class="ghost sm" name="op" value="unseen">{{.T "Mark as unread"}}</button>
+        {{if eq .Data.Folder "Junk"}}<button class="ghost sm" name="op" value="notjunk">{{.T "Not spam"}}</button>{{else}}<button class="ghost sm" name="op" value="junk">{{.T "Spam"}}</button>{{end}}
+        <button class="ghost sm" name="op" value="delete">{{template "icon" "trash"}}{{.T "Delete"}}</button>
+      </div>
+      {{if .Data.List}}
+      <ul class="wm-msgs">{{range .Data.List}}
+        <li class="{{if not .Seen}}unread{{end}}">
+          <input type="checkbox" name="uid" value="{{.UID}}" aria-label="{{$.T "Select"}}">
+          <a href="/mail/webmail/msg?f={{$.Data.Folder}}&amp;uid={{.UID}}">
+            <span class="wm-from">{{if or (eq $.Data.Folder "Sent") (eq $.Data.Folder "Drafts")}}{{.To}}{{else}}{{.From}}{{end}}</span>
+            <span class="wm-subj">{{if .Subject}}{{.Subject}}{{else}}{{$.T "(no subject)"}}{{end}}</span>
+            <span class="wm-date">{{$.Time .Date}}</span>
+          </a>
+        </li>{{end}}
+      </ul>
+      {{else}}<p class="muted">{{if .Data.Q}}{{.T "No message matches."}}{{else}}{{.T "No messages in this folder."}}{{end}}</p>{{end}}
+    </form>
+    {{if gt .Data.Pages 1}}<nav class="row pager">{{if gt .Data.Page 1}}<a class="btn ghost sm" href="/mail/webmail?f={{.Data.Folder}}&amp;q={{.Data.Q}}&amp;p={{add .Data.Page -1}}">{{template "icon" "chevl"}}{{.T "Newer"}}</a>{{end}}<span class="muted small">{{.T "Page %d of %d" .Data.Page .Data.Pages}}</span>{{if lt .Data.Page .Data.Pages}}<a class="btn ghost sm" href="/mail/webmail?f={{.Data.Folder}}&amp;q={{.Data.Q}}&amp;p={{add .Data.Page 1}}">{{.T "Older"}}{{template "icon" "chevr"}}</a>{{end}}</nav>{{end}}
+  </section>
+</div>
+{{end}}

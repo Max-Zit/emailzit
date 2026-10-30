@@ -325,6 +325,12 @@ func (s *Server) Handler() http.Handler {
 	s.mailUserRoutes(mux)
 
 	top := http.NewServeMux()
+	// mail programs ask for their settings without a session or CSRF token
+	auto := http.NewServeMux()
+	s.autoconfigRoutes(auto)
+	for _, p := range []string{"/.well-known/autoconfig/", "/mail/config-v1.1.xml", "/autodiscover/", "/Autodiscover/"} {
+		top.Handle(p, auto)
+	}
 	top.Handle("/", s.csrf(s.loadMailSession(s.loadSession(mux))))
 	return s.secure(s.aclCheck(s.MgmtACL, top))
 }

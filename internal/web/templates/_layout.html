@@ -117,7 +117,9 @@
 <aside class="side" id="side">
   <a class="brand" href="/mail">{{template "logo"}}<span>Email<b>Zit</b></span></a>
   <nav>
-    <a href="/mail" class="{{if eq .Nav "mail"}}on{{end}}">{{template "icon" "mail"}}{{.T "My mailbox"}}</a>
+    <a href="/mail/webmail" class="{{if eq .Nav "webmail"}}on{{end}}">{{template "icon" "mail"}}{{.T "Webmail"}}</a>
+    <a href="/mail" class="{{if eq .Nav "mail"}}on{{end}}">{{template "icon" "settings"}}{{.T "My mailbox"}}</a>
+    <a href="/mail/filters" class="{{if eq .Nav "filters"}}on{{end}}">{{template "icon" "route"}}{{.T "Auto-reply and filters"}}</a>
     <a href="/mail#apps">{{template "icon" "key"}}{{.T "App passwords"}}</a>
   </nav>
   <div class="side-foot">EmailZit {{.Version}}<br>{{.T "AGPLv3 · self-hosted"}}</div>
@@ -141,3 +143,4 @@
 </div>
 </body>
 </html>{{end}}
+{{define "wmfolders"}}<nav class="wm-folders panel" aria-label="{{.T "Folders"}}">{{range .Data.Folders}}<a href="/mail/webmail?f={{.Name}}" class="{{if eq .Name $.Data.Folder}}on{{end}}"><span>{{if eq .Name "INBOX"}}{{$.T "Inbox"}}{{else if eq .Special `\Sent`}}{{$.T "Sent"}}{{else if eq .Special `\Drafts`}}{{$.T "Drafts"}}{{else if eq .Special `\Junk`}}{{$.T "Spam"}}{{else if eq .Special `\Trash`}}{{$.T "Trash"}}{{else if eq .Special `\Archive`}}{{$.T "Archive"}}{{else}}{{.Name}}{{end}}</span>{{if .Unseen}}<b>{{.Unseen}}</b>{{end}}</a>{{end}}</nav>{{end}}

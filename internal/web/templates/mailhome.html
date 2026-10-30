@@ -35,6 +35,7 @@
 <section class="panel">
   <h2>{{template "icon" "settings"}}{{.T "Settings for mail programs"}}</h2>
   {{template "clientsettings" (rowOf $ $m.Address)}}
+  <p><a class="btn secondary sm" href="/mail/mobileconfig">{{template "icon" "download"}}{{.T "Profile for iPhone, iPad and Mac"}}</a> <small class="muted">{{.T "Install it, then enter an app password when the device asks."}}</small></p>
 </section>
 <section class="panel">
   <h2>{{template "icon" "lock"}}{{.T "Change your password"}}</h2>

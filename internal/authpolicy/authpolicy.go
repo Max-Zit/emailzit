@@ -39,10 +39,9 @@ type Guard struct {
 	Allow func(ip netip.Addr) bool
 	Now   func() time.Time
 
-	mu      sync.Mutex
-	ips     map[netip.Addr]*entry
-	logins  map[string]*entry
-	stopped bool
+	mu     sync.Mutex
+	ips    map[netip.Addr]*entry
+	logins map[string]*entry
 }
 
 type entry struct {

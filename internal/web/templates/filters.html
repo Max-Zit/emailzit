@@ -1,0 +1,32 @@
+{{template "mailapp" .}}
+{{define "content"}}
+{{$a := .Data.S.AutoReply}}
+<h1>{{.T "Auto-reply and filters"}}</h1>
+<form method="post" action="/mail/filters" class="stack wide">
+  <section class="panel">
+    <h2>{{template "icon" "mail"}}{{.T "Auto-reply"}}</h2>
+    <label class="check"><input type="checkbox" name="ar_on" value="1" {{if $a.On}}checked{{end}}>{{.T "Answer incoming mail automatically (for example while on holiday)"}}</label>
+    <label>{{.T "Subject"}} <small>{{.T "optional"}}</small><input name="ar_subject" value="{{$a.Subject}}" maxlength="200"></label>
+    <label>{{.T "Message"}}<textarea name="ar_body" rows="6" maxlength="10000">{{$a.Body}}</textarea></label>
+    <div class="cols">
+      <label>{{.T "From"}} <small>{{.T "optional"}}</small><input type="date" name="ar_from" value="{{$a.From}}"></label>
+      <label>{{.T "Until"}} <small>{{.T "optional"}}</small><input type="date" name="ar_until" value="{{$a.Until}}"></label>
+      <label>{{.T "Answer the same sender again after (days)"}}<input type="number" name="ar_days" value="{{$a.Days}}" min="1" max="30" class="num-sm"></label>
+    </div>
+  </section>
+  <section class="panel">
+    <h2>{{template "icon" "route"}}{{.T "Filters"}}</h2>
+    <p class="muted">{{.T "Filters sort incoming mail: the first filter that matches decides. Leave the text empty to remove a filter."}}</p>
+    {{range .Data.S.Rules}}{{template "filterrow" (filterRow $ .)}}{{end}}
+    {{template "filterrow" (filterRow $ nil)}}
+    {{template "filterrow" (filterRow $ nil)}}
+  </section>
+  <div><button class="primary">{{.T "Save"}}</button></div>
+</form>
+{{end}}
+{{define "filterrow"}}{{$p := .P}}<div class="row filter-row">
+  <select name="field" aria-label="{{$p.T "Field"}}"><option value="from" {{if eq .R.Field "from"}}selected{{end}}>{{$p.T "From contains"}}</option><option value="to" {{if eq .R.Field "to"}}selected{{end}}>{{$p.T "To or Cc contains"}}</option><option value="subject" {{if eq .R.Field "subject"}}selected{{end}}>{{$p.T "Subject contains"}}</option></select>
+  <input name="value" value="{{.R.Value}}" maxlength="200" aria-label="{{$p.T "Text"}}" placeholder="{{$p.T "Text"}}">
+  <select name="action" aria-label="{{$p.T "Action"}}"><option value="move" {{if eq .R.Action "move"}}selected{{end}}>{{$p.T "Move to folder"}}</option><option value="read" {{if eq .R.Action "read"}}selected{{end}}>{{$p.T "Mark as read"}}</option><option value="delete" {{if eq .R.Action "delete"}}selected{{end}}>{{$p.T "Delete"}}</option></select>
+  <select name="folder" aria-label="{{$p.T "Folder"}}">{{range $p.Data.Folders}}<option {{if eq . $.R.Folder}}selected{{end}}>{{.}}</option>{{end}}</select>
+</div>{{end}}

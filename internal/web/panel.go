@@ -136,16 +136,11 @@ func (s *Server) applyMail(r *http.Request) {
 // ---- overview
 
 type overviewData struct {
-	Totals    store.Totals
-	Customer  *store.Customer
-	Package   *store.Package
-	Domains   []*store.Domain
-	Web       []store.WebSender // hosting accounts (HostZit) sending through emailzit-sendmail
-	Spam      string            // the customer's spam level
-	Exports   []exportFile
-	Exporting bool
-	Levels    []string
-	Mail      MailSettings
+	Totals   store.Totals
+	Customer *store.Customer
+	Package  *store.Package
+	Domains  []*store.Domain
+	Mail     MailSettings
 }
 
 func (s *Server) handleOverview(w http.ResponseWriter, r *http.Request) {
@@ -302,6 +297,7 @@ type customerData struct {
 	Levels    []string
 	Exports   []exportFile
 	Exporting bool // an export is running
+	Import    *job // the newest import job
 	Verified  bool // new domains are verified at once (no verification required)
 }
 
@@ -329,6 +325,7 @@ func (s *Server) handleCustomer(w http.ResponseWriter, r *http.Request) {
 					d.Web, err = s.store.WebSenders(r.Context(), c.ID)
 					d.Levels = sieve.SpamLevels
 					d.Exports, d.Exporting = s.exportFiles(c.ID), s.exportRunning(c.ID)
+					d.Import = s.lastImport(c.ID)
 					d.Spam, _ = s.store.CustomerSpamLevel(r.Context(), c.ID)
 				}
 			}

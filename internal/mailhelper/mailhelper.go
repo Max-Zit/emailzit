@@ -39,6 +39,7 @@ const (
 	ActionSpam     = "spam"     // write the spam scripts of all mailboxes, a customer's or one mailbox
 	ActionExport   = "export"   // pack a customer's mail and settings for BackupZit or a move
 	ActionStatus   = "status"   // health of the mail system (WatchZit)
+	ActionImport   = "import"   // write the mail of an uploaded archive into the customer's mailboxes
 	ActionPing     = "ping"
 )
 
@@ -66,6 +67,7 @@ type Request struct {
 	Chain string `json:"chain,omitempty"`
 	// export: file name (time) and the manifest of the customer's settings
 	Name     string `json:"name,omitempty"`
+	Format   string `json:"format,omitempty"` // import: emailzit or cpanel
 	Manifest string `json:"manifest,omitempty"`
 	// who asked (for the helper's log)
 	By string `json:"by,omitempty"`
@@ -144,6 +146,11 @@ func (r *Request) Validate() error {
 		}
 		return nil
 	case ActionStatus:
+		return nil
+	case ActionImport:
+		if !uuidRE.MatchString(r.Customer) || !exportNameRE.MatchString(r.Name) || (r.Format != "emailzit" && r.Format != "cpanel") {
+			return errors.New("invalid import")
+		}
 		return nil
 	case ActionExport:
 		if !uuidRE.MatchString(r.Customer) || !exportNameRE.MatchString(r.Name) || len(r.Manifest) > 4<<20 || !json.Valid([]byte(r.Manifest)) {
@@ -244,7 +251,7 @@ func (c *Client) CallData(ctx context.Context, req Request, v any) error {
 	}
 	defer conn.Close()
 	wait := 2 * time.Minute
-	if req.Action == ActionExport {
+	if req.Action == ActionExport || req.Action == ActionImport {
 		wait = ExportTimeout
 	}
 	_ = conn.SetDeadline(time.Now().Add(wait))
@@ -302,4 +309,16 @@ type Status struct {
 	DiskTotalMB  int64             `json:"disk_total_mb"`
 	DiskFreeMB   int64             `json:"disk_free_mb"`
 	CertNotAfter *time.Time        `json:"certificate_not_after,omitempty"`
+}
+
+// ImportDir is where uploaded archives wait (in the panel's data directory).
+const ImportDir = "/var/lib/emailzit/imports"
+
+// ImportResult describes what an import wrote.
+type ImportResult struct {
+	Files            int      `json:"files"`
+	Bytes            int64    `json:"bytes"`
+	Existing         int      `json:"existing"` // already there, left alone
+	Mailboxes        []string `json:"mailboxes"`
+	UnknownMailboxes []string `json:"unknown_mailboxes,omitempty"`
 }

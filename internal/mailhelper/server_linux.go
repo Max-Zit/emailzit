@@ -135,6 +135,16 @@ func (s *Server) handle(ctx context.Context, c *net.UnixConn) {
 		}
 		reply(err, res)
 		return
+	case ActionImport:
+		_ = c.SetDeadline(time.Now().Add(ExportTimeout))
+		res, err := s.importMail(ctx, req)
+		if err != nil {
+			s.Log.Error("mail helper: import failed", "customer", req.Customer, "err", err)
+		} else {
+			s.Log.Info("mail helper: import", "by", req.By, "customer", req.Customer, "files", res.Files, "bytes", res.Bytes)
+		}
+		reply(err, res)
+		return
 	case ActionStatus:
 		reply(nil, s.status(ctx))
 		return

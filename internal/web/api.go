@@ -84,6 +84,7 @@ func (s *Server) apiHandler() http.Handler {
 	mux.Handle("GET /api/v1/customers/{id}/usage", need(store.ScopeUsage, s.apiCustomerUsage))
 	mux.Handle("PUT /api/v1/customers/{id}/web-uids", need(store.ScopeCustomersWrite, s.apiWebUIDs))
 	mux.Handle("POST /api/v1/customers/{id}/export", need(store.ScopeCustomersWrite, s.apiExport))
+	mux.Handle("POST /api/v1/customers/{id}/import", need(store.ScopeCustomersWrite, s.apiImport))
 	mux.Handle("GET /api/v1/customers/{id}/exports", need(store.ScopeCustomersRead, s.apiExports))
 	mux.Handle("GET /api/v1/customers/{id}/exports/{name}", need(store.ScopeCustomersWrite, s.apiExportDownload))
 	mux.Handle("GET /api/v1/jobs/{id}", need(store.ScopeCustomersRead, s.apiJob))

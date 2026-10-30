@@ -51,6 +51,19 @@
   {{if .Data.Exports}}<ul class="plain">{{range .Data.Exports}}<li><a href="/customers/{{$c.ID}}/exports/{{.Name}}">{{.Name}}</a> <span class="muted small">· {{.Human}} · {{$.Time .Time}}</span></li>{{end}}</ul>{{end}}
   {{if .Data.Exporting}}<p><span class="badge warn">{{.T "An export is running."}}</span></p>{{else if .User.CanWrite}}<form method="post" action="/customers/{{$c.ID}}/export"><button class="secondary">{{template "icon" "download"}}{{.T "Export now"}}</button></form>{{end}}
 </section>
+<section class="panel" id="import">
+  <h2>{{template "icon" "upload"}}{{.T "Import"}}</h2>
+  <p class="muted">{{.T "Takes an EmailZit export (moving from another EmailZit server) or a cPanel account backup (cpmove-USER.tar.gz): missing domains, mailboxes and forwarders are created, then the mail is copied in. Existing mail is never overwritten, so an import can be repeated. Mailboxes get a random password: set a new one for each user."}}</p>
+  {{with .Data.Import}}<p>{{if eq .Status "running"}}<span class="badge warn">{{$.T "An import is running."}}</span>{{else if eq .Status "failed"}}<span class="badge bad">{{$.T "The last import failed:"}}</span> <span class="muted">{{.Error}}</span>{{else}}<span class="badge ok"><i></i>{{$.T "Last import"}}</span>{{with .Report}} <span class="muted small">{{$.T "%d domains, %d mailboxes, %d forwarders created" .Domains .Mailboxes .Aliases}}{{with .Mail}} · {{$.T "%d mail files" .Files}}{{end}}</span>{{end}}{{end}}</p>
+  {{with .Report}}{{if .Notes}}<ul class="small muted">{{range .Notes}}<li>{{.}}</li>{{end}}</ul>{{end}}{{end}}{{end}}
+  {{if and .User.CanWrite (eq $c.Status "active")}}
+  <form method="post" action="/customers/{{$c.ID}}/import" enctype="multipart/form-data" class="row mt">
+    <label>{{.T "Kind"}}<select name="format"><option value="cpanel">{{.T "cPanel account backup"}}</option><option value="emailzit">{{.T "EmailZit export"}}</option></select></label>
+    <label>{{.T "Archive (.tar.gz)"}}<input type="file" name="archive" accept=".gz,.tgz,application/gzip" required></label>
+    <button class="secondary">{{template "icon" "upload"}}{{.T "Import"}}</button>
+  </form>
+  {{end}}
+</section>
 {{if .Data.Web}}
 <section class="panel">
   <h2>{{template "icon" "mail"}}{{.T "Mail from websites"}}</h2>

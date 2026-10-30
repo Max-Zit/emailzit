@@ -34,6 +34,7 @@ type job struct {
 	Status     string                   `json:"status"` // running, done, failed
 	Error      string                   `json:"error,omitempty"`
 	Result     *mailhelper.ExportResult `json:"result,omitempty"`
+	Report     *importReport            `json:"report,omitempty"`
 	Started    time.Time                `json:"started_at"`
 	Finished   *time.Time               `json:"finished_at,omitempty"`
 }
@@ -130,7 +131,7 @@ func (s *Server) exportManifest(ctx context.Context, c *store.Customer) (*export
 	return m, nil
 }
 
-var errExportRunning = errors.New("an export of this customer is already running")
+var errExportRunning = errors.New("an export or import of this customer is already running")
 
 // startExport begins an export job of a customer.
 func (s *Server) startExport(c *store.Customer, by string) (*job, error) {
@@ -239,6 +240,8 @@ func (s *Server) sendExport(w http.ResponseWriter, r *http.Request, customerID, 
 	if err != nil || !fi.Mode().IsRegular() {
 		return false
 	}
+	// large files: no write deadline of the server for this answer
+	_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(mailhelper.ExportTimeout))
 	w.Header().Set("Content-Type", "application/gzip")
 	w.Header().Set("Content-Disposition", `attachment; filename="emailzit-`+customerID[:8]+`-`+name+`"`)
 	w.Header().Set("Content-Length", fmt.Sprint(fi.Size()))

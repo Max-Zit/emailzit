@@ -58,6 +58,7 @@ POST /api/v1/customers/{id}/export        → 202 {"job_id"}  mail + settings, n
 GET  /api/v1/jobs/{job_id}                → {"status":"running|done|failed","result":{"file","size"}}
 GET  /api/v1/customers/{id}/exports       → {"items":[{"name","size","time"}]}
 GET  /api/v1/customers/{id}/exports/{name}  the .tar.gz (customers:write)
+POST /api/v1/customers/{id}/import?format=emailzit|cpanel   body: the .tar.gz → 202 {"job_id"}
 GET  /api/v1/server/status                → services, queue, disk, certificate (WatchZit)</pre>
 </section>
 </div>

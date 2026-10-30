@@ -282,6 +282,7 @@ func (s *Server) Handler() http.Handler {
 	staffWrite("POST /customers/{id}/web-send", s.handleWebSend)
 	staffWrite("POST /customers/{id}/spam", s.handleCustomerSpam)
 	staffWrite("POST /customers/{id}/export", s.handleCustomerExport)
+	staffWrite("POST /customers/{id}/import", s.handleCustomerImport)
 	staffWrite("GET /customers/{id}/exports/{name}", s.handleCustomerExportDownload)
 	app("GET /domains", s.handleDomains)
 	write("POST /domains", s.handleDomainCreate)

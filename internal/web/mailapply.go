@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"time"
 
 	"github.com/max-zit/emailzit/internal/mailhelper"
 	"github.com/max-zit/emailzit/internal/store"
@@ -50,6 +51,17 @@ func (h *HelperMail) DKIM(ctx context.Context, k *store.DKIMKey) error {
 func (s *Server) SyncMail(ctx context.Context) {
 	if s.Mail == nil {
 		return
+	}
+	// the helper may still be starting (both services start together)
+	for i := 0; i < 30; i++ {
+		if err := (&mailhelper.Client{Socket: mailhelper.Socket}).Call(ctx, mailhelper.Request{Action: mailhelper.ActionPing}); err == nil {
+			break
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(2 * time.Second):
+		}
 	}
 	doms, err := s.store.Domains(ctx, store.Staff, "")
 	if err != nil {

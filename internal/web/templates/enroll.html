@@ -1,7 +1,7 @@
 {{template "guest" .}}
 {{define "content"}}
 <h1>{{.T "Set up two-factor sign-in"}}</h1>
-<p class="muted">{{.T "WatchZit shows your whole network and keeps the access data of your devices, so every account needs a second factor. Scan the code with an authenticator app (Microsoft Authenticator, Google Authenticator, Authy, 1Password, Bitwarden …)."}}</p>
+<p class="muted">{{.T "Mail accounts are attacked all the time, so every sign-in needs a second factor. Scan the code with an authenticator app (Microsoft Authenticator, Google Authenticator, Authy, 1Password, Bitwarden …)."}}</p>
 <div class="enroll">
   {{with .Data.QR}}{{template "qr" .}}{{end}}
   <div>

@@ -210,7 +210,7 @@ type updateState struct {
 }
 
 func (s *Server) updateSource() string {
-	if v := os.Getenv("WATCHZIT_UPDATE_SOURCE"); v != "" {
+	if v := os.Getenv("EMAILZIT_UPDATE_SOURCE"); v != "" {
 		return v
 	}
 	return update.DefaultSource

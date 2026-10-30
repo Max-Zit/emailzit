@@ -26,7 +26,7 @@ import (
 
 // TrustedKeys are the public release keys (base64 Ed25519). A new key is
 // added here one release before it signs.
-var TrustedKeys = []string{"m6v0l8smmYzzu/067UcjEIa7OwhXq/npz9VngRrs/K0="}
+var TrustedKeys = []string{"ZMnkL/DV+UsLuIUuqQQmEDrTTwPW7VTP4mpUlt8QsEI="}
 
 // DefaultSource is where releases are published.
 const DefaultSource = "https://github.com/Max-Zit/emailzit/releases"
@@ -76,7 +76,7 @@ func Verify(raw, sig []byte, keys []string) (*Manifest, error) {
 		return nil, fmt.Errorf("the release manifest is unreadable: %w", err)
 	}
 	if m.Product != "emailzit" || !versionRe.MatchString(m.Version) {
-		return nil, errors.New("the release manifest is not a EmailZit release")
+		return nil, errors.New("the release manifest is not an EmailZit release")
 	}
 	for _, f := range m.Files {
 		if !SafeName(f.Name) || len(f.SHA256) != 64 {

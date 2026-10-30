@@ -1,9 +1,9 @@
 // licenses writes THIRD_PARTY_LICENSES.md: every module linked into the
-// given WatchZit programs with its license text, read from the Go module
+// given EmailZit programs with its license text, read from the Go module
 // cache. It fails when a license is not known to be compatible with the
 // AGPL-3.0, so a new dependency is checked before a release.
 //
-//	go run ./tools/licenses -out THIRD_PARTY_LICENSES.md dist/watchzit-server-X-linux-amd64 dist/watchzit-agent-X-windows-amd64.exe …
+//	go run ./tools/licenses -out THIRD_PARTY_LICENSES.md dist/emailzit-server-X-linux-amd64 dist/emailzit-agent-X-windows-amd64.exe …
 package main
 
 import (
@@ -121,7 +121,7 @@ func main() {
 	sort.Strings(paths)
 	cache := modCache()
 	var b bytes.Buffer
-	b.WriteString("# Third-party licenses\n\nWatchZit is licensed under the GNU Affero General Public License v3.0 (see LICENSE).\n")
+	b.WriteString("# Third-party licenses\n\nEmailZit is licensed under the GNU Affero General Public License v3.0 (see LICENSE).\n")
 	b.WriteString("Its programs contain the following components under their own licenses, all compatible with the AGPL-3.0.\n\n")
 	b.WriteString("| Component | Version | License |\n|---|---|---|\n")
 	b.WriteString("| Go standard library and runtime | " + goVersion + " | BSD-3-Clause |\n")

@@ -57,7 +57,7 @@ func main() {
 			check(fmt.Errorf("bad key file"))
 		}
 		key := ed25519.NewKeyFromSeed(seed)
-		m := update.Manifest{Product: "watchzit", Version: *version, Released: time.Now().UTC().Truncate(time.Second)}
+		m := update.Manifest{Product: "emailzit", Version: *version, Released: time.Now().UTC().Truncate(time.Second)}
 		if *notes != "" {
 			b, err := os.ReadFile(*notes) // #nosec G304 G703 -- the operator's notes file
 			check(err)
@@ -93,9 +93,9 @@ func main() {
 func describe(n string) update.File {
 	f := update.File{Name: n, Kind: "other"}
 	switch {
-	case strings.HasPrefix(n, "watchzit-server"):
+	case strings.HasPrefix(n, "emailzit-server"):
 		f.Kind = "server"
-	case strings.HasPrefix(n, "watchzit-agent"):
+	case strings.HasPrefix(n, "emailzit-agent"):
 		f.Kind = "agent"
 	}
 	switch {

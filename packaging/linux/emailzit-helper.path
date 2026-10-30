@@ -1,0 +1,9 @@
+[Unit]
+Description=Hand requests of the EmailZit console (updates, time zone, network) to the root helper
+
+[Path]
+PathExists=/var/lib/emailzit/helper/request.json
+Unit=emailzit-helper.service
+
+[Install]
+WantedBy=multi-user.target

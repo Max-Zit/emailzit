@@ -57,7 +57,7 @@ func newHelper(t *testing.T) (*Helper, *fakeSys) {
 	_ = os.WriteFile(filepath.Join(root, "usr/bin/emailzit-server"), []byte("old program"), 0o755)
 	_ = os.WriteFile(filepath.Join(root, "usr/bin/dpkg"), nil, 0o755)
 	_ = os.MkdirAll(filepath.Join(root, "etc/emailzit"), 0o755)
-	_ = os.WriteFile(filepath.Join(root, "etc/emailzit/server.env"), []byte("# config\nWATCHZIT_DB=postgres://cz:pw@localhost/cz\n"), 0o600)
+	_ = os.WriteFile(filepath.Join(root, "etc/emailzit/server.env"), []byte("# config\nEMAILZIT_DB=postgres://cz:pw@localhost/cz\n"), 0o600)
 	fs := &fakeSys{ver: "0.3.0"}
 	h := &Helper{DataDir: data, CacheDir: filepath.Join(root, "var/cache/emailzit"), Root: root, EnvFile: "/etc/emailzit/server.env",
 		Binary: "/usr/bin/emailzit-server", Run: fs.run,
@@ -114,7 +114,7 @@ func TestUpdateInstalls(t *testing.T) {
 	h, fs := newHelper(t)
 	src, done := releaseServer(t, "0.4.0", []byte("new package"))
 	defer done()
-	_ = os.WriteFile(filepath.Join(h.Root, "etc/emailzit/server.env"), []byte("WATCHZIT_DB=postgres://cz:pw@localhost/cz\nWATCHZIT_UPDATE_SOURCE="+src+"\n"), 0o600)
+	_ = os.WriteFile(filepath.Join(h.Root, "etc/emailzit/server.env"), []byte("EMAILZIT_DB=postgres://cz:pw@localhost/cz\nEMAILZIT_UPDATE_SOURCE="+src+"\n"), 0o600)
 	h.Healthy = func(context.Context) error { return nil }
 	r := h.submit(t, Request{Action: ActionUpdate, Version: "0.4.0", RequestedBy: "admin"})
 	if r.Status != "done" {
@@ -133,7 +133,7 @@ func TestUpdateRollsBack(t *testing.T) {
 	h, fs := newHelper(t)
 	src, done := releaseServer(t, "0.4.0", []byte("new package"))
 	defer done()
-	_ = os.WriteFile(filepath.Join(h.Root, "etc/emailzit/server.env"), []byte("WATCHZIT_DB=postgres://cz:pw@localhost/cz\nWATCHZIT_UPDATE_SOURCE="+src+"\n"), 0o600)
+	_ = os.WriteFile(filepath.Join(h.Root, "etc/emailzit/server.env"), []byte("EMAILZIT_DB=postgres://cz:pw@localhost/cz\nEMAILZIT_UPDATE_SOURCE="+src+"\n"), 0o600)
 	h.Healthy = func(context.Context) error { return errors.New("no answer") }
 	restored := false
 	h.Restore = func(context.Context, string, string) error { restored = true; return nil }
@@ -161,7 +161,7 @@ func TestUpdateRefused(t *testing.T) {
 	src, done := releaseServer(t, "0.4.0", []byte("pkg"))
 	defer done()
 	update.TrustedKeys = []string{base64.StdEncoding.EncodeToString(make([]byte, 32))} // another key
-	_ = os.WriteFile(filepath.Join(h.Root, "etc/emailzit/server.env"), []byte("WATCHZIT_UPDATE_SOURCE="+src+"\n"), 0o600)
+	_ = os.WriteFile(filepath.Join(h.Root, "etc/emailzit/server.env"), []byte("EMAILZIT_UPDATE_SOURCE="+src+"\n"), 0o600)
 	if r := h.submit(t, Request{Action: ActionUpdate, Version: "0.4.0"}); r.Status != "failed" || !strings.Contains(r.Message, "not signed") {
 		t.Fatalf("unsigned: %+v", r)
 	}

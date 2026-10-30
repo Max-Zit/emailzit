@@ -1,0 +1,10 @@
+[Unit]
+Description=EmailZit root helper (installs updates, sets the time zone and the appliance network)
+After=network-online.target
+
+[Service]
+Type=oneshot
+# Runs as root: checks the release signature again, backs up the database
+# and the program, installs, and rolls back if the console does not start.
+ExecStart=/usr/bin/emailzit-server --helper --data-dir /var/lib/emailzit
+TimeoutStartSec=30min

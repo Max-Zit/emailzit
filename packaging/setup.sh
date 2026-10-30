@@ -8,9 +8,11 @@
 set -eu
 
 HOSTNAME_ARG=""
+FROM_PKG=""
 while [ $# -gt 0 ]; do
     case "$1" in
         --hostname) HOSTNAME_ARG="$2"; shift 2 ;;
+        --from-package) FROM_PKG=1; shift ;;
         *) echo "unknown option $1" >&2; exit 2 ;;
     esac
 done
@@ -24,12 +26,14 @@ fi
 [ -x /usr/bin/emailzit-server ] || { echo "/usr/bin/emailzit-server is missing" >&2; exit 1; }
 
 export DEBIAN_FRONTEND=noninteractive
+if [ -z "$FROM_PKG" ]; then
 echo "postfix postfix/main_mailer_type select No configuration" | debconf-set-selections
 apt-get -q update
 apt-get -yq install --no-install-recommends postfix postfix-pgsql dovecot-core dovecot-imapd dovecot-pop3d \
     dovecot-lmtpd dovecot-pgsql dovecot-sieve dovecot-managesieved postgresql openssl ca-certificates rspamd nftables
 # Rspamd keeps greylisting and rate data in Valkey (Redis on older systems)
 apt-get -yq install --no-install-recommends valkey-server 2>/dev/null || apt-get -yq install --no-install-recommends redis-server
+fi
 
 # ---- users and directories
 if ! getent passwd emailzit >/dev/null; then
@@ -70,8 +74,8 @@ if [ ! -f /etc/emailzit/tls/mail.crt ]; then
 fi
 
 # ---- services
-install -m 0644 /usr/share/emailzit/emailzit-server.service /etc/systemd/system/ 2>/dev/null || true
-install -m 0644 /usr/share/emailzit/emailzit-mail-helper.service /etc/systemd/system/ 2>/dev/null || true
+[ -n "$FROM_PKG" ] || install -m 0644 /usr/share/emailzit/emailzit-server.service /etc/systemd/system/ 2>/dev/null || true
+[ -n "$FROM_PKG" ] || install -m 0644 /usr/share/emailzit/emailzit-mail-helper.service /etc/systemd/system/ 2>/dev/null || true
 systemctl daemon-reload
 # the panel creates the tables and grants the read-only roles
 systemctl enable --now emailzit-server

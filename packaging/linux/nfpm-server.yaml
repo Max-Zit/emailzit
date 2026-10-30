@@ -1,0 +1,60 @@
+name: emailzit-server
+arch: ${ARCH}
+platform: linux
+version: ${VERSION}
+section: mail
+priority: optional
+maintainer: MaxZit <office@maxzit.com>
+description: |
+  EmailZit: self-hosted mail hosting for many domains and customers with an
+  admin panel, a customer panel, webmail and a REST API. Postfix, Dovecot
+  and Rspamd from Debian, configured and kept in shape by EmailZit.
+vendor: MaxZit
+homepage: https://github.com/Max-Zit/emailzit
+license: AGPL-3.0-only
+overrides:
+  deb:
+    depends:
+      - postfix
+      - postfix-pgsql
+      - dovecot-core
+      - dovecot-imapd
+      - dovecot-pop3d
+      - dovecot-lmtpd
+      - dovecot-pgsql
+      - dovecot-sieve
+      - dovecot-managesieved
+      - postgresql
+      - rspamd
+      - valkey-server | redis-server
+      - nftables
+      - openssl
+contents:
+  - src: ./LICENSE
+    dst: /usr/share/doc/emailzit-server/copyright
+  - src: ./THIRD_PARTY_LICENSES.md
+    dst: /usr/share/doc/emailzit-server/THIRD_PARTY_LICENSES.md
+  - src: ./bin/pkg/emailzit-server
+    dst: /usr/bin/emailzit-server
+    file_info:
+      mode: 0755
+  - src: ./packaging/linux/emailzit-server.service
+    dst: /usr/lib/systemd/system/emailzit-server.service
+  - src: ./packaging/linux/emailzit-mail-helper.service
+    dst: /usr/lib/systemd/system/emailzit-mail-helper.service
+  - src: ./packaging/linux/emailzit-helper.path
+    dst: /usr/lib/systemd/system/emailzit-helper.path
+  - src: ./packaging/linux/emailzit-helper.service
+    dst: /usr/lib/systemd/system/emailzit-helper.service
+  - src: ./packaging/setup.sh
+    dst: /usr/share/emailzit/setup.sh
+    file_info:
+      mode: 0755
+  - src: ./packaging/linux/server.env
+    dst: /etc/emailzit/server.env
+    type: config|noreplace
+    file_info:
+      mode: 0640
+scripts:
+  postinstall: ./packaging/linux/server-postinstall.sh
+  preremove: ./packaging/linux/server-preremove.sh

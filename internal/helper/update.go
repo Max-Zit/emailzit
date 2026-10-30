@@ -36,7 +36,7 @@ func (h *Helper) update(ctx context.Context, req Request, res Result) Result {
 		return fail("version %s is not newer than the installed %s", req.Version, installed)
 	}
 	env := h.env()
-	source := env["WATCHZIT_UPDATE_SOURCE"]
+	source := env["EMAILZIT_UPDATE_SOURCE"]
 	if source == "" {
 		source = update.DefaultSource
 	}
@@ -77,7 +77,7 @@ func (h *Helper) update(ctx context.Context, req Request, res Result) Result {
 	if h.Dump != nil {
 		dumpFn, restoreFn = h.Dump, h.Restore
 	}
-	if err := dumpFn(ctx, env["WATCHZIT_DB"], dump); err != nil {
+	if err := dumpFn(ctx, env["EMAILZIT_DB"], dump); err != nil {
 		return fail("database backup failed, nothing was changed: %v", err)
 	}
 	prevBin := filepath.Join(bdir, "emailzit-server-"+installed)
@@ -109,7 +109,7 @@ func (h *Helper) update(ctx context.Context, req Request, res Result) Result {
 	if err := copyFile(prevBin, h.path(h.Binary), 0o755); err != nil {
 		rb = append(rb, "program: "+err.Error())
 	}
-	if err := restoreFn(ctx, env["WATCHZIT_DB"], dump); err != nil {
+	if err := restoreFn(ctx, env["EMAILZIT_DB"], dump); err != nil {
 		rb = append(rb, "database: "+err.Error())
 	}
 	_, _ = h.Run(ctx, "systemctl", "start", "emailzit-server")
@@ -160,7 +160,7 @@ func (h *Helper) env() map[string]string {
 func pgEnv(dbURL string) ([]string, error) {
 	u, err := url.Parse(dbURL)
 	if err != nil || (u.Scheme != "postgres" && u.Scheme != "postgresql") {
-		return nil, errors.New("WATCHZIT_DB is not a postgres:// URL")
+		return nil, errors.New("EMAILZIT_DB is not a postgres:// URL")
 	}
 	host, port, err := net.SplitHostPort(u.Host)
 	if err != nil {
@@ -176,6 +176,20 @@ func pgEnv(dbURL string) ([]string, error) {
 }
 
 func (h *Helper) dumpDB(ctx context.Context, dbURL, path string) error {
+	if db, sock, ok := socketDB(dbURL); ok {
+		f, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o600) // #nosec G304 -- our own backup path
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		cmd := exec.CommandContext(ctx, "runuser", "-u", "emailzit", "--", "pg_dump", "-Fc", "-h", sock, "-d", db) // #nosec G204 -- fixed program
+		var errb strings.Builder
+		cmd.Stdout, cmd.Stderr = f, &errb
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("pg_dump: %v: %s", err, lastLines(errb.String(), 3))
+		}
+		return nil
+	}
 	env, err := pgEnv(dbURL)
 	if err != nil {
 		return err
@@ -189,6 +203,19 @@ func (h *Helper) dumpDB(ctx context.Context, dbURL, path string) error {
 }
 
 func (h *Helper) restoreDB(ctx context.Context, dbURL, path string) error {
+	if db, sock, ok := socketDB(dbURL); ok {
+		f, err := os.Open(path) // #nosec G304 -- our own backup path
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		cmd := exec.CommandContext(ctx, "runuser", "-u", "emailzit", "--", "pg_restore", "--clean", "--if-exists", "--no-owner", "-h", sock, "-d", db) // #nosec G204 -- fixed program
+		cmd.Stdin = f
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("pg_restore: %v: %s", err, lastLines(string(out), 3))
+		}
+		return nil
+	}
 	env, err := pgEnv(dbURL)
 	if err != nil {
 		return err
@@ -288,4 +315,15 @@ func copyFile(src, dst string, mode os.FileMode) error {
 		return err
 	}
 	return os.Rename(tmp, dst)
+}
+
+// socketDB reports a database URL over the local socket without a user
+// (postgres:///emailzit?host=/var/run/postgresql): the panel's user owns
+// the database there, so the helper dumps and restores as that user.
+func socketDB(dbURL string) (db, socket string, ok bool) {
+	u, err := url.Parse(dbURL)
+	if err != nil || u.Host != "" || u.User != nil {
+		return "", "", false
+	}
+	return strings.TrimPrefix(u.Path, "/"), u.Query().Get("host"), true
 }

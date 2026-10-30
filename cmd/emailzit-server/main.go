@@ -277,6 +277,7 @@ func run() error {
 	go srv.RunUpdates(ctx)
 	go srv.SyncMail(ctx)
 	go srv.RunImports(ctx)
+	go srv.RunQuotaWarnings(ctx)
 	go func() {
 		t := time.NewTicker(5 * time.Minute)
 		defer t.Stop()

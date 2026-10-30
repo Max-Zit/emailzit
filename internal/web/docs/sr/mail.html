@@ -5,7 +5,7 @@
 <p><b>Catch-all</b> (pošta za nepostojeće adrese) je podrazumevano isključen: nepostojeće adrese se odbijaju već tokom SMTP razgovora, što drži podalje spam i povratne poruke. Uključite ga samo kada je zaista potreban.</p>
 <h2>Mailboxi</h2>
 <ul>
-  <li>Mailbox ima veličinu (kvotu) u okviru paketa; zauzeće se osvežava svakih deset minuta.</li>
+  <li>Mailbox ima veličinu (kvotu) u okviru paketa; zauzeće se osvežava svakih deset minuta. Kada mailbox dostigne 80 % i ponovo 95 % kvote, server stavi upozorenje u njegov Inbox (na jeziku mailboxa); kada padne ispod 70 %, može ponovo da dobije upozorenje.</li>
   <li>Njegova <b>lozinka</b> služi samo za webmail i korisnikove stranice, uvek uz prijavu u dva koraka.</li>
   <li>Programi za poštu koriste <b>app lozinke</b> koje korisnik pošte pravi na <code>/mail</code> — po jednu za svaki program ili uređaj. Izgubljen telefon znači opoziv jedne app lozinke, a ne menjanje svega.</li>
   <li><b>Isključen</b> mailbox i dalje prima poštu, ali niko ne može da se prijavi. Osoblje može i da <b>blokira slanje</b> (na primer posle zloupotrebe) i da jednom mailboxu postavi druga ograničenja slanja.</li>

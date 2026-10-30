@@ -5,7 +5,7 @@
 <p><b>Catch-all</b> (mail for unknown addresses) is off by default: unknown addresses are refused during the SMTP dialogue, which keeps spam and backscatter away. Turn it on only when really needed.</p>
 <h2>Mailboxes</h2>
 <ul>
-  <li>A mailbox has a size (quota) within the package; the usage is updated every ten minutes.</li>
+  <li>A mailbox has a size (quota) within the package; the usage is updated every ten minutes. When a mailbox reaches 80 % and again 95 % of its quota, the server puts a warning into its Inbox (in the mailbox's language); after it drops below 70 % it can be warned again.</li>
   <li>Its <b>password</b> is for webmail and the user's own pages only, always with two-factor sign-in.</li>
   <li>Mail programs use <b>app passwords</b> that the mail user creates at <code>/mail</code> — one per program or device. A lost phone means revoking one app password, not changing everything.</li>
   <li>A <b>disabled</b> mailbox keeps receiving mail but nobody can sign in. Staff can also <b>block sending</b> (for example after abuse) and set other sending limits for one mailbox.</li>

@@ -204,6 +204,8 @@ func (s *Server) do(ctx context.Context, r Request) error {
 		return s.installCert(ctx, r)
 	case ActionSpam:
 		return s.writeSpam(ctx, r)
+	case ActionNotice:
+		return s.notice(ctx, r)
 	}
 	return errors.New("unknown action")
 }

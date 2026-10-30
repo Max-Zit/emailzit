@@ -40,6 +40,7 @@ const (
 	ActionExport   = "export"   // pack a customer's mail and settings for BackupZit or a move
 	ActionStatus   = "status"   // health of the mail system (WatchZit)
 	ActionImport   = "import"   // write the mail of an uploaded archive into the customer's mailboxes
+	ActionNotice   = "notice"   // put a message of the server into a mailbox (quota warning)
 	ActionPing     = "ping"
 )
 
@@ -70,6 +71,9 @@ type Request struct {
 	IDs []string `json:"ids,omitempty"`
 	// cert: PEM chain and key
 	Chain string `json:"chain,omitempty"`
+	// notice: subject and text (Domain and Local name the mailbox)
+	Subject string `json:"subject,omitempty"`
+	Body    string `json:"body,omitempty"`
 	// export: file name (time) and the manifest of the customer's settings
 	Name     string `json:"name,omitempty"`
 	Format   string `json:"format,omitempty"` // import: emailzit or cpanel
@@ -154,6 +158,11 @@ func (r *Request) Validate() error {
 		}
 		return nil
 	case ActionStatus:
+		return nil
+	case ActionNotice:
+		if !domainRE.MatchString(r.Domain) || !localRE.MatchString(r.Local) || r.Subject == "" || len(r.Subject) > 200 || strings.ContainsAny(r.Subject, "\r\n\x00") || len(r.Body) > 8000 {
+			return errors.New("invalid notice")
+		}
 		return nil
 	case ActionImport:
 		if !uuidRE.MatchString(r.Customer) || !exportNameRE.MatchString(r.Name) || (r.Format != "emailzit" && r.Format != "cpanel") {

@@ -41,7 +41,7 @@ chmod -R u+w "$tmp/cd"
 # Our files on the CD; the preseed copies them into the new system.
 mkdir "$tmp/cd/emailzit"
 cp "$pkg" "$src"/install.sh "$src"/emailzit-firstboot "$src"/emailzit-firstboot.service "$src"/emailzit-appliance-boot "$src"/emailzit-appliance-boot.service \
-    "$src"/emailzit-setup "$src"/emailzit-menu.sh "$src"/sshd-emailzit.conf "$src"/sudoers-emailzit-setup "$src"/sysctl-emailzit.conf "$src"/SOURCE-CODE.txt "$tmp/cd/emailzit/"
+    "$src"/emailzit-setup "$src"/emailzit-menu.sh "$src"/sshd-emailzit.conf "$src"/sudoers-emailzit-setup "$src"/sysctl-emailzit.conf "$src"/icmp-timestamp.nft "$src"/emailzit-icmp.service "$src"/SOURCE-CODE.txt "$tmp/cd/emailzit/"
 cp "$src/SOURCE-CODE.txt" "$tmp/cd/"
 cp "$src/preseed.cfg" "$tmp/preseed.cfg"
 if [ "${IMAGE:-0}" = 1 ]; then

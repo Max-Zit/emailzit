@@ -15,6 +15,10 @@ install -m 0644 emailzit-menu.sh /etc/profile.d/emailzit-menu.sh
 install -m 0440 sudoers-emailzit-setup /etc/sudoers.d/emailzit-setup
 install -m 0644 sshd-emailzit.conf /etc/ssh/sshd_config.d/50-emailzit.conf
 install -m 0644 sysctl-emailzit.conf /etc/sysctl.d/50-emailzit.conf
+install -d /usr/local/share/emailzit
+install -m 0644 icmp-timestamp.nft /usr/local/share/emailzit/icmp-timestamp.nft
+install -m 0644 emailzit-icmp.service /etc/systemd/system/emailzit-icmp.service
+systemctl enable emailzit-icmp.service
 systemctl enable emailzit-firstboot.service emailzit-appliance-boot.service
 # Postfix and Dovecot stay off until EmailZit has written their
 # configuration at the first start.

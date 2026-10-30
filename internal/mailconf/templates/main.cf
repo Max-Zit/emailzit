@@ -36,10 +36,13 @@ smtpd_tls_auth_only = yes
 smtpd_tls_protocols = >=TLSv1.2
 smtpd_tls_mandatory_protocols = >=TLSv1.2
 smtpd_tls_mandatory_ciphers = high
+# never anonymous or weak suites, not even for opportunistic TLS on port 25
+smtpd_tls_exclude_ciphers = aNULL, eNULL, EXPORT, DES, 3DES, RC4, MD5, PSK, SRP, SEED, IDEA
+smtpd_tls_mandatory_exclude_ciphers = aNULL, eNULL, EXPORT, DES, 3DES, RC4, MD5, PSK, SRP, SEED, IDEA
 smtpd_tls_received_header = yes
 smtpd_tls_loglevel = 1
 smtpd_tls_session_cache_database = btree:${data_directory}/smtpd_scache
-smtp_tls_security_level = may
+smtp_tls_security_level = {{if .RelayUser}}encrypt{{else}}may{{end}}
 smtp_tls_protocols = >=TLSv1.2
 smtp_tls_loglevel = 1
 smtp_tls_session_cache_database = btree:${data_directory}/smtp_scache
@@ -94,8 +97,7 @@ smtp_sasl_auth_enable = yes
 smtp_sasl_password_maps = texthash:{{.RelayPasswordFile}}
 smtp_sasl_security_options = noanonymous
 smtp_sasl_tls_security_options = noanonymous
-# the login only ever goes over TLS
-smtp_tls_security_level = encrypt
+# the login only ever goes over TLS (smtp_tls_security_level above)
 {{- if .RelayWrapper}}
 smtp_tls_wrappermode = yes
 {{- end}}

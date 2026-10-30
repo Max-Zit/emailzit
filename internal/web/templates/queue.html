@@ -1,0 +1,27 @@
+{{template "app" .}}
+{{define "content"}}
+<div class="pagehead"><h1>{{.T "Mail queue"}}</h1><a class="btn secondary" href="/blacklists">{{template "icon" "shield"}}{{.T "Blacklists"}}</a></div>
+<p class="muted">{{.T "Messages that wait to be delivered (for example because the receiving server is not reachable) or that staff put on hold."}}</p>
+{{if .Data.Error}}<div class="flash err" role="alert">{{template "icon" "alert"}}<span>{{.T "The queue could not be read from the mail server."}}</span></div>{{end}}
+<form method="post" action="/queue" class="panel">
+  {{if .User.CanWrite}}<div class="wm-tools">
+    <button class="ghost sm" name="op" value="flush">{{template "icon" "refresh"}}{{.T "Try all again now"}}</button>
+    <button class="ghost sm" name="op" value="hold">{{.T "Hold"}}</button>
+    <button class="ghost sm" name="op" value="release">{{.T "Release"}}</button>
+    <button class="ghost sm" name="op" value="delete" data-confirm="{{.T "Delete the chosen messages from the queue? They are not delivered."}}">{{template "icon" "trash"}}{{.T "Delete"}}</button>
+  </div>{{end}}
+  {{if .Data.List}}
+  <div class="table-wrap"><table>
+    <thead><tr><th></th><th>{{.T "Queue ID"}}</th><th>{{.T "From"}}</th><th>{{.T "To"}}</th><th class="hide-sm">{{.T "Size"}}</th><th>{{.T "State"}}</th></tr></thead>
+    <tbody>{{range .Data.List}}<tr>
+      <td><input type="checkbox" name="id" value="{{.ID}}" aria-label="{{$.T "Select"}}"></td>
+      <td class="mono small">{{.ID}}</td>
+      <td class="small mono">{{.Sender}}</td>
+      <td class="small">{{range .Recipients}}<span class="mono">{{.Address}}</span>{{with .Reason}}<br><small class="muted">{{.}}</small>{{end}}<br>{{end}}</td>
+      <td class="hide-sm small">{{bytes .Size}}</td>
+      <td>{{if eq .Queue "hold"}}<span class="badge bad">{{$.T "On hold"}}</span>{{else if eq .Queue "deferred"}}<span class="badge warn">{{$.T "Waiting"}}</span>{{else}}<span class="badge info">{{.Queue}}</span>{{end}}</td>
+    </tr>{{end}}</tbody>
+  </table></div>
+  {{else}}{{if not .Data.Error}}<p class="muted">{{.T "The queue is empty."}}</p>{{end}}{{end}}
+</form>
+{{end}}

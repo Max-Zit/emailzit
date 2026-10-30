@@ -37,7 +37,9 @@ if ! getent passwd emailzit >/dev/null; then
 fi
 install -d -m 0700 -o emailzit -g emailzit /var/lib/emailzit
 install -d -m 0755 -o root -g root /etc/emailzit /var/vmail
-install -d -m 0700 -o root -g root /etc/emailzit/tls /var/vmail/.trash
+install -d -m 0700 -o root -g root /var/vmail/.trash
+# the certificate is public (the panel shows it); the key stays 0600
+install -d -m 0755 -o root -g root /etc/emailzit/tls
 [ -f /etc/emailzit/server.env ] || install -m 0640 -o root -g emailzit /usr/share/emailzit/server.env /etc/emailzit/server.env 2>/dev/null \
     || printf 'EMAILZIT_DB=postgres:///emailzit?host=/var/run/postgresql\n' > /etc/emailzit/server.env
 chown root:emailzit /etc/emailzit/server.env

@@ -1,0 +1,27 @@
+{{template "app" .}}
+{{define "content"}}
+<h1>{{.T "Settings"}}</h1>
+<div class="settings">
+{{template "settingstabs" .}}
+<div class="settings-body">
+<section class="panel">
+  <h2>{{template "icon" "lock"}}{{.T "Certificate"}}</h2>
+  <p class="muted">{{.T "Mail programs connect to IMAP, POP3 and SMTP with TLS. A certificate that mail programs trust must contain the server's host name."}}</p>
+  {{with .Data}}{{if .Missing}}<p class="muted">{{$.T "No certificate is installed yet."}}</p>{{else}}
+  <dl class="facts">
+    <dt>{{$.T "Names"}}</dt><dd class="mono small">{{if .Names}}{{join .Names ", "}}{{else}}{{.Subject}}{{end}}</dd>
+    <dt>{{$.T "Issuer"}}</dt><dd>{{.Issuer}}{{if .SelfSign}} <span class="badge warn">{{$.T "self-signed: mail programs warn"}}</span>{{end}}</dd>
+    <dt>{{$.T "Valid until"}}</dt><dd>{{$.Time .NotAfter}} {{if lt .Days 15}}<span class="badge bad">{{$.T "%d days left" .Days}}</span>{{else}}<span class="muted">· {{$.T "%d days left" .Days}}</span>{{end}}</dd>
+  </dl>{{end}}{{end}}
+</section>
+<form method="post" action="/settings/certificate" class="stack wide">
+  <section class="panel">
+    <h2>{{.T "Install a certificate"}}</h2>
+    <label>{{.T "Certificate with the chain (PEM)"}}<textarea name="chain" rows="6" spellcheck="false" class="mono" placeholder="-----BEGIN CERTIFICATE-----" required></textarea></label>
+    <label>{{.T "Private key (PEM)"}}<textarea name="key" rows="4" spellcheck="false" class="mono" placeholder="-----BEGIN PRIVATE KEY-----" required></textarea><small>{{.T "The key is written only for Postfix and Dovecot (readable by root); it is not stored in the database."}}</small></label>
+    <div><button class="primary">{{.T "Install"}}</button></div>
+  </section>
+</form>
+</div>
+</div>
+{{end}}

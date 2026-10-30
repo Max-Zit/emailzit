@@ -291,6 +291,11 @@ func (s *Server) Handler() http.Handler {
 	app("GET /aliases", s.handleAliases)
 	write("POST /aliases/{id}", s.handleAliasUpdate)
 	write("POST /aliases/{id}/delete", s.handleAliasDelete)
+	app("GET /deliveries", s.handleDeliveries)
+	staff("GET /queue", s.handleQueue)
+	staffWrite("POST /queue", s.handleQueueAction)
+	staff("GET /blacklists", s.handleBlacklists)
+	staff("POST /blacklists", s.handleBlacklists)
 	app("GET /docs", s.handleDocs)
 	app("GET /docs/search", s.handleDocsSearch)
 	app("GET /docs/{page}", s.handleDocs)
@@ -310,6 +315,8 @@ func (s *Server) Handler() http.Handler {
 	})
 	admin("GET /settings/mail", s.handleMailSettings)
 	admin("POST /settings/mail", s.handleMailSettingsSave)
+	admin("GET /settings/certificate", s.handleCertificate)
+	admin("POST /settings/certificate", s.handleCertificateSave)
 	admin("GET /settings/api", s.handleAPITokens)
 	admin("POST /settings/api", s.handleAPITokenCreate)
 	admin("POST /settings/api/{id}/delete", s.handleAPITokenDelete)
@@ -335,7 +342,7 @@ func (s *Server) Handler() http.Handler {
 	s.autoconfigRoutes(auto)
 	// the REST API signs in with tokens only: no session, no CSRF check
 	top.Handle("/api/", s.apiHandler())
-	for _, p := range []string{"/.well-known/autoconfig/", "/mail/config-v1.1.xml", "/autodiscover/", "/Autodiscover/"} {
+	for _, p := range []string{"/.well-known/autoconfig/", "/.well-known/mta-sts.txt", "/mail/config-v1.1.xml", "/autodiscover/", "/Autodiscover/"} {
 		top.Handle(p, auto)
 	}
 	top.Handle("/", s.csrf(s.loadMailSession(s.loadSession(mux))))

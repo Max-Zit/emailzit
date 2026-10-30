@@ -1,0 +1,20 @@
+{{template "app" .}}
+{{define "content"}}
+<p class="back"><a href="/queue">{{.T "Mail queue"}}</a></p>
+<h1>{{.T "Blacklists"}}</h1>
+<p class="muted">{{.T "If the server's address is on a blacklist, many receivers refuse its mail. A stolen mailbox password used for spam is the usual cause; the sending limits make that unlikely."}}</p>
+<section class="panel">
+  {{if .Data.IPs}}
+  <p>{{.T "Public addresses of this server:"}} {{range .Data.IPs}}<code>{{.}}</code> {{end}}</p>
+  <form method="post" action="/blacklists"><button class="primary">{{template "icon" "refresh"}}{{.T "Check now"}}</button></form>
+  {{if .Data.Checked}}
+  <div class="table-wrap mt"><table>
+    <thead><tr><th>{{.T "Address"}}</th><th>{{.T "List"}}</th><th>{{.T "Status"}}</th></tr></thead>
+    <tbody>{{range .Data.Results}}<tr><td class="mono">{{.IP}}</td><td class="mono small">{{.List}}</td>
+      <td>{{if .Listed}}<span class="badge bad"><i></i>{{$.T "Listed"}}</span>{{else if .Error}}<span class="badge warn"><i></i>{{$.T "Not checked"}}</span>{{else}}<span class="badge ok"><i></i>{{$.T "Not listed"}}</span>{{end}}</td></tr>{{end}}</tbody>
+  </table></div>
+  <p class="small muted">{{.T "\"Not checked\": the list did not answer, or it refuses queries through public DNS resolvers."}}</p>
+  {{end}}
+  {{else}}<p class="muted">{{.T "This server has no public IPv4 address (it is behind NAT); blacklists list the public address of the router or provider."}}</p>{{end}}
+</section>
+{{end}}

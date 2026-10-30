@@ -46,6 +46,9 @@ func mailRecords(d *store.Domain, m MailSettings, k *store.DKIMKey) []DNSRecord 
 		DNSRecord{Name: "_submissions._tcp." + d.Name, Type: "SRV", Value: "0 1 465 " + h + ".", Note: "Sending over TLS (RFC 8314)."},
 		DNSRecord{Name: "_submission._tcp." + d.Name, Type: "SRV", Value: "10 1 587 " + h + ".", Note: "Sending with STARTTLS."},
 		DNSRecord{Name: "_pop3s._tcp." + d.Name, Type: "SRV", Value: "10 1 995 " + h + ".", Note: "POP3 over TLS."},
+		DNSRecord{Name: "mta-sts." + d.Name, Type: "CNAME", Value: h + ".", Note: "MTA-STS: other servers find the TLS policy of the domain here."},
+		DNSRecord{Name: "_mta-sts." + d.Name, Type: "TXT", Value: "v=STSv1; id=" + mtaSTSID(h), Note: "MTA-STS: other servers deliver to this server only over TLS."},
+		DNSRecord{Name: "_smtp._tls." + d.Name, Type: "TXT", Value: "v=TLSRPTv1; rua=mailto:postmaster@" + d.Name, Note: "TLS reports: other servers report TLS problems to postmaster of the domain."},
 	)
 	return withDKIM(out, k)
 }

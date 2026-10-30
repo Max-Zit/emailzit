@@ -1,0 +1,30 @@
+{{template "app" .}}
+{{define "content"}}
+<h1>{{.T "Delivery log"}}</h1>
+<p class="muted">{{if .User.IsStaff}}{{.T "Every delivery, deferral, bounce and refusal of the last 30 days."}}{{else}}{{.T "Mail to and from your domains in the last 30 days: delivered, waiting, bounced or refused."}}{{end}}</p>
+<form method="get" action="/deliveries" class="row filters">
+  <input type="search" name="q" value="{{.Data.Q}}" placeholder="{{.T "Address"}}" aria-label="{{.T "Search"}}">
+  <select name="status" data-autosubmit aria-label="{{.T "Status"}}">
+    <option value="">{{.T "All"}}</option>
+    <option value="sent" {{if eq .Data.Status "sent"}}selected{{end}}>{{.T "Delivered"}}</option>
+    <option value="deferred" {{if eq .Data.Status "deferred"}}selected{{end}}>{{.T "Waiting"}}</option>
+    <option value="bounced" {{if eq .Data.Status "bounced"}}selected{{end}}>{{.T "Bounced"}}</option>
+    <option value="rejected" {{if eq .Data.Status "rejected"}}selected{{end}}>{{.T "Refused"}}</option>
+  </select>
+  <button class="secondary">{{.T "Search"}}</button>
+</form>
+<section class="panel">
+{{if .Data.List}}
+  <div class="table-wrap"><table>
+    <thead><tr><th>{{.T "Time"}}</th><th>{{.T "From"}}</th><th>{{.T "To"}}</th><th>{{.T "Status"}}</th><th class="hide-sm">{{.T "Details"}}</th></tr></thead>
+    <tbody>{{range .Data.List}}<tr>
+      <td class="small">{{$.Time .At}}</td>
+      <td class="small mono">{{.Sender}}</td>
+      <td class="small mono">{{.Recipient}}</td>
+      <td>{{if eq .Status "sent"}}<span class="badge ok"><i></i>{{$.T "Delivered"}}</span>{{else if eq .Status "deferred"}}<span class="badge warn"><i></i>{{$.T "Waiting"}}</span>{{else if eq .Status "bounced"}}<span class="badge bad"><i></i>{{$.T "Bounced"}}</span>{{else}}<span class="badge bad"><i></i>{{$.T "Refused"}}</span>{{end}}</td>
+      <td class="hide-sm small muted">{{.Info}}{{with .QueueID}} <span class="mono">· {{.}}</span>{{end}}</td>
+    </tr>{{end}}</tbody>
+  </table></div>
+{{else}}<p class="muted">{{.T "Nothing found."}}</p>{{end}}
+</section>
+{{end}}

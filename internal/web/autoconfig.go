@@ -1,6 +1,8 @@
 package web
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/xml"
 	"io"
 	"net/http"
@@ -21,6 +23,7 @@ import (
 func (s *Server) autoconfigRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /.well-known/autoconfig/mail/config-v1.1.xml", s.handleAutoconfig)
 	mux.HandleFunc("GET /mail/config-v1.1.xml", s.handleAutoconfig)
+	mux.HandleFunc("GET /.well-known/mta-sts.txt", s.handleMTASTS)
 	mux.HandleFunc("POST /autodiscover/autodiscover.xml", s.handleAutodiscover)
 	mux.HandleFunc("POST /Autodiscover/Autodiscover.xml", s.handleAutodiscover)
 }
@@ -198,4 +201,31 @@ func (s *Server) handleMobileconfig(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Disposition", `attachment; filename="`+strings.ReplaceAll(m.Address, "@", "-at-")+`.mobileconfig"`)
 	_ = mobileconfigTmpl.Execute(w, map[string]string{"Addr": xmlEscape(m.Address), "Name": xmlEscape(name), "Host": xmlEscape(host),
 		"ID": strings.ReplaceAll(m.ID, "-", ""), "UUID1": strings.ToUpper(store.NewID()), "UUID2": strings.ToUpper(store.NewID())})
+}
+
+// handleMTASTS serves the MTA-STS policy of a domain at
+// https://mta-sts.<domain>/.well-known/mta-sts.txt: other servers then
+// deliver to this server only over verified TLS. The mode stays "testing"
+// until the certificate of the host name is one they trust.
+func (s *Server) handleMTASTS(w http.ResponseWriter, r *http.Request) {
+	h, _, _ := strings.Cut(r.Host, ":")
+	host := s.MailConfig(r.Context()).Hostname
+	d, err := s.store.DomainByName(r.Context(), store.Staff, strings.TrimPrefix(h, "mta-sts."))
+	if host == "" || !strings.HasPrefix(h, "mta-sts.") || err != nil || !d.Verified {
+		http.NotFound(w, r)
+		return
+	}
+	mode := "testing"
+	if c := readMailCert(); !c.Missing && !c.SelfSign && c.Days > 0 {
+		mode = "enforce"
+	}
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	_, _ = io.WriteString(w, "version: STSv1\r\nmode: "+mode+"\r\nmx: "+host+"\r\nmax_age: 604800\r\n")
+}
+
+// mtaSTSID changes when the policy changes (it depends on the host name and
+// the mode).
+func mtaSTSID(host string) string {
+	h := sha256.Sum256([]byte(host))
+	return hex.EncodeToString(h[:6])
 }

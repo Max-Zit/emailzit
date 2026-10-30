@@ -11,6 +11,7 @@ import (
 	"bufio"
 	"context"
 	"crypto/rsa"
+	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
@@ -33,6 +34,8 @@ const (
 	ActionTrash    = "trash"    // move the mail of a deleted domain or mailbox away
 	ActionDKIM     = "dkim"     // install the DKIM key of a domain
 	ActionBan      = "ban"      // block an address in the firewall (failed sign-ins)
+	ActionQueue    = "queue"    // list the mail queue, or hold / release / delete / flush messages
+	ActionCert     = "cert"     // install a certificate for the mail services
 	ActionPing     = "ping"
 )
 
@@ -53,21 +56,28 @@ type Request struct {
 	// ban
 	IP      string `json:"ip,omitempty"`
 	Minutes int    `json:"minutes,omitempty"`
+	// queue: op list, hold, release, delete, flush; IDs of messages
+	Op  string   `json:"op,omitempty"`
+	IDs []string `json:"ids,omitempty"`
+	// cert: PEM chain and key
+	Chain string `json:"chain,omitempty"`
 	// who asked (for the helper's log)
 	By string `json:"by,omitempty"`
 }
 
 // Reply is the answer.
 type Reply struct {
-	OK    bool   `json:"ok"`
-	Error string `json:"error,omitempty"`
+	OK    bool            `json:"ok"`
+	Error string          `json:"error,omitempty"`
+	Data  json.RawMessage `json:"data,omitempty"`
 }
 
 var (
-	uuidRE   = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
-	domainRE = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$`)
-	localRE  = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9_+-]|\.[a-z0-9_+-]){0,63}$`)
-	selRE    = regexp.MustCompile(`^[a-z0-9]{1,32}$`)
+	uuidRE    = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
+	domainRE  = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$`)
+	localRE   = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9_+-]|\.[a-z0-9_+-]){0,63}$`)
+	selRE     = regexp.MustCompile(`^[a-z0-9]{1,32}$`)
+	queueIDRE = regexp.MustCompile(`^[0-9A-Za-z]{8,20}$`)
 )
 
 // UID range of the customers' mail users.
@@ -110,6 +120,24 @@ func (r *Request) Validate() error {
 			return errors.New("the key must be RSA with at least 2048 bits")
 		}
 		return nil
+	case ActionQueue:
+		switch r.Op {
+		case "list", "flush":
+		case "hold", "release", "delete":
+			if len(r.IDs) == 0 || len(r.IDs) > 1000 {
+				return errors.New("no messages chosen")
+			}
+			for _, id := range r.IDs {
+				if !queueIDRE.MatchString(id) {
+					return errors.New("invalid queue ID")
+				}
+			}
+		default:
+			return errors.New("unknown queue operation")
+		}
+		return nil
+	case ActionCert:
+		return validCert(r.Chain, r.Key)
 	case ActionBan:
 		a, err := netip.ParseAddr(r.IP)
 		if err != nil || a.IsLoopback() || a.IsUnspecified() || a.IsMulticast() || r.Minutes < 1 || r.Minutes > 10080 {
@@ -161,4 +189,67 @@ func (c *Client) Call(ctx context.Context, req Request) error {
 		return fmt.Errorf("mail helper: %s", rep.Error)
 	}
 	return nil
+}
+
+// validCert checks a certificate chain and its private key.
+func validCert(chain, key string) error {
+	if len(chain) > 64<<10 || len(key) > 16<<10 {
+		return errors.New("the certificate is too large")
+	}
+	pair, err := tls.X509KeyPair([]byte(chain), []byte(key))
+	if err != nil {
+		return errors.New("the certificate and the key do not fit together or are not PEM")
+	}
+	leaf, err := x509.ParseCertificate(pair.Certificate[0])
+	if err != nil {
+		return errors.New("the certificate cannot be read")
+	}
+	if time.Now().After(leaf.NotAfter) {
+		return errors.New("the certificate has expired")
+	}
+	return nil
+}
+
+// CallData sends a request and decodes the answer's data into v.
+func (c *Client) CallData(ctx context.Context, req Request, v any) error {
+	if err := req.Validate(); err != nil {
+		return err
+	}
+	d := net.Dialer{Timeout: 5 * time.Second}
+	conn, err := d.DialContext(ctx, "unix", c.Socket)
+	if err != nil {
+		return fmt.Errorf("mail helper not reachable: %w", err)
+	}
+	defer conn.Close()
+	_ = conn.SetDeadline(time.Now().Add(2 * time.Minute))
+	if err := json.NewEncoder(conn).Encode(req); err != nil {
+		return err
+	}
+	var rep Reply
+	if err := json.NewDecoder(bufio.NewReader(conn)).Decode(&rep); err != nil {
+		return fmt.Errorf("mail helper: %w", err)
+	}
+	if !rep.OK {
+		return fmt.Errorf("mail helper: %s", rep.Error)
+	}
+	if v != nil && len(rep.Data) > 0 {
+		return json.Unmarshal(rep.Data, v)
+	}
+	return nil
+}
+
+// QueueItem is a message waiting in the Postfix queue.
+type QueueItem struct {
+	ID         string    `json:"queue_id"`
+	Queue      string    `json:"queue_name"` // active, deferred, hold, incoming
+	Arrival    int64     `json:"arrival_time"`
+	Size       int64     `json:"message_size"`
+	Sender     string    `json:"sender"`
+	Recipients []QueueTo `json:"recipients"`
+}
+
+// QueueTo is a recipient of a queued message and why it waits.
+type QueueTo struct {
+	Address string `json:"address"`
+	Reason  string `json:"delay_reason,omitempty"`
 }

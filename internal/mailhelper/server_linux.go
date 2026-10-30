@@ -29,6 +29,7 @@ import (
 	"golang.org/x/sys/unix"
 
 	"github.com/max-zit/emailzit/internal/mailconf"
+	"github.com/max-zit/emailzit/internal/maillog"
 )
 
 // Server is the helper service (runs as root).
@@ -78,6 +79,7 @@ func (s *Server) Serve(ctx context.Context, path string) error {
 	}
 	go func() { <-ctx.Done(); _ = l.Close() }()
 	go s.usageLoop(ctx)
+	go s.logLoop(ctx)
 	s.Log.Info("mail helper listening", "socket", path)
 	for {
 		c, err := l.Accept()
@@ -94,10 +96,12 @@ func (s *Server) Serve(ctx context.Context, path string) error {
 func (s *Server) handle(ctx context.Context, c *net.UnixConn) {
 	defer c.Close()
 	_ = c.SetDeadline(time.Now().Add(3 * time.Minute))
-	reply := func(err error) {
+	reply := func(err error, data ...any) {
 		r := Reply{OK: err == nil}
 		if err != nil {
 			r.Error = err.Error()
+		} else if len(data) > 0 && data[0] != nil {
+			r.Data, _ = json.Marshal(data[0])
 		}
 		_ = json.NewEncoder(c).Encode(r)
 	}
@@ -121,13 +125,18 @@ func (s *Server) handle(ctx context.Context, c *net.UnixConn) {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	err = s.do(ctx, req)
+	var data any
+	if req.Action == ActionQueue && req.Op == "list" {
+		data, err = s.queueList(ctx)
+	} else {
+		err = s.do(ctx, req)
+	}
 	if err != nil {
 		s.Log.Error("mail helper: request failed", "action", req.Action, "by", req.By, "err", err)
-	} else if req.Action != ActionPing {
+	} else if req.Action != ActionPing && !(req.Action == ActionQueue && req.Op == "list") {
 		s.Log.Info("mail helper: done", "action", req.Action, "by", req.By, "customer", req.Customer, "domain", req.Domain, "local", req.Local)
 	}
-	reply(err)
+	reply(err, data)
 }
 
 func peerUID(c *net.UnixConn) (int, error) {
@@ -162,6 +171,10 @@ func (s *Server) do(ctx context.Context, r Request) error {
 		return s.dkim(ctx, r)
 	case ActionBan:
 		return s.ban(ctx, r)
+	case ActionQueue:
+		return s.queueOp(ctx, r)
+	case ActionCert:
+		return s.installCert(ctx, r)
 	}
 	return errors.New("unknown action")
 }
@@ -693,4 +706,146 @@ func (s *Server) ban(ctx context.Context, r Request) error {
 		return fmt.Errorf("nft: %s", firstLine(out, err))
 	}
 	return nil
+}
+
+// ---- mail queue
+
+// queueList reads the queue (postqueue -j: one JSON object per line).
+func (s *Server) queueList(ctx context.Context) ([]QueueItem, error) {
+	out, err := s.Run(ctx, "postqueue", "-j")
+	if err != nil {
+		return nil, fmt.Errorf("postqueue: %s", firstLine(out, err))
+	}
+	var list []QueueItem
+	for _, l := range strings.Split(string(out), "\n") {
+		if strings.TrimSpace(l) == "" {
+			continue
+		}
+		var q QueueItem
+		if json.Unmarshal([]byte(l), &q) == nil {
+			list = append(list, q)
+		}
+		if len(list) >= 5000 {
+			break
+		}
+	}
+	return list, nil
+}
+
+// queueOp holds, releases, deletes or retries messages.
+func (s *Server) queueOp(ctx context.Context, r Request) error {
+	var args []string
+	switch r.Op {
+	case "flush":
+		out, err := s.Run(ctx, "postqueue", "-f")
+		if err != nil {
+			return fmt.Errorf("postqueue: %s", firstLine(out, err))
+		}
+		return nil
+	case "hold":
+		args = []string{"-h", "-"}
+	case "release":
+		args = []string{"-H", "-"}
+	case "delete":
+		args = []string{"-d", "-"}
+	}
+	cmd := exec.CommandContext(ctx, "postsuper", args...) // #nosec G204 -- fixed program; IDs validated
+	cmd.Stdin = strings.NewReader(strings.Join(r.IDs, "\n") + "\n")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("postsuper: %s", firstLine(out, err))
+	}
+	return nil
+}
+
+// ---- certificate of the mail services
+
+// installCert puts a new certificate for Postfix and Dovecot in place and
+// reloads them; on a failed reload the old files come back.
+func (s *Server) installCert(ctx context.Context, r Request) error {
+	old := map[string][]byte{}
+	for _, p := range []string{s.CertFile, s.KeyFile} {
+		if b, err := os.ReadFile(p); err == nil { // #nosec G304 -- the fixed certificate paths of the helper
+			old[p] = b
+		}
+	}
+	if err := writeFile(s.KeyFile, []byte(r.Key), 0o600); err != nil {
+		return err
+	}
+	if err := writeFile(s.CertFile, []byte(r.Chain), 0o644); err != nil {
+		return err
+	}
+	for _, svc := range []string{"postfix", "dovecot"} {
+		if out, err := s.Run(ctx, "systemctl", "reload-or-restart", svc); err != nil {
+			for p, b := range old {
+				_ = writeFile(p, b, 0o600)
+			}
+			_, _ = s.Run(ctx, "systemctl", "reload-or-restart", svc)
+			return fmt.Errorf("%s: %s", svc, firstLine(out, err))
+		}
+	}
+	return nil
+}
+
+// ---- delivery log
+
+// logLoop follows the Postfix log in the journal and stores delivery
+// events (restarts the follower when it ends).
+func (s *Server) logLoop(ctx context.Context) {
+	var p maillog.Parser
+	for ctx.Err() == nil {
+		if err := s.followJournal(ctx, &p); err != nil && ctx.Err() == nil {
+			s.Log.Warn("delivery log", "err", err)
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(10 * time.Second):
+		}
+	}
+}
+
+func (s *Server) followJournal(ctx context.Context, p *maillog.Parser) error {
+	args := []string{"-f", "-n", "0", "-o", "json", "--output-fields=MESSAGE,SYSLOG_IDENTIFIER"}
+	for _, t := range []string{"postfix/qmgr", "postfix/smtp", "postfix/lmtp", "postfix/cleanup", "postfix/smtpd",
+		"postfix/submission/smtpd", "postfix/submissions/smtpd", "postfix/error", "postfix/bounce"} {
+		args = append(args, "-t", t)
+	}
+	cmd := exec.CommandContext(ctx, "journalctl", args...) // #nosec G204 -- fixed arguments
+	out, err := cmd.StdoutPipe()
+	if err != nil {
+		return err
+	}
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	defer func() { _ = cmd.Wait() }()
+	sc := bufio.NewScanner(out)
+	sc.Buffer(make([]byte, 64<<10), 1<<20)
+	last := time.Now()
+	for sc.Scan() {
+		var rec struct {
+			Message any    `json:"MESSAGE"`
+			Ident   string `json:"SYSLOG_IDENTIFIER"`
+			TS      string `json:"__REALTIME_TIMESTAMP"`
+		}
+		if json.Unmarshal(sc.Bytes(), &rec) != nil {
+			continue
+		}
+		msg, _ := rec.Message.(string)
+		at := time.Now()
+		if us, err := strconv.ParseInt(rec.TS, 10, 64); err == nil {
+			at = time.UnixMicro(us)
+		}
+		for _, e := range p.Line(at, rec.Ident, msg) {
+			if _, err := s.DB.Exec(ctx, `INSERT INTO mail_log(at, queue_id, sender, recipient, status, relay, dsn, info) VALUES($1,$2,$3,$4,$5,$6,$7,$8)`,
+				e.At, e.QueueID, e.Sender, e.Recipient, e.Status, e.Relay, e.DSN, e.Info); err != nil {
+				s.Log.Warn("delivery log: store", "err", err)
+			}
+		}
+		if time.Since(last) > time.Hour {
+			last = time.Now()
+			_, _ = s.DB.Exec(ctx, `DELETE FROM mail_log WHERE at < now() - interval '30 days'`)
+		}
+	}
+	return sc.Err()
 }

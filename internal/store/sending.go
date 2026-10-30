@@ -205,3 +205,49 @@ func (s *Store) AllDKIM(ctx context.Context) ([]*DKIMKey, error) {
 	}
 	return out, nil
 }
+
+// LogEntry is a line of the delivery log.
+type LogEntry struct {
+	At        time.Time
+	QueueID   string
+	Sender    string
+	Recipient string
+	Status    string
+	Relay     string
+	DSN       string
+	Info      string
+}
+
+// LogFilter narrows the delivery log.
+type LogFilter struct {
+	Query  string // address or part of it
+	Status string
+	Limit  int
+}
+
+// DeliveryLog lists the newest entries in the scope: a customer sees what
+// was sent from or to its own domains.
+func (s *Store) DeliveryLog(ctx context.Context, sc Scope, f LogFilter) ([]LogEntry, error) {
+	if f.Limit <= 0 || f.Limit > 1000 {
+		f.Limit = 200
+	}
+	rows, err := s.db.Query(ctx, `SELECT at, queue_id, sender, recipient, status, relay, dsn, info FROM mail_log l
+		WHERE ($1 = '' OR split_part(l.recipient, '@', 2) IN (SELECT name FROM domains WHERE customer_id::text = $1)
+		           OR split_part(l.sender, '@', 2) IN (SELECT name FROM domains WHERE customer_id::text = $1))
+		  AND ($2 = '' OR l.recipient LIKE $2 OR l.sender LIKE $2)
+		  AND ($3 = '' OR l.status = $3)
+		ORDER BY l.at DESC, l.id DESC LIMIT $4`, sc.CustomerID, likeQuery(f.Query), f.Status, f.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []LogEntry
+	for rows.Next() {
+		var e LogEntry
+		if err := rows.Scan(&e.At, &e.QueueID, &e.Sender, &e.Recipient, &e.Status, &e.Relay, &e.DSN, &e.Info); err != nil {
+			return nil, err
+		}
+		out = append(out, e)
+	}
+	return out, rows.Err()
+}

@@ -23,6 +23,8 @@
     <a href="/domains" class="{{if eq .Nav "domains"}}on{{end}}">{{template "icon" "globe"}}{{.T "Domains"}}</a>
     <a href="/mailboxes" class="{{if eq .Nav "mailboxes"}}on{{end}}">{{template "icon" "mail"}}{{.T "Mailboxes"}}</a>
     <a href="/aliases" class="{{if eq .Nav "aliases"}}on{{end}}">{{template "icon" "route"}}{{.T "Aliases and forwarders"}}</a>
+    <a href="/deliveries" class="{{if eq .Nav "deliveries"}}on{{end}}">{{template "icon" "file"}}{{.T "Delivery log"}}</a>
+    {{if .User.IsStaff}}<a href="/queue" class="{{if eq .Nav "queue"}}on{{end}}">{{template "icon" "layers"}}{{.T "Mail queue"}}</a>{{end}}
     {{if .User.IsAdmin}}
     <span class="navlabel">{{.T "Administration"}}</span>
     <a href="/users" class="{{if eq .Nav "users"}}on{{end}}">{{template "icon" "users"}}{{.T "Staff accounts"}}</a>
@@ -75,6 +77,7 @@
 
 {{define "settingstabs"}}<nav class="sidetabs" aria-label="{{.T "Settings"}}">
   <a href="/settings/mail" class="{{if eq .Title "Mail server"}}on{{end}}">{{template "icon" "mail"}}<span>{{.T "Mail server"}}<small>{{.T "Host name, domain verification, limits"}}</small></span></a>
+  <a href="/settings/certificate" class="{{if eq .Title "Certificate"}}on{{end}}">{{template "icon" "lock"}}<span>{{.T "Certificate"}}<small>{{.T "TLS for IMAP, POP3 and SMTP"}}</small></span></a>
   <a href="/settings/api" class="{{if eq .Title "REST API"}}on{{end}}">{{template "icon" "key"}}<span>{{.T "REST API"}}<small>{{.T "Tokens for billing systems and HostZit"}}</small></span></a>
   <a href="/settings/network" class="{{if eq .Title "Network and access"}}on{{end}}">{{template "icon" "network"}}<span>{{.T "Network and access"}}<small>{{.T "Panel port and allowed networks"}}</small></span></a>
   <a href="/settings/security" class="{{if eq .Title "Sign-in and security"}}on{{end}}">{{template "icon" "lock"}}<span>{{.T "Sign-in and security"}}<small>{{.T "Session length, blocked addresses"}}</small></span></a>

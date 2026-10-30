@@ -13,6 +13,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"net/netip"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -24,6 +25,7 @@ import (
 	embeddedpostgres "github.com/fergusstrange/embedded-postgres"
 
 	"github.com/max-zit/emailzit/internal/auth"
+	"github.com/max-zit/emailzit/internal/authpolicy"
 	"github.com/max-zit/emailzit/internal/helper"
 	"github.com/max-zit/emailzit/internal/logfile"
 	"github.com/max-zit/emailzit/internal/mailhelper"
@@ -223,6 +225,26 @@ func run() error {
 		servers = append(servers, dh)
 		go func() { errc <- dh.ListenAndServe() }()
 		log.Warn("development HTTP console (no TLS)", "addr", *devHTTP)
+	}
+	if tok := readAuthPolicyToken(); tok != "" {
+		g := &authpolicy.Guard{Token: tok, Log: log}
+		if srv.Mail != nil {
+			hc := &mailhelper.Client{Socket: mailhelper.Socket}
+			g.Ban = func(ip netip.Addr, d time.Duration) {
+				if err := hc.Call(context.Background(), mailhelper.Request{Action: mailhelper.ActionBan, IP: ip.String(), Minutes: int(d.Minutes()), By: "auth-guard"}); err != nil {
+					log.Error("firewall block", "ip", ip, "err", err)
+				}
+				_ = st.Audit(context.Background(), "-", ip.String(), "mail.login.blocked", "ip:"+ip.String(), "address blocked after failed mail sign-ins")
+			}
+		}
+		gs := &http.Server{Addr: "127.0.0.1:10032", Handler: g, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second}
+		servers = append(servers, gs)
+		go func() {
+			if err := gs.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				log.Error("mail sign-in guard stopped", "err", err)
+			}
+		}()
+		log.Info("mail sign-in guard listening", "addr", gs.Addr)
 	}
 	log.Info("EmailZit server started", "version", version)
 

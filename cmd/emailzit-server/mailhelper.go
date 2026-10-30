@@ -12,6 +12,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -102,4 +103,14 @@ func listenPolicy() (net.Listener, error) {
 		return nil, err
 	}
 	return l, nil
+}
+
+// readAuthPolicyToken is the token the mail helper shares with Dovecot ("" =
+// no guard: development).
+func readAuthPolicyToken() string {
+	b, err := os.ReadFile("/etc/emailzit/auth-policy.token")
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(b))
 }

@@ -6,12 +6,15 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"net"
+	"net/netip"
 	"os"
 	"os/exec"
 	"os/user"
@@ -157,6 +160,8 @@ func (s *Server) do(ctx context.Context, r Request) error {
 		return s.trash(ctx, r)
 	case ActionDKIM:
 		return s.dkim(ctx, r)
+	case ActionBan:
+		return s.ban(ctx, r)
 	}
 	return errors.New("unknown action")
 }
@@ -175,7 +180,8 @@ func (s *Server) apply(ctx context.Context, r Request) error {
 		}
 	}
 	files, err := mailconf.Render(mailconf.Settings{Hostname: host, MaxMessageMB: r.MaxMessageMB, DBName: s.DBName,
-		CertFile: s.CertFile, KeyFile: s.KeyFile, Relay: s.Relay, PolicySocket: s.policySocket(), Rspamd: rspamdInstalled()})
+		CertFile: s.CertFile, KeyFile: s.KeyFile, Relay: s.Relay, PolicySocket: s.policySocket(), Rspamd: rspamdInstalled(),
+		AuthPolicyToken: s.authPolicyToken()})
 	if err != nil {
 		return err
 	}
@@ -437,6 +443,7 @@ func (s *Server) Start(ctx context.Context, r Request) error {
 	if err := s.preparePolicyDir(); err != nil {
 		s.Log.Error("policy directory", "err", err)
 	}
+	s.prepareFirewall(ctx)
 	if err := r.Validate(); err != nil {
 		return err
 	}
@@ -611,4 +618,79 @@ func fixOwners() {
 		_ = os.Chown(m, 0, g)
 		_ = os.Chmod(m, 0o640) // #nosec G302 -- the group postfix reads the maps
 	}
+}
+
+// ---- brute-force guard: token shared with the panel, firewall blocks
+
+// AuthPolicyTokenFile holds the token Dovecot sends to the panel's guard.
+const AuthPolicyTokenFile = "/etc/emailzit/auth-policy.token"
+
+// authPolicyToken reads (or creates) the token; the panel user may read it.
+func (s *Server) authPolicyToken() string {
+	if b, err := os.ReadFile(AuthPolicyTokenFile); err == nil {
+		if t := strings.TrimSpace(string(b)); len(t) >= 32 {
+			return t
+		}
+	}
+	var raw [24]byte
+	if _, err := rand.Read(raw[:]); err != nil {
+		return ""
+	}
+	t := hex.EncodeToString(raw[:])
+	if err := writeFile(AuthPolicyTokenFile, []byte(t+"\n"), 0o640); err != nil {
+		s.Log.Error("auth policy token", "err", err)
+		return ""
+	}
+	if u, err := user.LookupId(strconv.Itoa(s.AllowUID)); err == nil {
+		if g, err := strconv.Atoi(u.Gid); err == nil {
+			_ = os.Chown(AuthPolicyTokenFile, 0, g)
+		}
+	}
+	return t
+}
+
+// nftRules is EmailZit's own firewall table: blocked addresses lose the
+// mail sign-in ports and the panels (port 25 stays open: other servers).
+const nftRules = `table inet emailzit {
+	set banned4 { type ipv4_addr; flags timeout; }
+	set banned6 { type ipv6_addr; flags timeout; }
+	chain input {
+		type filter hook input priority -10; policy accept;
+		ip saddr @banned4 tcp dport { 110, 143, 465, 587, 993, 995, 4190, 8444 } drop
+		ip6 saddr @banned6 tcp dport { 110, 143, 465, 587, 993, 995, 4190, 8444 } drop
+	}
+}
+`
+
+// prepareFirewall creates the table once (nft must be installed).
+func (s *Server) prepareFirewall(ctx context.Context) {
+	if _, err := exec.LookPath("nft"); err != nil {
+		s.Log.Warn("nft is not installed: failed sign-ins are refused by the panel, but not blocked in the firewall")
+		return
+	}
+	if _, err := s.Run(ctx, "nft", "list", "table", "inet", "emailzit"); err == nil {
+		return
+	}
+	p := "/run/emailzit/nft.rules"
+	if err := writeFile(p, []byte(nftRules), 0o600); err != nil {
+		s.Log.Error("firewall rules", "err", err)
+		return
+	}
+	if out, err := s.Run(ctx, "nft", "-f", p); err != nil {
+		s.Log.Error("firewall rules", "err", firstLine(out, err))
+	}
+}
+
+// ban adds an address to the blocked set for a while.
+func (s *Server) ban(ctx context.Context, r Request) error {
+	a, _ := netip.ParseAddr(r.IP)
+	set := "banned4"
+	if a.Is6() && !a.Is4In6() {
+		set = "banned6"
+	}
+	elem := fmt.Sprintf("{ %s timeout %dm }", a.Unmap().String(), r.Minutes)
+	if out, err := s.Run(ctx, "nft", "add", "element", "inet", "emailzit", set, elem); err != nil {
+		return fmt.Errorf("nft: %s", firstLine(out, err))
+	}
+	return nil
 }

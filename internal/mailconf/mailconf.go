@@ -34,6 +34,9 @@ type Settings struct {
 	// PolicySocket is the EmailZit policy service (sending limits);
 	// empty = none yet.
 	PolicySocket string // relative to the queue directory, e.g. emailzit/policy
+	// AuthPolicyToken switches on the brute-force guard of the panel for
+	// Dovecot sign-ins (hex token, also the hash nonce).
+	AuthPolicyToken string
 	// Rspamd is installed: milter, DKIM signing, spam to Junk.
 	Rspamd bool
 }
@@ -52,6 +55,7 @@ var (
 	dbRE    = regexp.MustCompile(`^[a-z_][a-z0-9_]{0,62}$`)
 	// relative to the Postfix queue directory (smtpd runs chrooted there)
 	relPathRE = regexp.MustCompile(`^[a-z]+/[a-z-]+$`)
+	tokenRE   = regexp.MustCompile(`^[0-9a-f]{32,128}$`)
 )
 
 // Validate checks every value that goes into a file.
@@ -67,6 +71,8 @@ func (s *Settings) Validate() error {
 		return errors.New("invalid certificate path")
 	case s.Relay != "" && !relayRE.MatchString(s.Relay):
 		return errors.New("invalid relay host")
+	case s.AuthPolicyToken != "" && !tokenRE.MatchString(s.AuthPolicyToken):
+		return errors.New("invalid auth policy token")
 	case s.PolicySocket != "" && !relPathRE.MatchString(s.PolicySocket):
 		return errors.New("invalid policy socket")
 	}

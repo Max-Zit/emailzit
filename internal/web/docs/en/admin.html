@@ -16,3 +16,9 @@
 <p>The panels run as the unprivileged user <code>emailzit</code>. A small <b>mail helper</b> runs as root and does only a fixed list of tasks: write the Postfix and Dovecot configuration from the server settings (checked before it is used, the old files are put back on any error), create the mail directory of a new customer, move the mail of deleted mailboxes to the trash. Postfix and Dovecot read domains, mailboxes and app passwords directly from PostgreSQL through read-only views, so customer input never reaches a configuration file.</p>
 <h2>Network and sign-in</h2>
 <p>The panels listen on port 8444 (HostZit uses 8443). Allowed networks, session length and the blocking of addresses after failed sign-ins are under Settings. If you lock yourself out: <code>emailzit-server --reset-allowlist</code> or <code>--unblock-ip ADDRESS</code> on the server.</p>
+<h2>Protection of mail sign-ins and sending</h2>
+<ul>
+  <li><b>Password guessing</b>: Dovecot asks EmailZit before every sign-in of a mail program (IMAP, POP3 and SMTP submission). An address with 10 failed sign-ins within 15 minutes is refused and blocked in the firewall for an hour (ports 110, 143, 465, 587, 993, 995, 4190 and 8444; port 25 stays open for other mail servers). An account attacked from many addresses is slowed down, never locked, so attackers cannot lock users out.</li>
+  <li><b>Sending limits</b> per mailbox and per customer come from the package. Each recipient counts. Messages over the limit get a temporary error and the mail program tries again later. A mailbox that keeps trying far beyond its limit (30 refused attempts in an hour) is <b>blocked from sending automatically</b>; the block is in the audit log and staff lift it on the mailbox page.</li>
+  <li><b>Spam filter</b>: Rspamd checks every incoming message; clear spam is refused, likely spam goes to the Junk folder. Mail of signed-in users is signed with the domain's <b>DKIM</b> key.</li>
+</ul>

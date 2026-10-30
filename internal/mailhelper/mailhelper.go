@@ -17,6 +17,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/netip"
 	"regexp"
 	"strings"
 	"time"
@@ -31,6 +32,7 @@ const (
 	ActionCustomer = "customer" // create the mail directory of a customer
 	ActionTrash    = "trash"    // move the mail of a deleted domain or mailbox away
 	ActionDKIM     = "dkim"     // install the DKIM key of a domain
+	ActionBan      = "ban"      // block an address in the firewall (failed sign-ins)
 	ActionPing     = "ping"
 )
 
@@ -48,6 +50,9 @@ type Request struct {
 	// dkim
 	Selector string `json:"selector,omitempty"`
 	Key      string `json:"key,omitempty"` // PEM, PKCS#8 RSA
+	// ban
+	IP      string `json:"ip,omitempty"`
+	Minutes int    `json:"minutes,omitempty"`
 	// who asked (for the helper's log)
 	By string `json:"by,omitempty"`
 }
@@ -103,6 +108,12 @@ func (r *Request) Validate() error {
 		}
 		if rk, ok := k.(*rsa.PrivateKey); !ok || rk.N.BitLen() < 2048 {
 			return errors.New("the key must be RSA with at least 2048 bits")
+		}
+		return nil
+	case ActionBan:
+		a, err := netip.ParseAddr(r.IP)
+		if err != nil || a.IsLoopback() || a.IsUnspecified() || a.IsMulticast() || r.Minutes < 1 || r.Minutes > 10080 {
+			return errors.New("invalid address or time")
 		}
 		return nil
 	case ActionTrash:

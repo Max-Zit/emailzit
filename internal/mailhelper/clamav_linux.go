@@ -50,6 +50,15 @@ func (s *Server) clamAV(ctx context.Context, r Request) bool {
 				return
 			}
 			_, _ = s.Run(ictx, "systemctl", "enable", "--now", "clamav-freshclam", "clamav-daemon")
+			// clamd starts only once freshclam has its signatures
+			for i := 0; i < 90 && !clamSignatures(); i++ {
+				select {
+				case <-ictx.Done():
+					return
+				case <-time.After(10 * time.Second):
+				}
+			}
+			_, _ = s.Run(ictx, "systemctl", "start", "clamav-daemon")
 			s.mu.Lock()
 			defer s.mu.Unlock()
 			if err := s.apply(ictx, r); err != nil {
@@ -60,4 +69,26 @@ func (s *Server) clamAV(ctx context.Context, r Request) bool {
 		}()
 	}
 	return false
+}
+
+// clamSignatures tells whether freshclam has downloaded the main
+// signatures (clamd does not start without them).
+func clamSignatures() bool {
+	for _, p := range []string{"/var/lib/clamav/main.cvd", "/var/lib/clamav/main.cld"} {
+		if _, err := os.Stat(p); err == nil {
+			return true
+		}
+	}
+	return false
+}
+
+// keepClamd starts clamd again while the scan is on (after the signatures
+// arrived later, or after a crash).
+func (s *Server) keepClamd(ctx context.Context) {
+	if _, err := os.Stat(mailconf.RspamdAntivirus); err != nil || !clamdInstalled() || !clamSignatures() {
+		return
+	}
+	if _, err := s.Run(ctx, "systemctl", "is-active", "--quiet", "clamav-daemon"); err != nil {
+		_, _ = s.Run(ctx, "systemctl", "start", "clamav-daemon")
+	}
 }

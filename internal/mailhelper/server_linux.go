@@ -429,6 +429,7 @@ func (s *Server) usageLoop(ctx context.Context) {
 		if err := s.updateUsage(ctx); err != nil {
 			s.Log.Warn("mailbox usage", "err", err)
 		}
+		s.keepClamd(ctx)
 		s.mu.Lock()
 		if s.nginxHost != "" {
 			s.writeNginx(ctx, s.nginxHost) // HostZit installed later

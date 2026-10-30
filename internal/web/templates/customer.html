@@ -37,6 +37,14 @@
   </form>
   {{end}}
 </section>
+<section class="panel" id="spam">
+  <h2>{{template "icon" "shield"}}{{.T "Spam"}}</h2>
+  <form method="post" action="/customers/{{$c.ID}}/spam" class="row">
+    <label>{{.T "Move to Junk for all mailboxes of the customer"}}<select name="spam_level"{{if not .User.CanWrite}} disabled{{end}}>{{range .Data.Levels}}<option value="{{.}}" {{if eq $.Data.Spam .}}selected{{end}}>{{template "spamlevel" (rowOf $ .)}}</option>{{end}}</select></label>
+    {{if .User.CanWrite}}<button class="secondary">{{.T "Save"}}</button>{{end}}
+  </form>
+  <small class="muted">{{.T "A mailbox can have its own level and its own allowed and blocked senders (mailbox page or the user's mail settings)."}}</small>
+</section>
 {{if .Data.Web}}
 <section class="panel">
   <h2>{{template "icon" "mail"}}{{.T "Mail from websites"}}</h2>

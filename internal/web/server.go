@@ -64,6 +64,8 @@ type MailApplier interface {
 	MailboxDeleted(ctx context.Context, m *store.Mailbox) error
 	// DKIM installs the signing key of a domain.
 	DKIM(ctx context.Context, k *store.DKIMKey) error
+	// Spam rewrites the spam scripts of a customer's mailboxes (or one).
+	Spam(ctx context.Context, customerID, address string) error
 }
 
 // New creates the server; settings are loaded from the database.
@@ -240,6 +242,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /setup", s.handleSetup)
 	mux.HandleFunc("GET /login", s.handleLogin)
 	mux.HandleFunc("POST /login", s.handleLogin)
+	mux.HandleFunc("GET /login/oidc", s.handleOIDCStart)
+	mux.HandleFunc("GET /login/oidc/callback", s.handleOIDCCallback)
 	mux.HandleFunc("GET /login/2fa", s.handleLogin2FA)
 	mux.HandleFunc("POST /login/2fa", s.handleLogin2FA)
 	mux.HandleFunc("GET /login/enroll", s.handleEnroll)
@@ -272,6 +276,7 @@ func (s *Server) Handler() http.Handler {
 	staffWrite("POST /customers/{id}/status", s.handleCustomerStatus)
 	staffWrite("POST /customers/{id}/logins", s.handleCustomerLogin)
 	staffWrite("POST /customers/{id}/web-send", s.handleWebSend)
+	staffWrite("POST /customers/{id}/spam", s.handleCustomerSpam)
 	app("GET /domains", s.handleDomains)
 	write("POST /domains", s.handleDomainCreate)
 	app("GET /domains/{id}", s.handleDomain)
@@ -290,6 +295,7 @@ func (s *Server) Handler() http.Handler {
 	write("POST /mailboxes/{id}/reset-2fa", s.handleMailboxReset2FA)
 	write("POST /mailboxes/{id}/apppasswords/{pid}/delete", s.handleMailboxAppPasswordDelete)
 	write("POST /mailboxes/{id}/import", s.handleMailboxImport)
+	write("POST /mailboxes/{id}/spam", s.handleMailboxSpam)
 	write("POST /mailboxes/{id}/delete", s.handleMailboxDelete)
 	app("GET /aliases", s.handleAliases)
 	write("POST /aliases/{id}", s.handleAliasUpdate)
@@ -333,6 +339,8 @@ func (s *Server) Handler() http.Handler {
 	admin("POST /settings/api/{id}/delete", s.handleAPITokenDelete)
 	admin("GET /settings/network", s.handleNetwork)
 	admin("POST /settings/network", s.handleNetworkSave)
+	admin("GET /settings/signin", s.handleOIDCSettings)
+	admin("POST /settings/signin", s.handleOIDCSettingsSave)
 	admin("GET /settings/security", s.handleSecurity)
 	admin("POST /settings/security", s.handleSecuritySave)
 	admin("POST /settings/security/unblock", s.handleUnblock)

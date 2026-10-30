@@ -175,6 +175,8 @@ func (s *Server) do(ctx context.Context, r Request) error {
 		return s.queueOp(ctx, r)
 	case ActionCert:
 		return s.installCert(ctx, r)
+	case ActionSpam:
+		return s.writeSpam(ctx, r)
 	}
 	return errors.New("unknown action")
 }
@@ -388,6 +390,10 @@ func (s *Server) usageLoop(ctx context.Context) {
 		if err := s.updateUsage(ctx); err != nil {
 			s.Log.Warn("mailbox usage", "err", err)
 		}
+		// also catches mailboxes created while the panel could not reach the helper
+		if err := s.writeSpam(ctx, Request{}); err != nil {
+			s.Log.Warn("spam scripts", "err", err)
+		}
 		s.purgeTrash()
 		t.Reset(10 * time.Minute)
 	}
@@ -550,8 +556,13 @@ func (s *Server) afterApply(ctx context.Context) error {
 			return err
 		}
 	}
-	if out, err := s.Run(ctx, "sievec", mailconf.SpamSieve); err != nil {
-		return fmt.Errorf("sievec: %s", firstLine(out, err))
+	// files of EmailZit before 0.7 (the spam rule is now per mailbox,
+	// options.inc moved to override.d)
+	for _, p := range []string{"/etc/dovecot/sieve/spam.sieve", "/etc/dovecot/sieve/spam.svbin", mailconf.RspamdLocal + "/options.inc"} {
+		// #nosec G304 -- fixed paths
+		if b, err := os.ReadFile(p); err == nil && (strings.HasSuffix(p, ".svbin") || bytes.HasPrefix(b, []byte("# EmailZit"))) {
+			_ = os.Remove(p)
+		}
 	}
 	if out, err := s.Run(ctx, "rspamadm", "configtest"); err != nil {
 		return fmt.Errorf("rspamd: %s", firstLine(out, err))

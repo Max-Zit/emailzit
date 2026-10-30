@@ -23,6 +23,7 @@
   </section>
   <div><button class="primary">{{.T "Save"}}</button></div>
 </form>
+<div class="mt">{{template "spamform" .}}</div>
 {{end}}
 {{define "filterrow"}}{{$p := .P}}<div class="row filter-row">
   <select name="field" aria-label="{{$p.T "Field"}}"><option value="from" {{if eq .R.Field "from"}}selected{{end}}>{{$p.T "From contains"}}</option><option value="to" {{if eq .R.Field "to"}}selected{{end}}>{{$p.T "To or Cc contains"}}</option><option value="subject" {{if eq .R.Field "subject"}}selected{{end}}>{{$p.T "Subject contains"}}</option></select>

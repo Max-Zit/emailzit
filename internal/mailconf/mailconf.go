@@ -151,10 +151,14 @@ func render(name string, data any) ([]byte, error) {
 
 // Rspamd and Sieve files (written when Settings.Rspamd is set).
 const (
-	RspamdLocal   = "/etc/rspamd/local.d"
-	RspamdDKIM    = "/etc/rspamd/emailzit/dkim"
-	RspamdDKIMMap = "/etc/rspamd/emailzit/dkim_selectors.map"
-	SpamSieve     = "/etc/dovecot/sieve/spam.sieve"
+	RspamdLocal    = "/etc/rspamd/local.d"
+	RspamdOverride = "/etc/rspamd/override.d"
+	RspamdDKIM     = "/etc/rspamd/emailzit/dkim"
+	RspamdDKIMMap  = "/etc/rspamd/emailzit/dkim_selectors.map"
+	// MailboxSpamSieve is each mailbox's spam script (written by the mail
+	// helper from the mailbox's and the customer's spam settings),
+	// relative to the mail home.
+	MailboxSpamSieve = ".emailzit/spam.sieve"
 )
 
 func rspamdFiles() ([]File, error) {
@@ -165,11 +169,11 @@ func rspamdFiles() ([]File, error) {
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, File{Path: RspamdLocal + "/" + n, Mode: 0o644, Content: b})
+		dir := RspamdLocal
+		if n == "options.inc" {
+			dir = RspamdOverride // local.d would keep Rspamd's private networks as local
+		}
+		out = append(out, File{Path: dir + "/" + n, Mode: 0o644, Content: b})
 	}
-	b, err := tmplFS.ReadFile("templates/sieve/spam.sieve")
-	if err != nil {
-		return nil, err
-	}
-	return append(out, File{Path: SpamSieve, Mode: 0o644, Content: b}), nil
+	return out, nil
 }

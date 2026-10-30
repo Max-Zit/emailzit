@@ -36,6 +36,7 @@ const (
 	ActionBan      = "ban"      // block an address in the firewall (failed sign-ins)
 	ActionQueue    = "queue"    // list the mail queue, or hold / release / delete / flush messages
 	ActionCert     = "cert"     // install a certificate for the mail services
+	ActionSpam     = "spam"     // write the spam scripts of all mailboxes, a customer's or one mailbox
 	ActionPing     = "ping"
 )
 
@@ -134,6 +135,14 @@ func (r *Request) Validate() error {
 			}
 		default:
 			return errors.New("unknown queue operation")
+		}
+		return nil
+	case ActionSpam:
+		if r.Customer != "" && !uuidRE.MatchString(r.Customer) {
+			return errors.New("invalid customer")
+		}
+		if r.Local != "" && (!domainRE.MatchString(r.Domain) || !localRE.MatchString(r.Local)) {
+			return errors.New("invalid mailbox")
 		}
 		return nil
 	case ActionCert:

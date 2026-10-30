@@ -7,4 +7,5 @@
   <label>{{.T "Password"}}<input type="password" name="password" required autocomplete="current-password"></label>
   <button class="primary">{{.T "Sign in"}}</button>
 </form>
+{{if and .Data.OIDC (not .Data.Base)}}<p class="center mt"><a class="btn secondary" href="/login/oidc?next={{.Data.Next}}">{{template "icon" "key"}}{{if eq .Data.OIDC "Company sign-in"}}{{.T "Company sign-in"}}{{else}}{{.Data.OIDC}}{{end}}</a></p>{{end}}
 {{end}}

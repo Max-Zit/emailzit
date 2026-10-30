@@ -1,0 +1,25 @@
+{{template "app" .}}
+{{define "content"}}
+{{$c := .Data.C}}
+<h1>{{.T "Settings"}}</h1>
+<div class="settings">
+{{template "settingstabs" .}}
+<div class="settings-body">
+<form method="post" action="/settings/signin" class="stack wide">
+  <section class="panel">
+    <h2>{{template "icon" "users"}}{{.T "Company sign-in for staff"}}</h2>
+    <p class="muted">{{.T "Staff can sign in with your identity provider (OpenID Connect: Microsoft Entra ID, Google Workspace, Keycloak, Authentik …). The provider proves the e-mail address; a staff account whose username is that address must already exist. Customers and mail users always sign in with their password."}}</p>
+    <label>{{.T "Issuer"}}<input name="issuer" value="{{$c.Issuer}}" class="mono" spellcheck="false" placeholder="https://login.microsoftonline.com/TENANT/v2.0"><small>{{.T "Empty = company sign-in off."}}</small></label>
+    <div class="cols">
+      <label>{{.T "Client ID"}}<input name="client_id" value="{{$c.ClientID}}" class="mono" spellcheck="false" autocomplete="off"></label>
+      <label>{{.T "Client secret"}}<input type="password" name="client_secret" autocomplete="off" placeholder="{{if .Data.HasSecret}}{{.T "saved; leave empty to keep it"}}{{end}}"></label>
+    </div>
+    <label>{{.T "Button text"}} <small>{{.T "optional"}}</small><input name="label" value="{{$c.Label}}" maxlength="60" placeholder="{{.T "Company sign-in"}}"></label>
+    <label class="check"><input type="checkbox" name="trust_mfa" value="1" {{if $c.TrustMFA}}checked{{end}}>{{.T "Trust the provider's second factor when its identity token shows one (amr); otherwise EmailZit asks its own code"}}</label>
+    <p class="muted">{{.T "Redirect address to register at the provider:"}} <code>{{.Data.Redirect}}</code></p>
+  </section>
+  <div><button class="primary">{{.T "Save"}}</button></div>
+</form>
+</div>
+</div>
+{{end}}

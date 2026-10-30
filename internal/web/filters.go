@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/max-zit/emailzit/internal/sieve"
+	"github.com/max-zit/emailzit/internal/store"
 )
 
 // The mail user's auto-reply and filters (/mail/filters): stored in the
@@ -17,6 +18,7 @@ var WebmailSieve = "127.0.0.1:4190"
 
 type filtersData struct {
 	S       sieve.Settings
+	Spam    *spamForm
 	Folders []string
 }
 
@@ -46,6 +48,10 @@ func (s *Server) showFilters(w http.ResponseWriter, r *http.Request, status int,
 		ws.Close()
 	} else {
 		return
+	}
+	m := mailboxFrom(r)
+	if sp, err := s.store.MailboxSpamSettings(r.Context(), store.Scope{CustomerID: m.CustomerID}, m.ID); err == nil {
+		d.Spam = newSpamForm("/mail/spam", sp)
 	}
 	p := s.mailPage(r, "Auto-reply and filters", d)
 	p.Nav = "filters"

@@ -52,6 +52,7 @@
   {{if $m.TOTPEnabled}}<form method="post" action="/mailboxes/{{$m.ID}}/reset-2fa" class="mt" data-confirm="{{.T "Reset two-factor sign-in of this mailbox?"}}"><button class="danger">{{.T "Reset two-factor sign-in"}}</button> <small class="muted">{{.T "For a user who lost the phone and the recovery codes."}}</small></form>{{end}}
   {{end}}
 </section>
+{{if .User.CanWrite}}{{template "spamform" .}}{{end}}
 <section class="panel">
   <h2>{{template "icon" "settings"}}{{.T "Settings for mail programs"}}</h2>
   {{template "clientsettings" (rowOf $ $m.Address)}}

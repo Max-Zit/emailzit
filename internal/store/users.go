@@ -121,6 +121,16 @@ func (s *Store) UserByID(ctx context.Context, id int64) (*User, error) {
 	return u, nil
 }
 
+// StaffByUsername finds a staff account (company sign-in: the username is
+// the e-mail address the identity provider proves).
+func (s *Store) StaffByUsername(ctx context.Context, username string) (*User, error) {
+	u, err := scanUser(s.db.QueryRow(ctx, `SELECT `+userCols+` FROM users WHERE lower(username)=lower($1) AND role <> 'customer'`, username))
+	if err != nil {
+		return nil, notFound(err)
+	}
+	return u, nil
+}
+
 // Users lists the staff accounts.
 func (s *Store) Users(ctx context.Context) ([]*User, error) {
 	rows, err := s.db.Query(ctx, `SELECT `+userCols+` FROM users WHERE customer_id IS NULL ORDER BY lower(username)`)

@@ -231,6 +231,7 @@ type loginData struct {
 	Username string
 	Next     string
 	Base     string
+	OIDC     string // button text of the company sign-in ("" = off)
 }
 
 func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
@@ -239,6 +240,12 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	d := &loginData{Next: safeNext(r.FormValue("next"))}
+	if c := s.oidcSettings(r.Context()); c.enabled() {
+		d.OIDC = c.Label
+		if d.OIDC == "" {
+			d.OIDC = "Company sign-in"
+		}
+	}
 	p := &Page{Title: "Sign in", Data: d}
 	if r.Method == http.MethodGet {
 		if userFrom(r) != nil {

@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/max-zit/emailzit/internal/sieve"
 	"github.com/max-zit/emailzit/internal/store"
 )
 
@@ -140,6 +141,8 @@ type overviewData struct {
 	Package  *store.Package
 	Domains  []*store.Domain
 	Web      []store.WebSender // hosting accounts (HostZit) sending through emailzit-sendmail
+	Spam     string            // the customer's spam level
+	Levels   []string
 	Mail     MailSettings
 }
 
@@ -293,7 +296,9 @@ type customerData struct {
 	Logins   []*store.User
 	Domains  []*store.Domain
 	Web      []store.WebSender // hosting accounts (HostZit) sending through emailzit-sendmail
-	Verified bool              // new domains are verified at once (no verification required)
+	Spam     string            // the customer's spam level
+	Levels   []string
+	Verified bool // new domains are verified at once (no verification required)
 }
 
 func (s *Server) loadCustomer(w http.ResponseWriter, r *http.Request) *store.Customer {
@@ -318,6 +323,8 @@ func (s *Server) handleCustomer(w http.ResponseWriter, r *http.Request) {
 				d.Domains, err = s.store.Domains(r.Context(), store.Staff, c.ID)
 				if err == nil {
 					d.Web, err = s.store.WebSenders(r.Context(), c.ID)
+					d.Levels = sieve.SpamLevels
+					d.Spam, _ = s.store.CustomerSpamLevel(r.Context(), c.ID)
 				}
 			}
 		}
@@ -594,10 +601,12 @@ func (s *Server) handleMailboxCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.audit(r, "mailbox.create", "mailbox:"+m.Address, "%d MB", m.QuotaMB)
+	s.syncSpam(r.Context(), m.CustomerID, m.Address)
 	s.redirect(w, r, "/mailboxes/"+m.ID, "Mailbox created.")
 }
 
 type mailboxData struct {
+	Spam         *spamForm
 	Imports      []*store.Import
 	M            *store.Mailbox
 	Sent         store.SentStats
@@ -629,6 +638,9 @@ func (s *Server) handleMailbox(w http.ResponseWriter, r *http.Request) {
 		if d.AppPasswords, err = s.store.AppPasswords(r.Context(), m.ID); err == nil {
 			d.Sent, _ = s.store.MailboxSentStats(r.Context(), m.ID)
 			d.Imports, _ = s.store.Imports(r.Context(), m.ID)
+			if sp, err := s.store.MailboxSpamSettings(r.Context(), sc, m.ID); err == nil {
+				d.Spam = newSpamForm("/mailboxes/"+m.ID+"/spam", sp)
+			}
 			var c *store.Customer
 			if c, err = s.store.CustomerByID(r.Context(), m.CustomerID); err == nil {
 				d.Package, err = s.store.PackageByID(r.Context(), c.PackageID)

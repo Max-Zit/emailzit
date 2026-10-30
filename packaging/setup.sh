@@ -76,6 +76,7 @@ fi
 # ---- services
 [ -n "$FROM_PKG" ] || install -m 0644 /usr/share/emailzit/emailzit-server.service /etc/systemd/system/ 2>/dev/null || true
 [ -n "$FROM_PKG" ] || install -m 0644 /usr/share/emailzit/emailzit-mail-helper.service /etc/systemd/system/ 2>/dev/null || true
+[ -n "$FROM_PKG" ] || install -m 0644 /usr/share/emailzit/emailzit-submit.socket /etc/systemd/system/ 2>/dev/null || true
 systemctl daemon-reload
 # the panel creates the tables and grants the read-only roles
 systemctl enable --now emailzit-server
@@ -85,5 +86,12 @@ for _ in $(seq 1 30); do
 done
 systemctl restart emailzit-server
 systemctl enable --now emailzit-mail-helper
+if ! systemctl is-active --quiet emailzit-submit.socket; then
+    # mail from websites; systemd starts the socket only while the server is stopped
+    systemctl enable emailzit-submit.socket
+    systemctl stop emailzit-server
+    systemctl start emailzit-submit.socket
+    systemctl start emailzit-server
+fi
 systemctl enable postfix dovecot >/dev/null
 echo "EmailZit is running. Open https://$H:8444 and finish the setup (token in /var/lib/emailzit/setup-token.txt)."

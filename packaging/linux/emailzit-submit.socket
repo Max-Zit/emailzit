@@ -1,0 +1,17 @@
+[Unit]
+Description=EmailZit: mail from websites (emailzit-sendmail)
+Documentation=https://github.com/Max-Zit/emailzit
+
+[Socket]
+# systemd keeps this socket while the server restarts, so the bind mounts in
+# HostZit's account cages keep reaching it. Anyone who reaches it may
+# connect; the server takes mail only from registered hosting accounts
+# (checked by the user ID of the process) and applies their limits.
+ListenStream=/run/emailzit/submit.sock
+SocketMode=0666
+DirectoryMode=0750
+FileDescriptorName=submit
+Service=emailzit-server.service
+
+[Install]
+WantedBy=sockets.target

@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -224,4 +225,27 @@ func (s *Server) apiWebUIDs(w http.ResponseWriter, r *http.Request) {
 	}
 	s.apiAudit(r, "customer.web-uids", "customer:"+c.ID, "hosting user IDs %v", in.UIDs)
 	writeJSON(w, http.StatusOK, map[string]any{"customer_id": c.ID, "uids": in.UIDs})
+}
+
+// handleWebSend blocks or allows mail from a hosting account (a hacked
+// website sending spam is blocked automatically).
+func (s *Server) handleWebSend(w http.ResponseWriter, r *http.Request) {
+	c := s.loadCustomer(w, r)
+	if c == nil {
+		return
+	}
+	uid, err := strconv.Atoi(r.FormValue("uid"))
+	blocked := r.FormValue("blocked") == "1"
+	back := "/customers/" + c.ID
+	if err != nil || s.store.SetWebSendBlocked(r.Context(), store.Scope{CustomerID: c.ID}, uid, blocked) != nil {
+		s.redirectErr(w, r, back, "Unknown hosting account.")
+		return
+	}
+	if blocked {
+		s.audit(r, "web.send.block", fmt.Sprintf("webuid:%d", uid), "mail from the hosting account blocked (customer %s)", c.Name)
+		s.redirect(w, r, back, "Mail from the hosting account is blocked.")
+		return
+	}
+	s.audit(r, "web.send.unblock", fmt.Sprintf("webuid:%d", uid), "mail from the hosting account allowed again (customer %s)", c.Name)
+	s.redirect(w, r, back, "Mail from the hosting account is allowed again.")
 }

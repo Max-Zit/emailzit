@@ -118,4 +118,43 @@ func TestHostZitLink(t *testing.T) {
 	if u, _ := st.WebUIDs(ctx, c.ID); len(u) != 1 || u[0] != 1000012 {
 		t.Fatal(u)
 	}
+
+	// mail from the websites of the hosting account (emailzit-sendmail)
+	l, err := st.WebSendLimits(ctx, 1000012)
+	must(err)
+	if l.CustomerID != c.ID || l.Blocked || l.PerHour != 1 || l.RcptPerMsg != 1 {
+		t.Fatalf("limits %+v", l)
+	}
+	must(st.LogSent(ctx, l, 1, ""))
+	if n, err := st.LogWebRefused(ctx, 1000012, "per hour"); err != nil || n != 1 {
+		t.Fatal(n, err)
+	}
+	must(st.SetWebSendBlocked(ctx, store.Staff, 1000012, true))
+	// HostZit sending the list again keeps the block; another customer
+	// cannot take the user ID
+	must(st.SetWebUIDs(ctx, c.ID, []int{1000012, 1000013}))
+	if l, _ = st.WebSendLimits(ctx, 1000012); !l.Blocked || l.SentHour != 1 || l.CustomerHour != 1 {
+		t.Fatalf("after resend %+v", l)
+	}
+	c2, err := st.CreateCustomer(ctx, store.NewCustomer{Name: "C2", PackageID: p.ID})
+	must(err)
+	if err := st.SetWebUIDs(ctx, c2.ID, []int{1000013}); err == nil {
+		t.Fatal("user ID of another customer taken")
+	}
+	if err := st.SetWebSendBlocked(ctx, store.Scope{CustomerID: c2.ID}, 1000012, false); err == nil {
+		t.Fatal("other customer unblocked")
+	}
+	if ws, _ := st.WebSenders(ctx, c.ID); len(ws) != 2 || !ws[0].Blocked || ws[0].Hour != 1 || ws[0].RefusedHour != 1 {
+		t.Fatalf("senders %+v", ws)
+	}
+	if ok, _ := st.CustomerSendDomain(ctx, c.ID, "HOSTED.test"); !ok {
+		t.Fatal("own verified domain")
+	}
+	if ok, _ := st.CustomerSendDomain(ctx, c.ID, "elsewhere.test"); ok {
+		t.Fatal("unverified domain")
+	}
+	must(st.SetWebUIDs(ctx, c.ID, nil))
+	if _, err := st.WebSendLimits(ctx, 1000012); err == nil {
+		t.Fatal("removed user ID still known")
+	}
 }

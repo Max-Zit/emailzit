@@ -285,6 +285,7 @@ func run() error {
 		}()
 		log.Info("policy service listening", "socket", pl.Addr().String())
 	}
+	startSubmit(ctx, st, srv, log)
 	// For the root helper: which version runs and where (it checks this after an update).
 	if err := helper.WriteServerInfo(*dataDir, helper.ServerInfo{Version: version, MgmtListen: net0.MgmtListen}); err != nil {
 		log.Warn("cannot write the helper information", "err", err)

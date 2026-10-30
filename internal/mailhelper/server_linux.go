@@ -528,6 +528,15 @@ func rspamdInstalled() bool {
 
 // afterApply checks and reloads Rspamd and compiles the spam filter.
 func (s *Server) afterApply(ctx context.Context) error {
+	// Postfix logs an error for every local delivery without it
+	if _, err := os.Stat("/etc/aliases.db"); errors.Is(err, os.ErrNotExist) {
+		if _, err := os.Stat("/etc/aliases"); errors.Is(err, os.ErrNotExist) {
+			_ = writeFile("/etc/aliases", []byte("# local system mail (EmailZit created this file)\npostmaster: root\n"), 0o644)
+		}
+		if out, err := s.Run(ctx, "newaliases"); err != nil {
+			s.Log.Warn("newaliases", "err", firstLine(out, err))
+		}
+	}
 	if !rspamdInstalled() {
 		return nil
 	}

@@ -37,6 +37,20 @@
   </form>
   {{end}}
 </section>
+{{if .Data.Web}}
+<section class="panel">
+  <h2>{{template "icon" "mail"}}{{.T "Mail from websites"}}</h2>
+  <p class="muted">{{.T "Hosting accounts of this customer in HostZit. Their websites send through EmailZit only as addresses of the customer's verified domains, within the package's sending limits; an account that keeps trying beyond its limit is blocked automatically."}}</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>{{.T "User ID"}}</th><th>{{.T "Last hour"}}</th><th class="hide-sm">{{.T "Last day"}}</th><th class="hide-sm">{{.T "Refused (hour)"}}</th><th></th></tr></thead>
+    <tbody>{{range .Data.Web}}<tr>
+      <td class="mono">{{.UID}}{{if .Blocked}} <span class="badge bad">{{$.T "Blocked"}}</span>{{end}}</td>
+      <td>{{.Hour}}</td><td class="hide-sm">{{.Day}}</td><td class="hide-sm">{{.RefusedHour}}</td>
+      <td class="actions">{{if $.User.CanWrite}}<form method="post" action="/customers/{{$c.ID}}/web-send"><input type="hidden" name="uid" value="{{.UID}}"><input type="hidden" name="blocked" value="{{if .Blocked}}0{{else}}1{{end}}"><button class="ghost sm">{{if .Blocked}}{{$.T "Allow sending"}}{{else}}{{$.T "Block sending"}}{{end}}</button></form>{{end}}</td>
+    </tr>{{end}}</tbody>
+  </table></div>
+</section>
+{{end}}
 <section class="panel">
   <h2>{{template "icon" "users"}}{{.T "Panel logins"}}</h2>
   <p class="muted">{{.T "The customer signs in to the customer panel with these logins (always with two-factor sign-in) and sees only their own domains and mailboxes."}}</p>

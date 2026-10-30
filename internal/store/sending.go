@@ -15,6 +15,7 @@ import (
 // SendLimits are the limits that apply to one mailbox right now.
 type SendLimits struct {
 	MailboxID       string
+	WebUID          int // mail from a website (emailzit-sendmail) instead of a mailbox
 	CustomerID      string
 	Blocked         bool
 	PerHour         int // recipients per hour (mailbox)
@@ -46,6 +47,10 @@ func (s *Store) SendLimitsFor(ctx context.Context, address string) (*SendLimits,
 
 // LogSent records an accepted message.
 func (s *Store) LogSent(ctx context.Context, l *SendLimits, rcpts int, ip string) error {
+	if l.WebUID > 0 {
+		_, err := s.db.Exec(ctx, `INSERT INTO send_log(web_uid, customer_id, rcpts, client_ip) VALUES($1,$2,$3,$4)`, l.WebUID, l.CustomerID, rcpts, ip)
+		return err
+	}
 	_, err := s.db.Exec(ctx, `INSERT INTO send_log(mailbox_id, customer_id, rcpts, client_ip) VALUES($1,$2,$3,$4)`, l.MailboxID, l.CustomerID, rcpts, ip)
 	return err
 }

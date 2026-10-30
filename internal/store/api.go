@@ -237,20 +237,26 @@ func (s *Store) SetWebUIDs(ctx context.Context, customerID string, uids []int) e
 			return errors.New("user IDs of hosting accounts are 1000000–1999999")
 		}
 	}
+	if uids == nil {
+		uids = []int{}
+	}
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback(ctx)
-	if _, err := tx.Exec(ctx, `DELETE FROM customer_web_uids WHERE customer_id=$1`, customerID); err != nil {
+	// accounts that stay keep their sending block
+	if _, err := tx.Exec(ctx, `DELETE FROM customer_web_uids WHERE customer_id=$1 AND NOT uid = ANY($2::int[])`, customerID, uids); err != nil {
 		return err
 	}
 	for _, u := range uids {
-		if _, err := tx.Exec(ctx, `INSERT INTO customer_web_uids(uid, customer_id) VALUES($1,$2)`, u, customerID); err != nil {
-			if isUnique(err) {
-				return errors.New("a user ID belongs to another customer")
-			}
+		tag, err := tx.Exec(ctx, `INSERT INTO customer_web_uids(uid, customer_id) VALUES($1,$2)
+			ON CONFLICT (uid) DO UPDATE SET uid = EXCLUDED.uid WHERE customer_web_uids.customer_id = EXCLUDED.customer_id`, u, customerID)
+		if err != nil {
 			return err
+		}
+		if tag.RowsAffected() == 0 {
+			return errors.New("a user ID belongs to another customer")
 		}
 	}
 	return tx.Commit(ctx)

@@ -1,8 +1,8 @@
 [Unit]
 Description=EmailZit server (admin panel, customer panel, mail users' pages, REST API)
 Documentation=https://github.com/Max-Zit/emailzit
-Wants=network-online.target emailzit-mail-helper.service
-After=network-online.target postgresql.service emailzit-mail-helper.service
+Wants=network-online.target emailzit-mail-helper.service emailzit-submit.socket
+After=network-online.target postgresql.service emailzit-mail-helper.service emailzit-submit.socket
 
 [Service]
 Type=simple
@@ -10,6 +10,9 @@ EnvironmentFile=/etc/emailzit/server.env
 ExecStart=/usr/bin/emailzit-server --data-dir /var/lib/emailzit
 User=emailzit
 Group=emailzit
+# postdrop: to hand mail from websites to Postfix (public/emailzit-submit)
+SupplementaryGroups=postdrop
+Sockets=emailzit-submit.socket
 StateDirectory=emailzit
 StateDirectoryMode=0700
 Restart=always

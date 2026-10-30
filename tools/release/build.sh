@@ -12,6 +12,7 @@ export GOTMPDIR=$PWD/.gotmp CGO_ENABLED=0
 mkdir -p dist
 for arch in amd64 arm64; do
   GOOS=linux GOARCH=$arch go build -trimpath -ldflags "-s -w -X main.version=$V" -o "dist/emailzit-server-$V-linux-$arch" ./cmd/emailzit-server
+  GOOS=linux GOARCH=$arch go build -trimpath -ldflags "-s -w" -o "dist/emailzit-sendmail-$V-linux-$arch" ./cmd/emailzit-sendmail
 done
 # Licenses of everything linked into the program (fails on an unknown license).
 go run ./tools/licenses -out THIRD_PARTY_LICENSES.md "dist/emailzit-server-$V-linux-amd64"
@@ -22,6 +23,7 @@ export VERSION=$V
 for arch in amd64 arm64; do
   rm -rf bin/pkg && mkdir -p bin/pkg
   cp "dist/emailzit-server-$V-linux-$arch" bin/pkg/emailzit-server
+  cp "dist/emailzit-sendmail-$V-linux-$arch" bin/pkg/emailzit-sendmail
   rm -f "dist/emailzit-server_${V}_${arch}.deb"
   ARCH=$arch $NFPM package --config packaging/linux/nfpm-server.yaml --packager deb --target dist/ >/dev/null
 done

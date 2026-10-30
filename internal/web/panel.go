@@ -139,6 +139,7 @@ type overviewData struct {
 	Customer *store.Customer
 	Package  *store.Package
 	Domains  []*store.Domain
+	Web      []store.WebSender // hosting accounts (HostZit) sending through emailzit-sendmail
 	Mail     MailSettings
 }
 
@@ -291,7 +292,8 @@ type customerData struct {
 	Packages []*store.Package
 	Logins   []*store.User
 	Domains  []*store.Domain
-	Verified bool // new domains are verified at once (no verification required)
+	Web      []store.WebSender // hosting accounts (HostZit) sending through emailzit-sendmail
+	Verified bool              // new domains are verified at once (no verification required)
 }
 
 func (s *Server) loadCustomer(w http.ResponseWriter, r *http.Request) *store.Customer {
@@ -314,6 +316,9 @@ func (s *Server) handleCustomer(w http.ResponseWriter, r *http.Request) {
 		if d.Packages, err = s.store.Packages(r.Context()); err == nil {
 			if d.Logins, err = s.store.CustomerUsers(r.Context(), c.ID); err == nil {
 				d.Domains, err = s.store.Domains(r.Context(), store.Staff, c.ID)
+				if err == nil {
+					d.Web, err = s.store.WebSenders(r.Context(), c.ID)
+				}
 			}
 		}
 	}

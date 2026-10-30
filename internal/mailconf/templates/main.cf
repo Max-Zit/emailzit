@@ -75,6 +75,11 @@ smtpd_client_connection_count_limit = 20
 smtpd_client_connection_rate_limit = 60
 smtpd_client_message_rate_limit = 100
 smtpd_error_sleep_time = 5s
+# Programs on this server do not use Postfix's sendmail (websites use
+# emailzit-sendmail, which counts their mail); only root may.
+authorized_submit_users = root
+authorized_mailq_users = root
+authorized_flush_users = root
 smtpd_soft_error_limit = 5
 smtpd_hard_error_limit = 10
 {{- if .PolicySocket}}

@@ -12,6 +12,9 @@ Restart=always
 RestartSec=5
 RuntimeDirectory=emailzit
 RuntimeDirectoryMode=0750
+# keeps /run/emailzit (and the submit socket systemd holds there) when the
+# helper restarts
+RuntimeDirectoryPreserve=yes
 LogsDirectory=emailzit-helper
 NoNewPrivileges=true
 ProtectHome=true

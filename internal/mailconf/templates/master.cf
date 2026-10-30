@@ -28,6 +28,26 @@ submissions inet n      -       y       -       -       smtpd
   -o smtpd_data_restrictions=reject_unauth_pipelining{{if .PolicySocket}},$emailzit_policy{{end}}
   -o smtpd_client_message_rate_limit=0
   -o milter_macro_daemon_name=ORIGINATING
+# mail from websites (emailzit-sendmail): only the EmailZit server reaches
+# this socket (group postdrop); it checks the sending limits of the hosting
+# account and names it with XCLIENT, so the message is DKIM-signed. The
+# sender need not be a mailbox (wordpress@…): EmailZit already checked that
+# its domain is a verified domain of the same customer.
+emailzit-submit unix n   -       y       -       -       smtpd
+  -o syslog_name=postfix/emailzit-submit
+  -o smtpd_tls_security_level=none
+  -o smtpd_sasl_auth_enable=no
+  -o smtpd_authorized_xclient_hosts=127.0.0.1
+  -o smtpd_client_restrictions=
+  -o smtpd_helo_restrictions=
+  -o smtpd_sender_restrictions=reject_non_fqdn_sender
+  -o smtpd_reject_unlisted_sender=no
+  -o smtpd_relay_restrictions=permit_sasl_authenticated,reject
+  -o smtpd_recipient_restrictions=reject_non_fqdn_recipient,permit_sasl_authenticated,reject
+  -o smtpd_data_restrictions=
+  -o smtpd_client_message_rate_limit=0
+  -o smtpd_client_connection_rate_limit=0
+  -o milter_macro_daemon_name=ORIGINATING
 pickup    unix  n       -       y       60      1       pickup
 cleanup   unix  n       -       y       -       0       cleanup
 qmgr      unix  n       -       n       300     1       qmgr

@@ -271,6 +271,7 @@ func (s *Server) Handler() http.Handler {
 	staffWrite("POST /customers/{id}", s.handleCustomerUpdate)
 	staffWrite("POST /customers/{id}/status", s.handleCustomerStatus)
 	staffWrite("POST /customers/{id}/logins", s.handleCustomerLogin)
+	staffWrite("POST /customers/{id}/web-send", s.handleWebSend)
 	app("GET /domains", s.handleDomains)
 	write("POST /domains", s.handleDomainCreate)
 	app("GET /domains/{id}", s.handleDomain)

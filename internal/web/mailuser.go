@@ -126,6 +126,7 @@ func (s *Server) mailUserRoutes(mux *http.ServeMux) {
 	m("GET /mail/filters", s.handleFilters)
 	m("POST /mail/filters", s.handleFiltersSave)
 	m("POST /mail/spam", s.handleMailSpam)
+	s.contactRoutes(m)
 }
 
 // mailLang is the language of a mail user page.

@@ -1,0 +1,34 @@
+{{template "mailapp" .}}
+{{define "content"}}
+<h1>{{.T "Contacts"}}</h1>
+<div class="stack wide">
+<section class="panel">
+  <h2>{{template "icon" "users"}}{{.T "Address book"}}</h2>
+  <p class="muted">{{.T "Webmail suggests these addresses while you write. Addresses you send mail to are added by themselves."}}</p>
+  <form method="post" action="/mail/contacts" class="row filters">
+    <input name="name" placeholder="{{.T "Name"}}" aria-label="{{.T "Name"}}" maxlength="100">
+    <input name="email" type="email" required placeholder="name@example.com" aria-label="{{.T "Email address"}}" autocapitalize="none" spellcheck="false">
+    <button class="primary">{{template "icon" "plus"}}{{.T "Add"}}</button>
+  </form>
+  {{if .Data.Contacts}}
+  <div class="table-wrap"><table>
+    <thead><tr><th>{{.T "Name"}}</th><th>{{.T "Email address"}}</th><th></th></tr></thead>
+    <tbody>{{range .Data.Contacts}}
+      <tr><td>{{.Name}}{{if .Auto}} <small class="muted">{{$.T "added by sending"}}</small>{{end}}</td>
+        <td class="mono">{{.Email}}</td>
+        <td class="actions">
+          <a class="btn ghost sm" href="/mail/webmail/compose?to={{.Email}}">{{template "icon" "edit"}}{{$.T "Write"}}</a>
+          <form method="post" action="/mail/contacts/{{.ID}}/delete"><button class="ghost sm" aria-label="{{$.T "Remove"}}">{{template "icon" "trash"}}</button></form>
+        </td></tr>{{end}}
+    </tbody>
+  </table></div>
+  {{else}}<p class="muted">{{.T "No contacts yet."}}</p>{{end}}
+</section>
+<form method="post" action="/mail/signature" class="panel stack" id="signature">
+  <h2>{{template "icon" "text"}}{{.T "Signature"}}</h2>
+  <label>{{.T "Put under every message you write in webmail"}}<textarea name="signature" rows="5" maxlength="{{.Data.Max}}">{{.Data.Signature}}</textarea></label>
+  <small class="muted">{{.T "Mail programs (Outlook, Thunderbird, phones) have their own signature setting."}}</small>
+  <div><button class="primary">{{.T "Save"}}</button></div>
+</form>
+</div>
+{{end}}

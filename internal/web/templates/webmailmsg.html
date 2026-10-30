@@ -12,6 +12,7 @@
       <form method="post" action="/mail/webmail/action"><input type="hidden" name="f" value="{{.Data.Folder}}"><input type="hidden" name="uid" value="{{$m.UID}}">
         <button class="ghost" name="op" value="delete">{{template "icon" "trash"}}{{.T "Delete"}}</button>
         {{if eq .Data.Folder "Junk"}}<button class="ghost" name="op" value="notjunk">{{.T "Not spam"}}</button>{{else}}<button class="ghost" name="op" value="junk">{{.T "Spam"}}</button>{{end}}
+        {{template "wmmove" .}}
       </form>
     </div>
     <article class="panel wm-read">

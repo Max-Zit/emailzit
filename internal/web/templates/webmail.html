@@ -17,6 +17,7 @@
         <button class="ghost sm" name="op" value="unseen">{{.T "Mark as unread"}}</button>
         {{if eq .Data.Folder "Junk"}}<button class="ghost sm" name="op" value="notjunk">{{.T "Not spam"}}</button>{{else}}<button class="ghost sm" name="op" value="junk">{{.T "Spam"}}</button>{{end}}
         <button class="ghost sm" name="op" value="delete">{{template "icon" "trash"}}{{.T "Delete"}}</button>
+        {{template "wmmove" .}}
       </div>
       {{if .Data.List}}
       <ul class="wm-msgs">{{range .Data.List}}

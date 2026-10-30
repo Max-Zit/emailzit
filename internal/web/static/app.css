@@ -971,3 +971,5 @@ div.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 }
 .filter-row { margin-bottom: 8px; align-items: center; } .filter-row input { flex: 1 1 160px; min-width: 0; } .filter-row select { flex: 0 1 auto; width: auto; }
 .product-switch { display: flex; align-items: center; gap: 10px; margin: 12px 8px 0; padding: 9px 12px; border: 1px solid var(--side-hover); border-radius: var(--radius-sm); color: var(--side-text); text-decoration: none; } .product-switch:hover { background: var(--side-hover); }
+.wm-move { display: inline-flex; gap: 6px; align-items: center; }
+.wm-move select { width: auto; padding-block: 4px; }

@@ -127,6 +127,7 @@
   <a class="brand" href="/mail">{{template "logo"}}<span>Email<b>Zit</b></span></a>
   <nav>
     <a href="/mail/webmail" class="{{if eq .Nav "webmail"}}on{{end}}">{{template "icon" "mail"}}{{.T "Webmail"}}</a>
+    <a href="/mail/contacts" class="{{if eq .Nav "contacts"}}on{{end}}">{{template "icon" "users"}}{{.T "Contacts"}}</a>
     <a href="/mail" class="{{if eq .Nav "mail"}}on{{end}}">{{template "icon" "settings"}}{{.T "My mailbox"}}</a>
     <a href="/mail/filters" class="{{if eq .Nav "filters"}}on{{end}}">{{template "icon" "route"}}{{.T "Auto-reply and filters"}}</a>
     <a href="/mail#apps">{{template "icon" "key"}}{{.T "App passwords"}}</a>
@@ -152,7 +153,7 @@
 </div>
 </body>
 </html>{{end}}
-{{define "wmfolders"}}<nav class="wm-folders panel" aria-label="{{.T "Folders"}}">{{range .Data.Folders}}<a href="/mail/webmail?f={{.Name}}" class="{{if eq .Name $.Data.Folder}}on{{end}}"><span>{{if eq .Name "INBOX"}}{{$.T "Inbox"}}{{else if eq .Special `\Sent`}}{{$.T "Sent"}}{{else if eq .Special `\Drafts`}}{{$.T "Drafts"}}{{else if eq .Special `\Junk`}}{{$.T "Spam"}}{{else if eq .Special `\Trash`}}{{$.T "Trash"}}{{else if eq .Special `\Archive`}}{{$.T "Archive"}}{{else}}{{.Name}}{{end}}</span>{{if .Unseen}}<b>{{.Unseen}}</b>{{end}}</a>{{end}}</nav>{{end}}
+{{define "wmfolders"}}<nav class="wm-folders panel" aria-label="{{.T "Folders"}}">{{range .Data.Folders}}<a href="/mail/webmail?f={{.Name}}" class="{{if eq .Name $.Data.Folder}}on{{end}}"><span>{{$.T (folderLabel .)}}</span>{{if .Unseen}}<b>{{.Unseen}}</b>{{end}}</a>{{end}}</nav>{{end}}
 {{define "spamform"}}{{$f := .Data.Spam}}{{if $f}}<form method="post" action="{{$f.Action}}" class="stack wide">
   <section class="panel" id="spam">
     <h2>{{template "icon" "shield"}}{{.T "Spam"}}</h2>
@@ -172,3 +173,4 @@
   <div><button class="primary">{{.T "Save"}}</button></div>
 </form>{{end}}{{end}}
 {{define "spamlevel"}}{{$p := .P}}{{if eq .Row "strict"}}{{$p.T "Strict (more spam caught, sometimes good mail too)"}}{{else if eq .Row "normal"}}{{$p.T "Normal"}}{{else if eq .Row "relaxed"}}{{$p.T "Relaxed (only clear spam)"}}{{else}}{{$p.T "Never (spam stays in the Inbox, marked)"}}{{end}}{{end}}
+{{define "wmmove"}}{{if gt (len .Data.Folders) 1}}<span class="wm-move"><select name="to" aria-label="{{.T "Move to folder"}}">{{range .Data.Folders}}{{if ne .Name $.Data.Folder}}<option value="{{.Name}}">{{$.T (folderLabel .)}}</option>{{end}}{{end}}</select><button class="ghost sm" name="op" value="move">{{template "icon" "folder"}}{{.T "Move"}}</button></span>{{end}}{{end}}

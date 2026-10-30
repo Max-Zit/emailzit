@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/max-zit/emailzit/internal/store"
 	"github.com/max-zit/emailzit/internal/webmail"
 )
 
@@ -62,18 +63,19 @@ func (s *Server) openWebmail(w http.ResponseWriter, r *http.Request) *webmail.Se
 }
 
 type webmailData struct {
-	Folders []webmail.Folder
-	Folder  string
-	List    []webmail.Summary
-	Total   int
-	Page    int
-	Pages   int
-	Q       string
-	Msg     *webmail.Message
-	Body    string // safe HTML of the message; escaped into the srcdoc attribute
-	Compose *webmail.Draft
-	Mode    string
-	Max     int
+	Folders  []webmail.Folder
+	Folder   string
+	List     []webmail.Summary
+	Total    int
+	Page     int
+	Pages    int
+	Q        string
+	Msg      *webmail.Message
+	Body     string // safe HTML of the message; escaped into the srcdoc attribute
+	Compose  *webmail.Draft
+	Contacts []store.Contact // suggestions while writing
+	Mode     string
+	Max      int
 }
 
 func folderOf(r *http.Request) string {
@@ -210,6 +212,10 @@ func (s *Server) handleWebmailCompose(w http.ResponseWriter, r *http.Request) {
 			c.Subject = subj
 		}
 	}
+	if sig, err := s.store.Signature(r.Context(), m.ID); err == nil {
+		d.Compose.Text = withSignature(d.Compose.Text, sig)
+	}
+	d.Contacts, _ = s.store.Contacts(r.Context(), m.ID)
 	p := s.mailPage(r, "Write a message", d)
 	p.Nav = "webmail"
 	s.render(w, r, http.StatusOK, "webmailcompose", p)
@@ -264,12 +270,15 @@ func (s *Server) handleWebmailSend(w http.ResponseWriter, r *http.Request) {
 	if err := ws.Append(ws.FolderByRole(`\Sent`, "Sent"), raw, []string{`\Seen`}); err != nil {
 		s.log.Warn("webmail: copy to Sent", "mailbox", m.Address, "err", err)
 	}
+	s.rememberRecipients(r, m.ID, d)
 	s.auditAs(r, m.Address, "mail.webmail.send", "mailbox:"+m.Address, "message sent to %d recipient(s)", len(rcpts))
 	s.redirect(w, r, "/mail/webmail", "The message was sent.")
 }
 
 func (s *Server) composeError(w http.ResponseWriter, r *http.Request, d *webmail.Draft, msg string) {
-	p := s.mailPage(r, "Write a message", &webmailData{Compose: d, Max: 25})
+	wd := &webmailData{Compose: d, Max: 25}
+	wd.Contacts, _ = s.store.Contacts(r.Context(), mailboxFrom(r).ID)
+	p := s.mailPage(r, "Write a message", wd)
 	p.Nav = "webmail"
 	if strings.HasPrefix(msg, "!") {
 		p.Error = msg[1:] // already translated

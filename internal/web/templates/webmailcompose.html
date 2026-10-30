@@ -6,14 +6,15 @@
   <input type="hidden" name="in_reply_to" value="{{$c.InReplyTo}}">
   <input type="hidden" name="references" value="{{$c.References}}">
   <p class="small muted">{{.T "From"}}: <b>{{if $c.FromName}}{{$c.FromName}} &lt;{{$c.From}}&gt;{{else}}{{$c.From}}{{end}}</b></p>
-  <label>{{.T "To"}}<input name="to" value="{{$c.To}}" required autocapitalize="none" spellcheck="false" autocomplete="email"></label>
+  <label>{{.T "To"}}<input name="to" list="wm-contacts" value="{{$c.To}}" required autocapitalize="none" spellcheck="false" autocomplete="email"></label>
   <div class="cols">
-    <label>Cc <small>{{.T "optional"}}</small><input name="cc" value="{{$c.Cc}}" autocapitalize="none" spellcheck="false"></label>
-    <label>Bcc <small>{{.T "optional"}}</small><input name="bcc" value="{{$c.Bcc}}" autocapitalize="none" spellcheck="false"></label>
+    <label>Cc <small>{{.T "optional"}}</small><input name="cc" list="wm-contacts" value="{{$c.Cc}}" autocapitalize="none" spellcheck="false"></label>
+    <label>Bcc <small>{{.T "optional"}}</small><input name="bcc" list="wm-contacts" value="{{$c.Bcc}}" autocapitalize="none" spellcheck="false"></label>
   </div>
   <label>{{.T "Subject"}}<input name="subject" value="{{$c.Subject}}" maxlength="500"></label>
   <label>{{.T "Message"}}<textarea name="text" rows="16" class="wm-body">{{$c.Text}}</textarea></label>
   <label>{{.T "Attachments"}} <small>{{.T "up to %d MB together" .Data.Max}}</small><input type="file" name="files" multiple></label>
   <div class="row"><button class="primary">{{template "icon" "upload"}}{{.T "Send"}}</button><a class="btn ghost" href="/mail/webmail">{{.T "Cancel"}}</a></div>
 </form>
+  {{if .Data.Contacts}}<datalist id="wm-contacts">{{range .Data.Contacts}}<option value="{{if .Name}}{{.Name}} &lt;{{.Email}}&gt;{{else}}{{.Email}}{{end}}">{{end}}</datalist>{{end}}
 {{end}}

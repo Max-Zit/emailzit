@@ -45,7 +45,7 @@ func TestPublicHandler(t *testing.T) {
 			t.Fatalf("%s: %d", p, w.Code)
 		}
 	}
-	if w := get("GET", "evil/../x", "/"); w.Code != http.StatusNotFound {
-		t.Fatalf("bad host: %d", w.Code)
+	if w := get("GET", "evil.example", "/"); w.Header().Get("Location") != "https://mail.example.net:8444/mail" {
+		t.Fatalf("another Host header: %s", w.Header().Get("Location"))
 	}
 }

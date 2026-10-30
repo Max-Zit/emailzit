@@ -3,7 +3,6 @@ package web
 import (
 	"net"
 	"net/http"
-	"strings"
 )
 
 // PublicHandler serves what the mail domains' own names need on the
@@ -23,11 +22,9 @@ func (s *Server) PublicHandler(panelPort string) http.Handler {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
-		host := r.Host
-		if h, _, err := net.SplitHostPort(host); err == nil {
-			host = h
-		}
-		if strings.ContainsAny(host, "/\\@ ") || host == "" {
+		// always the server's own mail host name, never the Host header
+		host := s.MailConfig(r.Context()).Hostname
+		if host == "" {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}

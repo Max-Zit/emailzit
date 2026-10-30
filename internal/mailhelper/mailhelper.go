@@ -49,6 +49,10 @@ type Request struct {
 	// apply
 	Hostname     string `json:"hostname,omitempty"`
 	MaxMessageMB int    `json:"max_message_mb,omitempty"`
+	// apply: smart host for all outgoing mail ("[host]:port") and its login
+	Relay         string `json:"relay,omitempty"`
+	RelayUser     string `json:"relay_user,omitempty"`
+	RelayPassword string `json:"relay_password,omitempty"`
 	// customer, trash
 	Customer string `json:"customer,omitempty"` // UUID
 	UID      int    `json:"uid,omitempty"`
@@ -106,6 +110,9 @@ func (r *Request) Validate() error {
 		}
 		if r.Hostname != "" && (!domainRE.MatchString(r.Hostname) || len(r.Hostname) > 253) {
 			return errors.New("invalid host name")
+		}
+		if len(r.Relay) > 300 || len(r.RelayUser) > 256 || len(r.RelayPassword) > 256 || (r.RelayUser != "" && r.Relay == "") {
+			return errors.New("invalid relay")
 		}
 		return nil
 	case ActionCustomer:

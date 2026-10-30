@@ -13,7 +13,18 @@ type HelperMail struct{ C *mailhelper.Client }
 
 // Apply writes the server-wide configuration.
 func (h *HelperMail) Apply(ctx context.Context, m MailSettings) error {
-	return h.C.Call(ctx, mailhelper.Request{Action: mailhelper.ActionApply, Hostname: m.Hostname, MaxMessageMB: m.MaxMessageMB})
+	req := mailhelper.Request{Action: mailhelper.ActionApply, Hostname: m.Hostname, MaxMessageMB: m.MaxMessageMB}
+	if m.RelayHost != "" {
+		relay, err := m.relay()
+		if err != nil {
+			return err
+		}
+		req.Relay = relay
+		if m.RelayUser != "" && m.relayPassword != "" {
+			req.RelayUser, req.RelayPassword = m.RelayUser, m.relayPassword
+		}
+	}
+	return h.C.Call(ctx, req)
 }
 
 // CustomerCreated makes the customer's mail directory.

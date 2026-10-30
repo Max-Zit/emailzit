@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
+	"net/netip"
 	"strconv"
 	"strings"
 
@@ -47,6 +49,9 @@ const settingMail = "mail"
 
 // MailSettings are the server-wide mail settings.
 type MailSettings struct {
+	// relayPassword is the smart host's password in plain text, only while
+	// the configuration is handed to the helper.
+	relayPassword string
 	// Hostname is the server's mail name (HELO, certificates, what mail
 	// programs connect to), e.g. mail.example.com.
 	Hostname string `json:"hostname"`
@@ -62,6 +67,12 @@ type MailSettings struct {
 	// AllowPrivateImports lets mail be imported from servers in private
 	// networks (company servers, test labs); off on hosting servers.
 	AllowPrivateImports bool `json:"allow_private_imports"`
+	// RelayHost sends all outgoing mail through the provider's smart host
+	// (host or host:port; 587 when no port is given); empty = deliver directly.
+	RelayHost string `json:"relay_host,omitempty"`
+	RelayUser string `json:"relay_user,omitempty"`
+	// RelayPassword is sealed with the server key.
+	RelayPassword string `json:"relay_password,omitempty"`
 }
 
 func defaultMail() MailSettings {
@@ -80,6 +91,17 @@ func (m *MailSettings) Validate() error {
 	}
 	if m.MaxMessageMB < 1 || m.MaxMessageMB > 200 {
 		return errors.New("the largest message must be 1–200 MB")
+	}
+	m.RelayHost, m.RelayUser = strings.ToLower(strings.TrimSpace(m.RelayHost)), strings.TrimSpace(m.RelayUser)
+	if m.RelayHost != "" {
+		if _, err := m.relay(); err != nil {
+			return err
+		}
+	} else {
+		m.RelayUser, m.RelayPassword = "", ""
+	}
+	if len(m.RelayUser) > 256 || strings.ContainsAny(m.RelayUser, " \t\r\n:") {
+		return errors.New("the user name of the smart host is not valid")
 	}
 	return nil
 }
@@ -107,7 +129,19 @@ func (s *Server) showMailSettings(w http.ResponseWriter, r *http.Request, status
 
 func (s *Server) handleMailSettingsSave(w http.ResponseWriter, r *http.Request) {
 	m := MailSettings{Hostname: r.FormValue("hostname"), RequireVerification: r.FormValue("require_verification") == "1",
-		Dedicated: r.FormValue("dedicated") == "1", MaxMessageMB: formInt(r, "max_message_mb"), AllowPrivateImports: r.FormValue("allow_private_imports") == "1"}
+		Dedicated: r.FormValue("dedicated") == "1", MaxMessageMB: formInt(r, "max_message_mb"), AllowPrivateImports: r.FormValue("allow_private_imports") == "1",
+		RelayHost: r.FormValue("relay_host"), RelayUser: r.FormValue("relay_user")}
+	// the saved password stays unless a new one is entered (for the same login)
+	old := s.MailConfig(r.Context())
+	if p := r.FormValue("relay_password"); p != "" {
+		if len(p) > 256 || strings.ContainsAny(p, "\r\n\x00") {
+			s.showMailSettings(w, r, http.StatusBadRequest, m, "The password of the smart host is not valid.")
+			return
+		}
+		m.RelayPassword = s.store.SealSecret("mail.relay", p)
+	} else if strings.TrimSpace(m.RelayUser) == old.RelayUser {
+		m.RelayPassword = old.RelayPassword
+	}
 	if err := m.Validate(); err != nil {
 		s.showMailSettings(w, r, http.StatusBadRequest, m, err.Error())
 		return
@@ -116,7 +150,7 @@ func (s *Server) handleMailSettingsSave(w http.ResponseWriter, r *http.Request) 
 		s.serverError(w, r, err)
 		return
 	}
-	s.audit(r, "settings.mail", "settings", "host name %q, verification %v, dedicated %v, max message %d MB", m.Hostname, m.RequireVerification, m.Dedicated, m.MaxMessageMB)
+	s.audit(r, "settings.mail", "settings", "host name %q, verification %v, dedicated %v, max message %d MB, smart host %q (login %q)", m.Hostname, m.RequireVerification, m.Dedicated, m.MaxMessageMB, m.RelayHost, m.RelayUser)
 	s.applyMail(r)
 	go s.publishAllDNS(context.WithoutCancel(r.Context()))
 	s.redirect(w, r, "/settings/mail", "Saved.")
@@ -128,7 +162,11 @@ func (s *Server) applyMail(r *http.Request) {
 	if s.Mail == nil {
 		return
 	}
-	if err := s.Mail.Apply(r.Context(), s.MailConfig(r.Context())); err != nil {
+	m := s.MailConfig(r.Context())
+	if m.RelayPassword != "" {
+		m.relayPassword, _ = s.store.OpenSecret("mail.relay", m.RelayPassword)
+	}
+	if err := s.Mail.Apply(r.Context(), m); err != nil {
 		s.log.Error("applying the mail configuration failed", "err", err)
 	}
 }
@@ -923,4 +961,22 @@ func (s *Server) handleDomainDKIM(w http.ResponseWriter, r *http.Request) {
 	s.audit(r, "domain.dkim", "domain:"+dom.Name, "new DKIM key, selector %s", k.Selector)
 	s.publishDNS(r.Context(), dom.ID, false, nil)
 	s.redirect(w, r, "/domains/"+dom.ID, "New DKIM key created. Put the new DKIM record at the DNS provider; until then receivers cannot check the signature.")
+}
+
+// relay is the smart host as Postfix writes it ("[host]:port").
+func (m *MailSettings) relay() (string, error) {
+	host, port := m.RelayHost, "587"
+	if h, p, err := net.SplitHostPort(m.RelayHost); err == nil {
+		host, port = h, p
+	}
+	n, err := strconv.Atoi(port)
+	if err != nil || n < 1 || n > 65535 {
+		return "", errors.New("the port of the smart host is not valid")
+	}
+	if _, err := netip.ParseAddr(host); err != nil {
+		if h, err := store.NormalizeDomain(host); err != nil || h != host {
+			return "", errors.New("the smart host must be a host name or an address, optionally with a port (smtp.example.com:587)")
+		}
+	}
+	return "[" + host + "]:" + port, nil
 }

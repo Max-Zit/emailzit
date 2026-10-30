@@ -87,8 +87,19 @@ emailzit_policy = check_policy_service unix:{{.PolicySocket}}
 {{- end}}
 {{- if .Relay}}
 
-# ---- all outgoing mail through a relay (lab or smart host)
+# ---- all outgoing mail through a relay (smart host of the provider, or a lab sink)
 relayhost = {{.Relay}}
+{{- if .RelayUser}}
+smtp_sasl_auth_enable = yes
+smtp_sasl_password_maps = texthash:{{.RelayPasswordFile}}
+smtp_sasl_security_options = noanonymous
+smtp_sasl_tls_security_options = noanonymous
+# the login only ever goes over TLS
+smtp_tls_security_level = encrypt
+{{- if .RelayWrapper}}
+smtp_tls_wrappermode = yes
+{{- end}}
+{{- end}}
 {{- end}}
 {{- if .Rspamd}}
 

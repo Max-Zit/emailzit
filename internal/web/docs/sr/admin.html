@@ -10,6 +10,7 @@
 <ul>
   <li><b>Ime hosta</b>: puno ime servera (npr. <code>mail.example.com</code>). Mora da pokazuje na javnu adresu servera, a ta adresa treba da pokazuje nazad na njega (PTR zapis kod vašeg hosting provajdera); inače drugi serveri vašu poštu smatraju spamom.</li>
   <li><b>Najveća poruka</b> za dolaznu i odlaznu poštu.</li>
+  <li><b>Smart host</b>: samo kada provajder blokira port 25 ili želi svu poštu preko svog servera — svaka odlazna poruka tada ide tom serveru (podrazumevano port 587 sa STARTTLS, 465 sa TLS-om od početka). Sa korisničkim imenom prijava uvek ide preko TLS-a; lozinka se čuva zapečaćena u panelu i kao fajl koji samo root čita za Postfix.</li>
   <li><b>Verifikacija domena</b> i <b>namenski server</b>: vidi Domeni, mailboxi i aliasi.</li>
 </ul>
 <h2>Kako je server napravljen</h2>

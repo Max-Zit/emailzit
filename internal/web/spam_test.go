@@ -56,3 +56,25 @@ func TestSpamSettings(t *testing.T) {
 		t.Fatal("unknown level stored")
 	}
 }
+
+func TestMailSettingsRelay(t *testing.T) {
+	for in, want := range map[string]string{"smtp.example.com": "[smtp.example.com]:587", "SMTP.example.com:465": "[smtp.example.com]:465", "192.0.2.1:25": "[192.0.2.1]:25"} {
+		m := MailSettings{MaxMessageMB: 10, RelayHost: in}
+		if err := m.Validate(); err != nil {
+			t.Fatal(in, err)
+		}
+		if got, _ := m.relay(); got != want {
+			t.Errorf("%s: %s", in, got)
+		}
+	}
+	for _, bad := range []string{"smtp.example.com:99999", "[x]:25", "smtp example.com", "smtp.example.com\nrelayhost"} {
+		m := MailSettings{MaxMessageMB: 10, RelayHost: bad}
+		if err := m.Validate(); err == nil {
+			t.Errorf("accepted %q", bad)
+		}
+	}
+	m := MailSettings{MaxMessageMB: 10, RelayHost: "smtp.example.com", RelayUser: "a b"}
+	if m.Validate() == nil {
+		t.Error("user with a space accepted")
+	}
+}

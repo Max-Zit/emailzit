@@ -16,6 +16,16 @@
     <label class="check"><input type="checkbox" name="dedicated" value="1" {{if .Data.Dedicated}}checked{{end}}>{{.T "Dedicated server: it belongs to one customer, domains need no verification"}}</label>
     <label class="check"><input type="checkbox" name="allow_private_imports" value="1" {{if .Data.AllowPrivateImports}}checked{{end}}>{{.T "Allow imports of mail from servers in private networks (company networks; leave off on hosting servers)"}}</label>
   </section>
+  <section class="panel" id="relay">
+    <h2>{{template "icon" "route"}}{{.T "Outgoing mail through a smart host"}}</h2>
+    <p class="muted">{{.T "Only when the provider blocks port 25 or wants all mail through its own server: then EmailZit hands every outgoing message to that server instead of delivering it itself. Leave empty to deliver directly."}}</p>
+    <label>{{.T "Smart host"}}<input name="relay_host" value="{{.Data.RelayHost}}" spellcheck="false" autocapitalize="none" class="mono" placeholder="smtp.provider.example:587"><small>{{.T "Host name or address, optionally with the port (587 when none is given; 465 for TLS from the start)."}}</small></label>
+    <div class="cols">
+      <label>{{.T "User name"}} <small>{{.T "optional"}}</small><input name="relay_user" value="{{.Data.RelayUser}}" autocomplete="off" spellcheck="false" class="mono"></label>
+      <label>{{.T "Password"}}<input type="password" name="relay_password" autocomplete="new-password" placeholder="{{if .Data.RelayPassword}}{{.T "saved; leave empty to keep it"}}{{end}}"></label>
+    </div>
+    <small class="muted">{{.T "With a user name the login always goes over TLS; the password is stored encrypted and is readable on the server only by root."}}</small>
+  </section>
   <div><button class="primary">{{.T "Save"}}</button></div>
 </form>
 </div>

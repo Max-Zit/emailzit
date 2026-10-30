@@ -18,6 +18,7 @@ import (
 
 	"github.com/max-zit/emailzit/internal/backup"
 	"github.com/max-zit/emailzit/internal/logfile"
+	"github.com/max-zit/emailzit/internal/mailconf"
 	"github.com/max-zit/emailzit/internal/mailhelper"
 	"github.com/max-zit/emailzit/internal/store"
 )
@@ -57,9 +58,12 @@ func runMailHelper(ctx context.Context, dbURL, relay string) error {
 		var m struct {
 			Hostname     string `json:"hostname"`
 			MaxMessageMB int    `json:"max_message_mb"`
+			RelayHost    string `json:"relay_host"`
+			RelayUser    string `json:"relay_user"`
 		}
 		if json.Unmarshal(raw, &m) == nil {
 			req.Hostname = m.Hostname
+			req.Relay, req.RelayUser, req.RelayPassword = startRelay(m.RelayHost, m.RelayUser)
 			if m.MaxMessageMB > 0 {
 				req.MaxMessageMB = m.MaxMessageMB
 			}
@@ -143,4 +147,33 @@ func restoreBackup(ctx context.Context, file, passFile, dataDir, dbURL string) e
 	fmt.Printf("Restored the backup of %s (EmailZit %s, %d files). Start the services now.\n",
 		m.Created.Local().Format("2006-01-02 15:04"), m.ServerVersion, len(m.Files))
 	return nil
+}
+
+// startRelay is the smart host for the configuration written at start: host
+// and user from the saved settings, the password from the helper's own
+// root-only file (the panel holds it sealed).
+func startRelay(host, user string) (relay, u, pass string) {
+	if host == "" {
+		return "", "", ""
+	}
+	port := "587"
+	if h, p, err := net.SplitHostPort(host); err == nil {
+		host, port = h, p
+	}
+	relay = "[" + host + "]:" + port
+	if user == "" {
+		return relay, "", ""
+	}
+	b, err := os.ReadFile(mailconf.RelayPasswordFile)
+	if err != nil {
+		return relay, "", "" // no login known: Postfix tries without
+	}
+	for _, l := range strings.Split(string(b), "\n") {
+		if f := strings.SplitN(l, " ", 2); len(f) == 2 && f[0] == relay {
+			if uu, pp, ok := strings.Cut(f[1], ":"); ok && uu == user {
+				return relay, uu, pp
+			}
+		}
+	}
+	return relay, "", ""
 }

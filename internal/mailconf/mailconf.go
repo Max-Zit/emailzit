@@ -31,6 +31,9 @@ type Settings struct {
 	// Relay sends all outgoing mail through this host ([host]:port);
 	// empty = deliver directly (lab: Mailpit).
 	Relay string
+	// RelayUser and RelayPassword sign in at the relay (texthash file, root
+	// only, TLS required).
+	RelayUser, RelayPassword string
 	// PolicySocket is the EmailZit policy service (sending limits);
 	// empty = none yet.
 	PolicySocket string // relative to the queue directory, e.g. emailzit/policy
@@ -49,10 +52,11 @@ type File struct {
 }
 
 var (
-	hostRE  = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$`)
-	pathRE  = regexp.MustCompile(`^/[A-Za-z0-9._/-]+$`)
-	relayRE = regexp.MustCompile(`^\[[a-z0-9.:-]+\](:[0-9]{1,5})?$`)
-	dbRE    = regexp.MustCompile(`^[a-z_][a-z0-9_]{0,62}$`)
+	hostRE      = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$`)
+	pathRE      = regexp.MustCompile(`^/[A-Za-z0-9._/-]+$`)
+	relayRE     = regexp.MustCompile(`^\[[a-z0-9.:-]+\](:[0-9]{1,5})?$`)
+	relayCredRE = regexp.MustCompile(`^[^\s:]{1,256}$`)
+	dbRE        = regexp.MustCompile(`^[a-z_][a-z0-9_]{0,62}$`)
 	// relative to the Postfix queue directory (smtpd runs chrooted there)
 	relPathRE = regexp.MustCompile(`^[a-z]+/[a-z-]+$`)
 	tokenRE   = regexp.MustCompile(`^[0-9a-f]{32,128}$`)
@@ -71,6 +75,8 @@ func (s *Settings) Validate() error {
 		return errors.New("invalid certificate path")
 	case s.Relay != "" && !relayRE.MatchString(s.Relay):
 		return errors.New("invalid relay host")
+	case s.RelayUser != "" && (s.Relay == "" || !relayCredRE.MatchString(s.RelayUser) || s.RelayPassword == "" || len(s.RelayPassword) > 256 || strings.ContainsAny(s.RelayPassword, "\r\n\x00")):
+		return errors.New("invalid relay login")
 	case s.AuthPolicyToken != "" && !tokenRE.MatchString(s.AuthPolicyToken):
 		return errors.New("invalid auth policy token")
 	case s.PolicySocket != "" && !relPathRE.MatchString(s.PolicySocket):
@@ -84,7 +90,9 @@ const (
 	PostfixMain   = "/etc/postfix/main.cf"
 	PostfixMaster = "/etc/postfix/master.cf"
 	PostfixMaps   = "/etc/postfix/emailzit"
-	DovecotConf   = "/etc/dovecot/dovecot.conf"
+	// RelayPasswordFile holds the smart host login (root only).
+	RelayPasswordFile = "/etc/postfix/emailzit/relay_passwd"
+	DovecotConf       = "/etc/dovecot/dovecot.conf"
 )
 
 // Render returns every file for the settings.
@@ -94,8 +102,10 @@ func Render(s Settings) ([]File, error) {
 	}
 	data := struct {
 		Settings
-		MaxBytes int
-	}{s, s.MaxMessageMB << 20}
+		MaxBytes          int
+		RelayPasswordFile string
+		RelayWrapper      bool // port 465: TLS from the start
+	}{s, s.MaxMessageMB << 20, RelayPasswordFile, strings.HasSuffix(s.Relay, ":465")}
 	out := []File{
 		{Path: PostfixMain, Mode: 0o644, Content: nil},
 		{Path: PostfixMaster, Mode: 0o644},
@@ -123,6 +133,11 @@ func Render(s Settings) ([]File, error) {
 		fmt.Fprintf(&b, "# EmailZit: written by the root helper; changes are overwritten.\nhosts = unix:/var/run/postgresql\nuser = postfix\npassword =\ndbname = %s\nquery = %s\n", s.DBName, m.query)
 		// postfix reads them as root before dropping privileges, 0640
 		out = append(out, File{Path: PostfixMaps + "/" + m.name + ".cf", Mode: 0o640, Content: b.Bytes()})
+	}
+	if s.RelayUser != "" {
+		// the relay's login, readable by root only; Postfix reads it before
+		// dropping privileges
+		out = append(out, File{Path: RelayPasswordFile, Mode: 0o600, Content: []byte("# EmailZit: written by the root helper.\n" + s.Relay + " " + s.RelayUser + ":" + s.RelayPassword + "\n")})
 	}
 	if s.Rspamd {
 		rf, err := rspamdFiles()

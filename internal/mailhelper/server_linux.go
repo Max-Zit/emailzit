@@ -220,8 +220,16 @@ func (s *Server) apply(ctx context.Context, r Request) error {
 			host += ".localdomain"
 		}
 	}
+	// the lab's relay (command line) wins over the panel's smart host
+	relay, relayUser, relayPass := r.Relay, r.RelayUser, r.RelayPassword
+	if s.Relay != "" {
+		relay, relayUser, relayPass = s.Relay, "", ""
+	}
+	if relayUser == "" {
+		_ = os.Remove(mailconf.RelayPasswordFile)
+	}
 	files, err := mailconf.Render(mailconf.Settings{Hostname: host, MaxMessageMB: r.MaxMessageMB, DBName: s.DBName,
-		CertFile: s.CertFile, KeyFile: s.KeyFile, Relay: s.Relay, PolicySocket: s.policySocket(), Rspamd: rspamdInstalled(),
+		CertFile: s.CertFile, KeyFile: s.KeyFile, Relay: relay, RelayUser: relayUser, RelayPassword: relayPass, PolicySocket: s.policySocket(), Rspamd: rspamdInstalled(),
 		AuthPolicyToken: s.authPolicyToken()})
 	if err != nil {
 		return err

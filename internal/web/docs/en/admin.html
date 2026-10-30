@@ -10,6 +10,7 @@
 <ul>
   <li><b>Host name</b>: the full name of the server (e.g. <code>mail.example.com</code>). It must resolve to the server's public address, and that address should resolve back to it (PTR record at your hosting provider); otherwise other servers treat your mail as spam.</li>
   <li><b>Largest message</b> for incoming and outgoing mail.</li>
+  <li><b>Smart host</b>: only when the provider blocks port 25 or wants all mail through its own server — every outgoing message then goes to that server (port 587 with STARTTLS by default, 465 with TLS from the start). With a user name the login always goes over TLS; the password is stored sealed in the panel and as a root-only file for Postfix.</li>
   <li><b>Domain verification</b> and <b>dedicated server</b>: see Domains, mailboxes and aliases.</li>
 </ul>
 <h2>How the server is built</h2>

@@ -91,7 +91,7 @@ const (
 	PostfixMaster = "/etc/postfix/master.cf"
 	PostfixMaps   = "/etc/postfix/emailzit"
 	// RelayPasswordFile holds the smart host login (root only).
-	RelayPasswordFile = "/etc/postfix/emailzit/relay_passwd"
+	RelayPasswordFile = "/etc/postfix/emailzit/relay_passwd" // #nosec G101 -- a file path, not a password
 	DovecotConf       = "/etc/dovecot/dovecot.conf"
 )
 

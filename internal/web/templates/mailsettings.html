@@ -9,6 +9,8 @@
     <h2>{{template "icon" "mail"}}{{.T "Mail server"}}</h2>
     <label>{{.T "Host name"}}<input name="hostname" value="{{.Data.Hostname}}" spellcheck="false" autocapitalize="none" class="mono" placeholder="mail.example.com"><small>{{.T "The full name of this server: it greets other mail servers with it, mail programs connect to it, and the MX records of all domains point to it. It must resolve to this server's public address, and that address should resolve back to it (PTR record at your provider)."}}</small></label>
     <label>{{.T "Largest message (MB)"}}<input type="number" name="max_message_mb" value="{{.Data.MaxMessageMB}}" min="1" max="200" class="num-sm"></label>
+    <label class="check"><input type="checkbox" name="ipv4_only" value="1" {{if .Data.IPv4Only}}checked{{end}}>{{.T "Send mail to other servers over IPv4 only"}}</label>
+    <small class="muted">{{.T "For a server with IPv6 whose provider cannot set a PTR record for the IPv6 address: Gmail, Outlook and others refuse mail from such addresses. Receiving over IPv6 keeps working."}}</small>
   </section>
   <section class="panel">
     <h2>{{template "icon" "shield"}}{{.T "Domains of customers"}}</h2>
@@ -32,6 +34,23 @@
     <small class="muted">{{.T "With a user name the login always goes over TLS; the password is stored encrypted and is readable on the server only by root."}}</small>
   </section>
   <div><button class="primary">{{.T "Save"}}</button></div>
+</form>
+<form method="post" action="/settings/mail/check" class="panel stack wide mt" id="hostcheck">
+  <div class="panelhead"><h2>{{template "icon" "globe"}}{{.T "Host name and PTR records"}}</h2><button class="secondary">{{template "icon" "refresh"}}{{.T "Check"}}</button></div>
+  <p class="muted">{{.T "The host name must point at the addresses this server sends from, and those addresses must point back to the host name (PTR record, set by the provider of the address). Otherwise big receivers put the mail into spam or refuse it."}}</p>
+  {{with .Data.Check}}
+  {{if .Err}}<p class="notice-warn">{{$.T .Err}}</p>{{else}}<p class="small">{{.Hostname}} → {{range $i, $a := .Resolved}}{{if $i}}, {{end}}<span class="mono">{{$a}}</span>{{end}}</p>{{end}}
+  <div class="table-wrap"><table>
+    <thead><tr><th>{{$.T "Address of this server"}}</th><th>{{$.T "Host name points here"}}</th><th>PTR</th></tr></thead>
+    <tbody>{{range .Addrs}}<tr>
+      <td class="mono">{{.IP}}{{if not .Public}} <small class="muted">{{$.T "private"}}</small>{{end}}</td>
+      <td>{{if .Forward}}<span class="badge ok"><i></i>{{$.T "yes"}}</span>{{else}}<span class="badge {{if .Public}}bad{{else}}warn{{end}}"><i></i>{{$.T "no"}}</span>{{end}}</td>
+      <td>{{if .PTROK}}<span class="badge ok"><i></i>{{range .PTR}}{{.}} {{end}}</span>{{else if .PTR}}<span class="badge {{if .Public}}bad{{else}}warn{{end}}"><i></i>{{range .PTR}}{{.}} {{end}}</span>{{else}}<span class="badge {{if .Public}}bad{{else}}warn{{end}}"><i></i>{{$.T "none"}}</span>{{end}}</td>
+    </tr>{{else}}<tr><td colspan="3" class="muted">{{$.T "This server has no route to other servers."}}</td></tr>{{end}}</tbody>
+  </table></div>
+  {{range .Addrs}}{{if not .Public}}<small class="muted">{{$.T "A private address: the server is behind NAT (or in a test network). Check the public address of the router instead: the host name must point at it and its PTR record must name the host."}}</small>{{break}}{{end}}{{end}}
+  {{if .IPv6Bad}}<p class="notice-warn">{{if $.Data.IPv4Only}}{{$.T "The IPv6 address does not match the host name both ways; mail is sent over IPv4 only, as set above."}}{{else}}{{$.T "The IPv6 address does not match the host name both ways. Ask the provider for a PTR record of the IPv6 address and add an AAAA record for the host name, or switch on \"Send mail to other servers over IPv4 only\" above."}}{{end}}</p>{{end}}
+  {{end}}
 </form>
 </div>
 </div>

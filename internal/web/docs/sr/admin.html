@@ -8,7 +8,8 @@
 <p>Svaki nalog se prijavljuje lozinkom i aplikacijom za autentifikaciju. <b>Dnevnik revizije</b> beleži svaku promenu; svaki zapis je hešom vezan za prethodni, pa se kasnije izmene dnevnika otkrivaju.</p>
 <h2>Podešavanja mail servera</h2>
 <ul>
-  <li><b>Ime hosta</b>: puno ime servera (npr. <code>mail.example.com</code>). Mora da pokazuje na javnu adresu servera, a ta adresa treba da pokazuje nazad na njega (PTR zapis kod vašeg hosting provajdera); inače drugi serveri vašu poštu smatraju spamom.</li>
+  <li><b>Ime hosta</b>: puno ime servera (npr. <code>mail.example.com</code>). Mora da pokazuje na javnu adresu servera, a ta adresa treba da pokazuje nazad na njega (PTR zapis kod vašeg hosting provajdera); inače drugi serveri vašu poštu smatraju spamom. <b>Provera</b> pod <b>Ime hosta i PTR zapisi</b> prikazuje za svaku adresu sa koje server šalje (IPv4 i IPv6) da li ime hosta pokazuje na nju i da li njen PTR zapis pokazuje nazad.</li>
+  <li><b>Šalji poštu drugim serverima samo preko IPv4</b>: za server sa IPv6 čiji provajder ne može da postavi PTR zapis za IPv6 adresu (Gmail i Outlook odbijaju takvu poštu). Prijem preko IPv6 i dalje radi.</li>
   <li><b>Najveća poruka</b> za dolaznu i odlaznu poštu.</li>
   <li><b>Provera virusa</b>: ClamAV proverava svaku poruku i zaražena pošta se odbija. Uključivanje samo instalira ClamAV (oko 1 GB memorije); provera počinje kada se preuzmu potpisi virusa, nekoliko minuta kasnije. Isključivanje ponovo zaustavlja ClamAV.</li>
   <li><b>Smart host</b>: samo kada provajder blokira port 25 ili želi svu poštu preko svog servera — svaka odlazna poruka tada ide tom serveru (podrazumevano port 587 sa STARTTLS, 465 sa TLS-om od početka). Sa korisničkim imenom prijava uvek ide preko TLS-a; lozinka se čuva zapečaćena u panelu i kao fajl koji samo root čita za Postfix.</li>

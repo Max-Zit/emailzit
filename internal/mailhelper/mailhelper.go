@@ -54,7 +54,8 @@ type Request struct {
 	Relay         string `json:"relay,omitempty"`
 	RelayUser     string `json:"relay_user,omitempty"`
 	RelayPassword string `json:"relay_password,omitempty"`
-	ClamAV        bool   `json:"clamav,omitempty"` // virus scan on
+	ClamAV        bool   `json:"clamav,omitempty"`    // virus scan on
+	IPv4Only      bool   `json:"ipv4_only,omitempty"` // send to other servers over IPv4 only
 	// customer, trash
 	Customer string `json:"customer,omitempty"` // UUID
 	UID      int    `json:"uid,omitempty"`

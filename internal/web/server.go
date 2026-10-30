@@ -333,6 +333,7 @@ func (s *Server) Handler() http.Handler {
 	})
 	admin("GET /settings/mail", s.handleMailSettings)
 	admin("POST /settings/mail", s.handleMailSettingsSave)
+	admin("POST /settings/mail/check", s.handleMailSettingsCheck)
 	admin("GET /settings/certificate", s.handleCertificate)
 	admin("POST /settings/certificate", s.handleCertificateSave)
 	admin("GET /settings/backup", s.handleBackupSettings)

@@ -44,6 +44,9 @@ type Settings struct {
 	Rspamd bool
 	// ClamAV is installed and switched on: Rspamd sends every message to it.
 	ClamAV bool
+	// IPv4Only: mail to other servers goes over IPv4 only (the server has
+	// IPv6 but its address has no PTR record; big receivers refuse such mail).
+	IPv4Only bool
 }
 
 // File is one rendered file.

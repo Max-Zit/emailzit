@@ -233,7 +233,7 @@ func (s *Server) apply(ctx context.Context, r Request) error {
 	}
 	clam := s.clamAV(ctx, r)
 	files, err := mailconf.Render(mailconf.Settings{Hostname: host, MaxMessageMB: r.MaxMessageMB, DBName: s.DBName,
-		CertFile: s.CertFile, KeyFile: s.KeyFile, Relay: relay, RelayUser: relayUser, RelayPassword: relayPass, ClamAV: clam, PolicySocket: s.policySocket(), Rspamd: rspamdInstalled(),
+		CertFile: s.CertFile, KeyFile: s.KeyFile, Relay: relay, RelayUser: relayUser, RelayPassword: relayPass, ClamAV: clam, IPv4Only: r.IPv4Only, PolicySocket: s.policySocket(), Rspamd: rspamdInstalled(),
 		AuthPolicyToken: s.authPolicyToken()})
 	if err != nil {
 		return err

@@ -71,6 +71,9 @@ type MailSettings struct {
 	// ClamAV scans every message for viruses (installed by the helper when
 	// switched on; needs about 1 GB of memory).
 	ClamAV bool `json:"clamav,omitempty"`
+	// IPv4Only sends mail to other servers over IPv4 only (for a server
+	// whose IPv6 address has no PTR record at the provider).
+	IPv4Only bool `json:"ipv4_only,omitempty"`
 	// RelayHost sends all outgoing mail through the provider's smart host
 	// (host or host:port; 587 when no port is given); empty = deliver directly.
 	RelayHost string `json:"relay_host,omitempty"`
@@ -124,7 +127,7 @@ func (s *Server) handleMailSettings(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) showMailSettings(w http.ResponseWriter, r *http.Request, status int, m MailSettings, errMsg string) {
-	p := &Page{Title: "Mail server", Nav: "settings", Data: m}
+	p := &Page{Title: "Mail server", Nav: "settings", Data: &mailSettingsData{MailSettings: m}}
 	if errMsg != "" {
 		p.Error = translate(s.lang(r, userFrom(r)), errMsg)
 	}
@@ -133,7 +136,7 @@ func (s *Server) showMailSettings(w http.ResponseWriter, r *http.Request, status
 
 func (s *Server) handleMailSettingsSave(w http.ResponseWriter, r *http.Request) {
 	m := MailSettings{Hostname: r.FormValue("hostname"), RequireVerification: r.FormValue("require_verification") == "1",
-		Dedicated: r.FormValue("dedicated") == "1", MaxMessageMB: formInt(r, "max_message_mb"), AllowPrivateImports: r.FormValue("allow_private_imports") == "1", ClamAV: r.FormValue("clamav") == "1",
+		Dedicated: r.FormValue("dedicated") == "1", MaxMessageMB: formInt(r, "max_message_mb"), AllowPrivateImports: r.FormValue("allow_private_imports") == "1", ClamAV: r.FormValue("clamav") == "1", IPv4Only: r.FormValue("ipv4_only") == "1",
 		RelayHost: r.FormValue("relay_host"), RelayUser: r.FormValue("relay_user")}
 	// the saved password stays unless a new one is entered (for the same login)
 	old := s.MailConfig(r.Context())
@@ -154,7 +157,7 @@ func (s *Server) handleMailSettingsSave(w http.ResponseWriter, r *http.Request) 
 		s.serverError(w, r, err)
 		return
 	}
-	s.audit(r, "settings.mail", "settings", "host name %q, verification %v, dedicated %v, max message %d MB, smart host %q (login %q), virus scan %v", m.Hostname, m.RequireVerification, m.Dedicated, m.MaxMessageMB, m.RelayHost, m.RelayUser, m.ClamAV)
+	s.audit(r, "settings.mail", "settings", "host name %q, verification %v, dedicated %v, max message %d MB, smart host %q (login %q), virus scan %v, IPv4 only %v", m.Hostname, m.RequireVerification, m.Dedicated, m.MaxMessageMB, m.RelayHost, m.RelayUser, m.ClamAV, m.IPv4Only)
 	s.applyMail(r)
 	go s.publishAllDNS(context.WithoutCancel(r.Context()))
 	s.redirect(w, r, "/settings/mail", "Saved.")

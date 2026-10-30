@@ -8,7 +8,8 @@
 <p>Every account signs in with a password and an authenticator app. The <b>audit log</b> records every change; each entry is chained to the previous one by a hash, so later edits of the log are detected.</p>
 <h2>Mail server settings</h2>
 <ul>
-  <li><b>Host name</b>: the full name of the server (e.g. <code>mail.example.com</code>). It must resolve to the server's public address, and that address should resolve back to it (PTR record at your hosting provider); otherwise other servers treat your mail as spam.</li>
+  <li><b>Host name</b>: the full name of the server (e.g. <code>mail.example.com</code>). It must resolve to the server's public address, and that address should resolve back to it (PTR record at your hosting provider); otherwise other servers treat your mail as spam. <b>Check</b> under <b>Host name and PTR records</b> shows, for every address the server sends from (IPv4 and IPv6), whether the host name points at it and its PTR record points back.</li>
+  <li><b>Send mail to other servers over IPv4 only</b>: for a server with IPv6 whose provider cannot set a PTR record for the IPv6 address (Gmail and Outlook refuse such mail). Receiving over IPv6 keeps working.</li>
   <li><b>Largest message</b> for incoming and outgoing mail.</li>
   <li><b>Virus scan</b>: ClamAV checks every message and infected mail is refused. Switching it on installs ClamAV by itself (about 1 GB of memory); the scan starts when the virus signatures are downloaded, a few minutes later. Switching it off stops ClamAV again.</li>
   <li><b>Smart host</b>: only when the provider blocks port 25 or wants all mail through its own server — every outgoing message then goes to that server (port 587 with STARTTLS by default, 465 with TLS from the start). With a user name the login always goes over TLS; the password is stored sealed in the panel and as a root-only file for Postfix.</li>

@@ -13,7 +13,7 @@ type HelperMail struct{ C *mailhelper.Client }
 
 // Apply writes the server-wide configuration.
 func (h *HelperMail) Apply(ctx context.Context, m MailSettings) error {
-	req := mailhelper.Request{Action: mailhelper.ActionApply, Hostname: m.Hostname, MaxMessageMB: m.MaxMessageMB, ClamAV: m.ClamAV}
+	req := mailhelper.Request{Action: mailhelper.ActionApply, Hostname: m.Hostname, MaxMessageMB: m.MaxMessageMB, ClamAV: m.ClamAV, IPv4Only: m.IPv4Only}
 	if m.RelayHost != "" {
 		relay, err := m.relay()
 		if err != nil {

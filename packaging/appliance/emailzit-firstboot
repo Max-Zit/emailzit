@@ -1,0 +1,22 @@
+#!/bin/sh
+# First start of the EmailZit appliance: SSH keys, then the EmailZit package
+# (its setup creates the database, the roles, a first certificate and
+# starts the services; all dependencies are installed already).
+set -e
+if ! ls /etc/ssh/ssh_host_*_key >/dev/null 2>&1; then
+    ssh-keygen -A
+    systemctl reset-failed ssh.service 2>/dev/null || true
+    systemctl restart ssh 2>/dev/null || true
+fi
+# Wait for the network, so the first certificate and the screen name the
+# address.
+for i in $(seq 120); do
+    ip -4 route get 1.1.1.1 >/dev/null 2>&1 && break
+    sleep 1
+done
+DEBIAN_FRONTEND=noninteractive dpkg -i /root/emailzit-install/emailzit-server_*.deb
+systemctl enable postfix dovecot rspamd >/dev/null 2>&1 || true
+for i in $(seq 60); do [ -f /var/lib/emailzit/setup-token.txt ] && break; sleep 1; done
+/usr/local/sbin/emailzit-appliance-boot issue || true
+rm -rf /root/emailzit-install
+touch /var/lib/emailzit/.appliance-ready

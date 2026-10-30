@@ -1,0 +1,16 @@
+[Unit]
+Description=Set up EmailZit on the first start of the appliance
+After=network-online.target postgresql.service
+Wants=network-online.target
+Before=getty@tty1.service
+ConditionPathExists=!/var/lib/emailzit/.appliance-ready
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/emailzit-firstboot
+RemainAfterExit=yes
+# installing EmailZit and its first setup take a few minutes
+TimeoutStartSec=30min
+
+[Install]
+WantedBy=multi-user.target

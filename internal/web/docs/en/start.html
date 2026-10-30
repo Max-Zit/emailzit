@@ -8,6 +8,12 @@
   <li><b>PostgreSQL</b> holds everything the panels change; Postfix and Dovecot read it directly, so a new mailbox works at once without restarting anything.</li>
   <li>A small <b>root helper</b> does the few things that need root (mail directories, certificates, updates); every request is checked and written to the audit log.</li>
 </ul>
+<h2>Installing</h2>
+<ul>
+  <li><b>Appliance</b> — a ready virtual machine (OVA for VMware ESXi and Workstation, qcow2 for Proxmox VE and KVM, VHDX for Hyper-V generation 1) or the installer ISO for a new VM or a physical server (it erases the first disk). Give it at least 2 CPUs, 2 GB of memory and a disk for the mail (the root file system grows by itself when the virtual disk is enlarged). After the first start the screen shows the panel address and the setup token; signing in on the screen as <code>ezadmin</code> (first password <code>emailzit</code>, it must be changed) opens the setup menu: network (use a fixed address for a mail server), server name, time zone, panel address and setup token, password of a staff account, state of the services, restart.</li>
+  <li><b>Debian 13 package</b> — <code>sudo sh install.sh</code> from the release, or the <code>.deb</code> with <code>apt install</code>: it installs Postfix, Dovecot, Rspamd, Valkey and PostgreSQL from Debian and sets everything up.</li>
+  <li>Ports: 25 (mail from other servers), 465 and 587 (sending from mail programs), 993 (IMAP), 995 (POP3), 8444 (panels and webmail). The server needs a reverse DNS (PTR) name that matches its mail host name, and outgoing port 25 must be open.</li>
+</ul>
 <h2>Who can do what</h2>
 <ul>
   <li><b>Administrators</b> manage the server, staff accounts, packages and all customers. <b>Operators</b> manage customers, domains and mailboxes; <b>viewers</b> only look.</li>

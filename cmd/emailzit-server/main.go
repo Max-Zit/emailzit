@@ -4,6 +4,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"crypto/tls"
 	"errors"
@@ -19,6 +20,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"syscall"
 	"time"
 
@@ -63,6 +65,7 @@ func run() error {
 	devNo2FA := flag.Bool("dev-no-2fa", false, "sign in with the password only (development only, needs --dev-embedded-db; shown as a warning and audited)")
 	resetACL := flag.Bool("reset-allowlist", false, "allow the panels again from the private networks (10/8, 172.16/12, 192.168/16, fc00::/7) and exit")
 	unblock := flag.String("unblock-ip", "", "lift the sign-in block of an address (or \"all\") and exit")
+	resetPass := flag.String("reset-password", "", "set a new password for this staff account (read from standard input; it must be changed at the next sign-in), lift sign-in blocks and exit")
 	showVersion := flag.Bool("version", false, "print the version and exit")
 	runHelper := flag.Bool("helper", false, "root helper: handle a request of the console (updates, time zone, network) and exit; started by emailzit-helper.service")
 	restoreFile := flag.String("restore", "", "restore this backup of the panel (database, keys, certificates) and exit; stop the server first")
@@ -151,6 +154,19 @@ func run() error {
 		}
 		_ = st.Audit(ctx, "-", "local", "settings.network.reset", "settings", "console allow-list reset to the private networks from the command line")
 		fmt.Println("The console allows the private networks again. Restart the service if it is running.")
+		return nil
+	case *resetPass != "":
+		u, err := st.StaffByUsername(ctx, *resetPass)
+		if err != nil {
+			return fmt.Errorf("no staff account %q", *resetPass)
+		}
+		line, _ := bufio.NewReader(os.Stdin).ReadString('\n')
+		if err := st.SetPassword(ctx, u.ID, strings.TrimRight(line, "\r\n"), true, ""); err != nil {
+			return err
+		}
+		_, _ = st.Unblock(ctx, "all")
+		_ = st.Audit(ctx, "-", "local", "user.password.reset", "user:"+u.Username, "password set from the server's command line (must be changed at the next sign-in); sign-in blocks lifted")
+		fmt.Printf("The password of %s is set; it must be changed at the next sign-in. Sign-in blocks were lifted.\n", u.Username)
 		return nil
 	case *unblock != "":
 		n, err := st.Unblock(ctx, *unblock)

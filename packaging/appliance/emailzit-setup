@@ -1,0 +1,138 @@
+#!/bin/sh
+# EmailZit appliance setup menu (on the server's own screen, as root via
+# sudo). Network and time zone go through the same root helper as the
+# panel, so the checks and the automatic undo are the same.
+DATA=/var/lib/emailzit
+HELPER=$DATA/helper
+T="EmailZit appliance"
+
+msg() { whiptail --title "$T" --msgbox "$1" 16 74; }
+
+# ask_helper JSON: hands a request to the helper and shows its answer.
+ask_helper() {
+    mkdir -p "$HELPER"
+    before=$(stat -c %Y "$HELPER/result.json" 2>/dev/null || echo 0)
+    printf '%s' "$1" > "$HELPER/request.json.tmp" && mv "$HELPER/request.json.tmp" "$HELPER/request.json"
+    chown emailzit:emailzit "$HELPER/request.json" 2>/dev/null
+    # The helper starts by itself (emailzit-helper.path); run it here too in
+    # case the path unit is not active.
+    /usr/bin/emailzit-server --helper --data-dir "$DATA" >/dev/null 2>&1
+    i=0
+    while [ $i -lt 90 ]; do
+        now=$(stat -c %Y "$HELPER/result.json" 2>/dev/null || echo 0)
+        if [ "$now" != "$before" ] && ! grep -q '"status": "running"' "$HELPER/result.json"; then
+            break
+        fi
+        sleep 1
+        i=$((i + 1))
+    done
+    status=$(sed -n 's/.*"status": "\([^"]*\)".*/\1/p' "$HELPER/result.json")
+    text=$(sed -n 's/.*"message": "\(.*\)",*$/\1/p' "$HELPER/result.json")
+    msg "Result: $status
+
+$text"
+}
+
+current_ip() { ip -4 -o addr show scope global | awk '{print $4}' | head -1; }
+
+# as_emailzit runs the server program as the panel's user with its settings.
+as_emailzit() {
+    su emailzit -s /bin/sh -c "set -a; . /etc/emailzit/server.env; /usr/bin/emailzit-server --data-dir $DATA $*"
+}
+
+network() {
+    mode=$(whiptail --title "$T" --menu "Network of the appliance (now $(current_ip))" 14 74 2 \
+        dhcp "Automatic address (DHCP)" static "Fixed address (recommended for a mail server)" 3>&1 1>&2 2>&3) || return
+    host=$(hostname)
+    if [ "$mode" = dhcp ]; then
+        ask_helper "{\"action\":\"network\",\"requested_by\":\"setup menu\",\"network\":{\"dhcp\":true,\"hostname\":\"$host\"}}"
+        return
+    fi
+    addr=$(whiptail --title "$T" --inputbox "Address with network size (e.g. 192.168.1.20/24)" 10 74 "$(current_ip)" 3>&1 1>&2 2>&3) || return
+    gw=$(whiptail --title "$T" --inputbox "Gateway" 10 74 "$(ip -4 route show default | awk '{print $3; exit}')" 3>&1 1>&2 2>&3) || return
+    dns=$(whiptail --title "$T" --inputbox "DNS servers (one to three, separated by spaces)" 10 74 "$gw" 3>&1 1>&2 2>&3) || return
+    list=""
+    for d in $dns; do
+        case "$d" in *[!0-9.]*) msg "Not an IPv4 address: $d"; return ;; esac
+        list="$list${list:+,}\"$d\""
+    done
+    case "$addr$gw" in *[!0-9./]*) msg "Use digits, dots and the /size only."; return ;; esac
+    ask_helper "{\"action\":\"network\",\"requested_by\":\"setup menu\",\"network\":{\"dhcp\":false,\"address\":\"$addr\",\"gateway\":\"$gw\",\"dns\":[$list],\"hostname\":\"$host\"}}"
+}
+
+server_name() {
+    name=$(whiptail --title "$T" --inputbox "Server name (letters, digits, hyphens). The mail host name (e.g. mail.example.com) is set in the panel: Settings -> Mail server." 12 74 "$(hostname)" 3>&1 1>&2 2>&3) || return
+    case "$name" in ""|-*|*-|*[!A-Za-z0-9-]*) msg "Use letters, digits and hyphens."; return ;; esac
+    hostnamectl set-hostname "$name" && sed -i "s/^127\.0\.1\.1.*/127.0.1.1\t$name/" /etc/hosts
+    msg "The server name is now $name."
+}
+
+time_zone() {
+    z=$(whiptail --title "$T" --inputbox "Time zone (e.g. Europe/Belgrade, Europe/Berlin, UTC)" 10 74 "$(timedatectl show -p Timezone --value)" 3>&1 1>&2 2>&3) || return
+    case "$z" in *[!A-Za-z0-9_/+-]*) msg "Not a time zone: $z"; return ;; esac
+    ask_helper "{\"action\":\"timezone\",\"requested_by\":\"setup menu\",\"timezone\":\"$z\"}"
+}
+
+admin_password() {
+    user=$(whiptail --title "$T" --inputbox "Staff account of the panel whose password is set" 10 74 "admin" 3>&1 1>&2 2>&3) || return
+    case "$user" in
+    "" | *[!A-Za-z0-9._@-]*) msg "Enter a username of the panel."; return ;;
+    esac
+    p1=$(whiptail --title "$T" --passwordbox "New password (at least 12 characters)" 10 74 3>&1 1>&2 2>&3) || return
+    p2=$(whiptail --title "$T" --passwordbox "Repeat the password" 10 74 3>&1 1>&2 2>&3) || return
+    if [ "$p1" != "$p2" ]; then
+        msg "The passwords differ; nothing was changed."
+        return
+    fi
+    out=$(printf '%s\n' "$p1" | as_emailzit "--reset-password '$user'" 2>&1)
+    msg "$out"
+}
+
+panel_info() {
+    tok=""
+    [ -f "$DATA/setup-token.txt" ] && tok="
+Setup token: $(cat "$DATA/setup-token.txt")
+Open the panel, enter the token and create the first administrator."
+    msg "Panel: https://$(current_ip | cut -d/ -f1):8444
+Mail programs: IMAP 993, POP3 995, SMTP 465 and 587.
+Mail from other servers arrives on port 25.
+$tok"
+}
+
+services() {
+    out=""
+    for u in emailzit-server emailzit-mail-helper postfix dovecot rspamd valkey-server postgresql; do
+        out="$out$(printf '%-22s %s' "$u" "$(systemctl is-active "$u")")
+"
+    done
+    msg "$out"
+}
+
+while true; do
+    c=$(whiptail --title "$T" --menu "Address: $(current_ip)   Panel: https://$(current_ip | cut -d/ -f1):8444" 22 74 11 \
+        1 "Network (DHCP or fixed address)" \
+        2 "Server name" \
+        3 "Time zone" \
+        4 "Panel address and setup token" \
+        5 "Allow the panel from all private networks again" \
+        p "Password of a panel staff account (and lift sign-in blocks)" \
+        v "State of the services" \
+        6 "Restart EmailZit and the mail services" \
+        7 "Command line" \
+        8 "Restart the appliance" \
+        9 "Shut down the appliance" 3>&1 1>&2 2>&3) || exit 0
+    case "$c" in
+    1) network ;;
+    2) server_name ;;
+    3) time_zone ;;
+    4) panel_info ;;
+    p) admin_password ;;
+    v) services ;;
+    5) as_emailzit --reset-allowlist >/dev/null 2>&1 &&
+           systemctl restart emailzit-server && msg "The panel allows the private networks again." || msg "That did not work; see journalctl -u emailzit-server." ;;
+    6) systemctl restart emailzit-mail-helper emailzit-server postfix dovecot rspamd && msg "EmailZit and the mail services restarted." ;;
+    7) exit 0 ;;
+    8) whiptail --title "$T" --yesno "Restart the appliance now?" 8 60 && systemctl reboot ;;
+    9) whiptail --title "$T" --yesno "Shut down the appliance now?" 8 60 && systemctl poweroff ;;
+    esac
+done

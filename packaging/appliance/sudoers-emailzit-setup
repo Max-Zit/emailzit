@@ -1,0 +1,1 @@
+ezadmin ALL=(root) NOPASSWD: /usr/local/sbin/emailzit-setup

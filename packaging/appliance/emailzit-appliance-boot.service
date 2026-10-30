@@ -1,0 +1,11 @@
+[Unit]
+Description=EmailZit appliance start (disk size, login screen)
+After=local-fs.target emailzit-server.service
+Before=getty@tty1.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/emailzit-appliance-boot
+
+[Install]
+WantedBy=multi-user.target

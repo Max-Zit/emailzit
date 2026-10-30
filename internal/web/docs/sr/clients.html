@@ -1,0 +1,16 @@
+<h1>Podešavanje programa za poštu</h1>
+<h2>Korak 1: app lozinka</h2>
+<ol>
+  <li>Otvorite <code>https://&lt;server&gt;:8444/mail</code> i prijavite se svojom adresom i lozinkom.</li>
+  <li>Prvi put podesite prijavu u dva koraka: skenirajte QR kod aplikacijom za autentifikaciju i sačuvajte kodove za oporavak.</li>
+  <li>Pod <b>App lozinke</b> dajte programu ili uređaju ime (na primer „Outlook na laptopu“) i napravite lozinku. Odmah je upišite u program: prikazuje se samo jednom.</li>
+</ol>
+<h2>Korak 2: program</h2>
+<p>Većina programa (Outlook, Thunderbird, aplikacije za poštu na iOS-u i Android-u) sama pronađe podešavanja kada unesete samo adresu i app lozinku. Inače koristite:</p>
+<table>
+  <tr><th>Korisničko ime</th><td>cela e-mail adresa</td></tr>
+  <tr><th>Dolazna pošta (IMAP)</th><td>ime mail hosta servera, port 993, SSL/TLS</td></tr>
+  <tr><th>Dolazna pošta (POP3)</th><td>ime mail hosta servera, port 995, SSL/TLS</td></tr>
+  <tr><th>Odlazna pošta (SMTP)</th><td>ime mail hosta servera, port 465 SSL/TLS ili 587 STARTTLS, uz prijavu</td></tr>
+</table>
+<p>Stranica mailboxa u panelima prikazuje ove vrednosti sa pravim imenom hosta.</p>

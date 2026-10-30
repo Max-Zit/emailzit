@@ -29,6 +29,7 @@ var DocPages = []DocPage{
 	{"start", "Getting started"},
 	{"customers", "Customers and packages"},
 	{"mail", "Domains, mailboxes and aliases"},
+	{"webmail", "Webmail and the mail user's pages"},
 	{"clients", "Setting up mail programs"},
 	{"admin", "Staff, settings and updates"},
 }

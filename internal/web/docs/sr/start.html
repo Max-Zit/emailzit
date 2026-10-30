@@ -1,0 +1,30 @@
+<h1>Prvi koraci</h1>
+<p>EmailZit je hosting pošte za mnogo domena i kupaca na vašem serveru: <b>admin panel</b> za osoblje servera, <b>panel za kupce</b> u kome svaki kupac upravlja svojim domenima i mailboxima, i <b>stranice za korisnike pošte</b> (webmail, sopstvena lozinka, app lozinke, automatski odgovor, filteri).</p>
+<h2>Kako je napravljen</h2>
+<ul>
+  <li><b>EmailZit server</b> — paneli i REST API, radi kao korisnik bez posebnih prava.</li>
+  <li><b>Postfix</b> prima i šalje poštu (SMTP na portu 25, slanje iz programa za poštu na 465 i 587, uvek šifrovano).</li>
+  <li><b>Dovecot</b> čuva poštu i služi IMAP (993) i POP3 (995).</li>
+  <li><b>PostgreSQL</b> čuva sve što paneli menjaju; Postfix i Dovecot čitaju direktno iz baze, pa nov mailbox radi odmah, bez ikakvog restarta.</li>
+  <li>Mali <b>root pomoćnik</b> radi ono malo stvari za koje trebaju root prava (mail direktorijumi, sertifikati, ažuriranja); svaki zahtev se proverava i upisuje u dnevnik revizije.</li>
+</ul>
+<h2>Instalacija</h2>
+<ul>
+  <li><b>Appliance</b> — gotova virtuelna mašina (OVA za VMware ESXi i Workstation, qcow2 za Proxmox VE i KVM, VHDX za Hyper-V generacije 1) ili instalacioni ISO za novu VM ili fizički server (briše prvi disk). Dajte joj bar 2 procesora, 2 GB memorije i disk za poštu (root sistem fajlova sam raste kada se virtuelni disk poveća). Posle prvog pokretanja na ekranu su adresa panela i setup token; prijava na ekranu kao <code>ezadmin</code> (prva lozinka <code>emailzit</code>, mora se promeniti) otvara setup meni: mreža (za mail server koristite fiksnu adresu), ime servera, vremenska zona, adresa panela i setup token, lozinka naloga osoblja, stanje servisa, restart.</li>
+  <li><b>Paket za Debian 13</b> — <code>sudo sh install.sh</code> iz izdanja, ili <code>.deb</code> sa <code>apt install</code>: instalira Postfix, Dovecot, Rspamd, Valkey i PostgreSQL iz Debian-a i sve podesi.</li>
+  <li>Portovi: 25 (pošta sa drugih servera), 465 i 587 (slanje iz programa za poštu), 993 (IMAP), 995 (POP3), 8444 (paneli i webmail), i 443 i 80 za automatsko podešavanje programa za poštu (autoconfig za Thunderbird, Autodiscover za Outlook, MTA-STS pravila; sve ostalo tamo vodi na webmail). EmailZit koristi 443 i 80 samo kada nema instaliranog web servera i HostZit nije povezan; tada za ta imena odgovara HostZit-ov web server (<code>--public-web off</code> to isključuje). Server treba reverzni DNS (PTR) zapis koji odgovara imenu mail hosta, a odlazni port 25 mora biti otvoren.</li>
+</ul>
+<h2>Ko šta može</h2>
+<ul>
+  <li><b>Administratori</b> upravljaju serverom, nalozima osoblja, paketima i svim kupcima. <b>Operateri</b> upravljaju kupcima, domenima i mailboxima; <b>posmatrači</b> samo gledaju.</li>
+  <li><b>Kupci</b> vide i menjaju samo svoje domene, mailboxe, aliase i prosleđivače, u granicama svog paketa.</li>
+  <li><b>Korisnici pošte</b> se prijavljuju svojom adresom, lozinkom i uvek drugim faktorom (aplikacija za autentifikaciju). Programi za poštu (Outlook, Thunderbird, telefoni) nikad ne koriste tu lozinku: svaki program dobija svoju <b>app lozinku</b>.</li>
+</ul>
+<h2>Prvi koraci</h2>
+<ol>
+  <li>Postavite ime mail hosta servera pod <b>Podešavanja → Mail server</b> (ime na koje se programi za poštu povezuju, npr. <code>mail.example.com</code>).</li>
+  <li>Napravite <b>paket</b> sa ograničenjima koja prodajete (domeni, mailboxi, prostor, slanje po satu).</li>
+  <li>Napravite <b>kupca</b> sa tim paketom i dajte mu prijavu za panel.</li>
+  <li>Dodajte kupčev <b>domen</b>, upišite DNS zapise sa stranice domena kod DNS provajdera domena i verifikujte domen.</li>
+  <li>Napravite <b>mailboxe</b>. Korisnik pošte se prijavljuje na <code>/mail</code>, podešava drugi faktor i pravi app lozinke za svoje programe.</li>
+</ol>

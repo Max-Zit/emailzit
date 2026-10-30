@@ -1,0 +1,28 @@
+<h1>Webmail and the mail user's pages</h1>
+<p>Every mail user has their own pages at <code>https://&lt;mail host&gt;:8444/mail</code> (on a standalone server <code>https://&lt;mail host&gt;/</code> leads there too). They are separate from the panels: a mail user never sees other mailboxes, the customer's settings or the server.</p>
+<h2>Signing in</h2>
+<ul>
+  <li>The address and the mailbox's password, and always a second factor: at the first sign-in the user scans a QR code with an authenticator app (Google Authenticator, Microsoft Authenticator, Aegis …) and keeps the recovery codes.</li>
+  <li>A user who lost the phone and the recovery codes asks the provider: staff and the customer can <b>reset the second factor</b> on the mailbox page; the user sets it up again at the next sign-in.</li>
+  <li>The language of the pages follows the user's choice (top right) and is remembered.</li>
+</ul>
+<h2>Webmail</h2>
+<ul>
+  <li>Folders on the left (on a phone at the top): Inbox, Drafts, Sent, Archive, Junk, Trash and the user's own folders, with the number of unread messages.</li>
+  <li>The list shows sender, subject and date; unread messages are bold. Select messages to mark them read or unread, move them to Junk (to keep a sender out for good, add it to the blocked senders) or delete them (to Trash; deleting in Trash removes them).</li>
+  <li><b>Search</b> finds the words anywhere in the messages of the open folder (headers and text).</li>
+  <li>Messages written in HTML are shown in a protected frame: scripts, forms and remote images are never loaded, so opening a message cannot tell the sender anything. Attachments are downloaded, never opened in the browser.</li>
+  <li><b>Write</b>, <b>Reply</b>, <b>Reply to all</b> and <b>Forward</b> send through the server like a mail program does (with the mailbox's sending limits and DKIM signature); a copy goes to Sent. Attachments up to the server's message size can be added.</li>
+</ul>
+<h2>My mailbox</h2>
+<ul>
+  <li><b>Usage</b>: how much of the quota is used.</li>
+  <li><b>Password</b>: the user changes the web password here (at least 12 characters).</li>
+  <li><b>App passwords</b>: one per program or device, shown once when created; a lost device means deleting its app password. The page also shows the settings for mail programs and offers an Apple profile (<code>.mobileconfig</code>) for iPhone, iPad and Mac.</li>
+</ul>
+<h2>Auto-reply and filters</h2>
+<ul>
+  <li><b>Auto-reply</b>: a text (and optional subject) sent to senders while it is on, optionally only between two dates; the same sender gets it again only after the chosen number of days. Mailing lists, automatic messages and spam never get an auto-reply.</li>
+  <li><b>Filters</b> sort incoming mail: when the sender, the recipients or the subject contain a text, move the message to a folder, mark it read or delete it. The first matching filter decides.</li>
+  <li><b>Spam</b>: how much spam goes to Junk (or the level of the whole account), and the user's own allowed senders (never Junk) and blocked senders (always Junk).</li>
+</ul>

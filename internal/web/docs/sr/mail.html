@@ -1,0 +1,29 @@
+<h1>Domeni, mailboxi i aliasi</h1>
+<h2>Domeni</h2>
+<p>Na deljenom serveru novi domen kupca prima poštu tek kada je <b>verifikovan</b>: stranica domena prikazuje TXT zapis (<code>_emailzit.example.com</code>) koji treba upisati kod DNS provajdera domena; zatim <b>Proveri sada</b>. Osoblje može ručno da označi domen kao verifikovan kada zna da pripada kupcu; na namenskom serveru domeni ne trebaju verifikaciju (Podešavanja → Mail server).</p>
+<p>Stranica domena navodi <b>DNS zapise</b> koje domen treba: MX (pošta na ovaj server), SPF, DMARC, i zapise po kojima programi za poštu nalaze svoja podešavanja (autoconfig, autodiscover, SRV). Obavezni zapisi su označeni.</p>
+<p><b>Catch-all</b> (pošta za nepostojeće adrese) je podrazumevano isključen: nepostojeće adrese se odbijaju već tokom SMTP razgovora, što drži podalje spam i povratne poruke. Uključite ga samo kada je zaista potreban.</p>
+<h2>Mailboxi</h2>
+<ul>
+  <li>Mailbox ima veličinu (kvotu) u okviru paketa; zauzeće se osvežava svakih deset minuta.</li>
+  <li>Njegova <b>lozinka</b> služi samo za webmail i korisnikove stranice, uvek uz prijavu u dva koraka.</li>
+  <li>Programi za poštu koriste <b>app lozinke</b> koje korisnik pošte pravi na <code>/mail</code> — po jednu za svaki program ili uređaj. Izgubljen telefon znači opoziv jedne app lozinke, a ne menjanje svega.</li>
+  <li><b>Isključen</b> mailbox i dalje prima poštu, ali niko ne može da se prijavi. Osoblje može i da <b>blokira slanje</b> (na primer posle zloupotrebe) i da jednom mailboxu postavi druga ograničenja slanja.</li>
+  <li>Brisanje mailboxa premešta njegovu poštu u kantu na serveru na 7 dana, posle toga je nema.</li>
+</ul>
+<h2>Aliasi i prosleđivači</h2>
+<ul>
+  <li><b>Alias</b> (npr. <code>info@</code>) prima poštu i isporučuje je na jednu ili više adresa: mailboxe istog kupca ili spoljne adrese.</li>
+  <li><b>Prosleđivač</b> je alias na adresi mailboxa. Da bi kopija ostala u mailboxu, navedite i sam mailbox među odredištima.</li>
+  <li><b>Šalji kao</b>: mailboxi na koje alias isporučuje smeju i da šalju sa aliasom kao pošiljaocem.</li>
+</ul>
+<h2>Zaštita</h2>
+<ul>
+  <li>Niko ne može da koristi server za prenos pošte na druge servere bez prijave (nema otvorenog relay-a).</li>
+  <li>Pošta spolja koja tvrdi da dolazi sa domena ovog servera se odbija; prijavljeni korisnici mogu da šalju samo sa svojih adresa i aliasa sa pravom „šalji kao“.</li>
+  <li>Programi za poštu moraju da koriste TLS; prijava u otvorenom tekstu se odbija.</li>
+</ul>
+<h2>Podešavanja spama</h2>
+<p>Rspamd svakoj dolaznoj poruci daje ocenu; iznad 15 poruka se odbija, a pošta iznad izabranog nivoa ide u fasciklu Junk tog mailboxa. Nivoi su <b>Strogo</b> (ocena 4 i više), <b>Normalno</b> (6, podrazumevano), <b>Blago</b> (10) i <b>Nikad</b> (spam ostaje u Inboxu, označen zaglavljem <code>X-Spam</code>). Osoblje postavlja nivo kupca na stranici kupca; važi za sve mailboxe kupca koji nemaju svoj. Na stranici mailboxa (osoblje i kupac) i na korisnikovoj stranici <i>Automatski odgovor i filteri</i> mailbox dobija svoj nivo i liste <b>dozvoljenih pošiljalaca</b> (nikad Junk) i <b>blokiranih pošiljalaca</b> (uvek Junk): adrese ili celi domeni, do 200 u svakoj listi, upoređeni sa From adresom. Pravila se izvršavaju pre korisnikovih filtera i automatskog odgovora, pa spam nikad ne dobija automatski odgovor. Mail pomoćnik ih upisuje kao Sieve skriptu u home direktorijum svakog mailboxa (<code>.emailzit/spam.sieve</code>) kada se promene i proverava sve svakih 10 minuta.</p>
+<h2>Prenos pošte sa drugog servera</h2>
+<p>Na stranici mailboxa, <b>Prenesi poštu sa drugog servera</b> kopira sve fascikle starog mailboxa preko IMAP-a (port 993, ili 143 sa STARTTLS) sa oznakama pročitanosti i datumima; Sent, Trash, Junk i Drafts završavaju u odgovarajućim fasciklama ovde. Poruke koje su već ovde se preskaču, pa ga pokrenite jednom pre i jednom posle prebacivanja MX zapisa, da pokupite ono što je stiglo kasnije. Stara lozinka se čuva šifrovana samo dok uvoz traje. Na hosting serverima uvoz dolazi samo sa servera na internetu; firmeni server može da dozvoli privatne mreže pod Podešavanja → Mail server.</p>

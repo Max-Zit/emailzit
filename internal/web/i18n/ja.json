@@ -678,6 +678,7 @@
   "Waiting": "待機中",
   "Waiting for another administrator to approve this change.": "別の管理者がこの変更を承認するのを待っています。",
   "Webmail": "Web メール",
+  "Webmail and the mail user's pages": "Webメールとメールユーザーのページ",
   "When HostZit hosts the websites and the DNS of the same customers, EmailZit writes the mail records (MX, SPF, DKIM, DMARC, MTA-STS, autoconfig) of every domain into HostZit's DNS by itself, and a domain whose zone is in HostZit for the same customer needs no verification. HostZit needs an API token of EmailZit (Settings → REST API) to tell EmailZit the user IDs of the hosting accounts.": "HostZit が同じ顧客のサイトと DNS をホストしている場合、EmailZit は各ドメインのメールレコード（MX、SPF、DKIM、DMARC、MTA-STS、autoconfig）を自動で HostZit の DNS に書き込みます。同じ顧客のゾーンが HostZit にあるドメインは確認不要です。HostZit がホスティングアカウントのユーザー ID を通知するには EmailZit の API トークン（設定 → REST API）が必要です。",
   "When it is on, risky changes by staff wait until another administrator approves them: terminating or suspending a customer, deleting a domain or mailbox, resetting a second factor, staff accounts, API tokens, backups, and the network, sign-in and security settings (also turning this off). Needs at least two active administrators.": "オンにすると、スタッフによるリスクの高い変更は別の管理者の承認を待ちます：顧客の解約や停止、ドメインやメールボックスの削除、第 2 要素のリセット、スタッフアカウント、API トークン、バックアップ、ネットワーク・サインイン・セキュリティの設定（この機能をオフにすることも含む）。有効な管理者が 2 人以上必要です。",
   "With a smaller package nothing is deleted, but nothing new can be added above the limits.": "小さいパッケージにしても何も削除されませんが、制限を超えて新しく追加することはできません。",

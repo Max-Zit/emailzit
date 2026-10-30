@@ -678,6 +678,7 @@
   "Waiting": "等待中",
   "Waiting for another administrator to approve this change.": "正在等待另一位管理员批准此更改。",
   "Webmail": "网页邮箱",
+  "Webmail and the mail user's pages": "网页邮箱和邮件用户页面",
   "When HostZit hosts the websites and the DNS of the same customers, EmailZit writes the mail records (MX, SPF, DKIM, DMARC, MTA-STS, autoconfig) of every domain into HostZit's DNS by itself, and a domain whose zone is in HostZit for the same customer needs no verification. HostZit needs an API token of EmailZit (Settings → REST API) to tell EmailZit the user IDs of the hosting accounts.": "当 HostZit 托管同一客户的网站和 DNS 时，EmailZit 会自动把每个域名的邮件记录（MX、SPF、DKIM、DMARC、MTA-STS、autoconfig）写入 HostZit 的 DNS；区域在 HostZit 中且属于同一客户的域名无需验证。HostZit 需要 EmailZit 的 API 令牌（设置 → REST API）来告知托管账户的用户 ID。",
   "When it is on, risky changes by staff wait until another administrator approves them: terminating or suspending a customer, deleting a domain or mailbox, resetting a second factor, staff accounts, API tokens, backups, and the network, sign-in and security settings (also turning this off). Needs at least two active administrators.": "开启后，员工的高风险更改需等待另一位管理员批准：终止或暂停客户、删除域名或邮箱、重置第二因素、员工账户、API 令牌、备份，以及网络、登录和安全设置（包括关闭此功能）。至少需要两位活跃的管理员。",
   "With a smaller package nothing is deleted, but nothing new can be added above the limits.": "换成更小的套餐不会删除任何内容，但超出限制后不能再添加新内容。",

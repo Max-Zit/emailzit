@@ -1,0 +1,28 @@
+<h1>Webmail i stranice korisnika pošte</h1>
+<p>Svaki korisnik pošte ima svoje stranice na <code>https://&lt;mail host&gt;:8444/mail</code> (na samostalnom serveru i <code>https://&lt;mail host&gt;/</code> vodi tamo). Odvojene su od panela: korisnik pošte nikad ne vidi druge mailboxe, podešavanja kupca ni server.</p>
+<h2>Prijava</h2>
+<ul>
+  <li>Adresa i lozinka mailboxa, i uvek drugi faktor: pri prvoj prijavi korisnik skenira QR kod aplikacijom za autentifikaciju (Google Authenticator, Microsoft Authenticator, Aegis …) i čuva kodove za oporavak.</li>
+  <li>Korisnik koji je izgubio telefon i kodove za oporavak se obraća provajderu: osoblje i kupac mogu da <b>resetuju drugi faktor</b> na stranici mailboxa; korisnik ga ponovo podešava pri sledećoj prijavi.</li>
+  <li>Jezik stranica prati korisnikov izbor (gore desno) i pamti se.</li>
+</ul>
+<h2>Webmail</h2>
+<ul>
+  <li>Fascikle levo (na telefonu gore): Inbox, Drafts, Sent, Archive, Junk, Trash i korisnikove fascikle, sa brojem nepročitanih poruka.</li>
+  <li>Lista prikazuje pošiljaoca, naslov i datum; nepročitane poruke su podebljane. Izaberite poruke da ih označite kao pročitane ili nepročitane, premestite u Junk (da pošiljalac zauvek ostane napolju, dodajte ga u blokirane pošiljaoce) ili obrišete (u Trash; brisanje u Trash-u ih uklanja).</li>
+  <li><b>Pretraga</b> nalazi reči bilo gde u porukama otvorene fascikle (zaglavlja i tekst).</li>
+  <li>Poruke napisane u HTML-u prikazuju se u zaštićenom okviru: skripte, formulari i slike sa drugih servera se nikad ne učitavaju, pa otvaranje poruke ne može ništa da javi pošiljaocu. Prilozi se preuzimaju, nikad se ne otvaraju u pregledaču.</li>
+  <li><b>Piši</b>, <b>Odgovori</b>, <b>Odgovori svima</b> i <b>Prosledi</b> šalju preko servera kao program za poštu (sa ograničenjima slanja mailboxa i DKIM potpisom); kopija ide u Sent. Mogu se dodati prilozi do veličine poruke koju server prima.</li>
+</ul>
+<h2>Moj mailbox</h2>
+<ul>
+  <li><b>Zauzeće</b>: koliko je kvote iskorišćeno.</li>
+  <li><b>Lozinka</b>: korisnik ovde menja web lozinku (bar 12 znakova).</li>
+  <li><b>App lozinke</b>: po jedna za svaki program ili uređaj, prikazuje se jednom pri pravljenju; izgubljen uređaj znači brisanje njegove app lozinke. Stranica prikazuje i podešavanja za programe za poštu i nudi Apple profil (<code>.mobileconfig</code>) za iPhone, iPad i Mac.</li>
+</ul>
+<h2>Automatski odgovor i filteri</h2>
+<ul>
+  <li><b>Automatski odgovor</b>: tekst (i po želji naslov) koji se šalje pošiljaocima dok je uključen, po želji samo između dva datuma; isti pošiljalac ga ponovo dobija tek posle izabranog broja dana. Liste za slanje, automatske poruke i spam nikad ne dobijaju automatski odgovor.</li>
+  <li><b>Filteri</b> sortiraju dolaznu poštu: kada pošiljalac, primaoci ili naslov sadrže tekst, premesti poruku u fasciklu, označi je kao pročitanu ili je obriši. Odlučuje prvi filter koji se poklopi.</li>
+  <li><b>Spam</b>: koliko spama ide u Junk (ili nivo celog naloga), i korisnikovi dozvoljeni pošiljaoci (nikad Junk) i blokirani pošiljaoci (uvek Junk).</li>
+</ul>

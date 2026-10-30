@@ -1,0 +1,20 @@
+<h1>Kupci i paketi</h1>
+<h2>Paketi</h2>
+<p>Paket sadrži ograničenja koja kupac dobija: koliko domena, mailboxa i aliasa, koliko prostora svi mailboxi zajedno smeju da zauzmu, veličinu novog mailboxa i najvećeg, i <b>ograničenja slanja</b>. Sistemi za naplatu paket označavaju kratkim imenom (na primer <code>business-10</code>).</p>
+<ul>
+  <li><b>Poruka po satu / po danu (po mailboxu)</b> i <b>po satu za celog kupca</b> čuvaju reputaciju adrese servera: mailbox kome je ukradena lozinka ne može da pošalje hiljade spam poruka. Poruke preko ograničenja čekaju u redu.</li>
+  <li><b>Primalaca po poruci</b> sprečava da jedna poruka ode na hiljade adresa.</li>
+  <li>Prebacivanje kupca na manji paket ništa ne briše; samo se ništa novo ne može dodati preko novih ograničenja.</li>
+</ul>
+<h2>Kupci</h2>
+<p>Kupac poseduje domene i mailboxe. Pošta svakog kupca se čuva pod njegovim <b>sopstvenim sistemskim korisnikom</b>, pa ni greška u softveru za poštu ne može dozvoliti jednom kupcu da čita poštu drugog. Kupac nikad ne može da usmeri poštu u mailboxe drugog kupca, da šalje kao njegove adrese ili da vidi njegove domene.</p>
+<ul>
+  <li><b>Prijave za panel</b>: kupac se prijavljuje u panel za kupce na istoj adresi kao admin panel. Svaka prijava mora da podesi drugi faktor pri prvoj prijavi.</li>
+  <li><b>ID za naplatu</b>: broj kupca u vašem sistemu za naplatu; REST API po njemu pronalazi kupce.</li>
+</ul>
+<h2>Suspenzija i gašenje</h2>
+<ul>
+  <li><b>Suspendovan</b>: pošta za kupčeve domene se i dalje prima (ništa se ne gubi), ali niko od kupca ne može da se prijavi, koristi programe za poštu ili šalje. Sesije se odmah završavaju.</li>
+  <li><b>Ugašen</b>: pošta za kupčeve domene se odbija. Podaci ostaju dok se ne obrišu.</li>
+  <li><b>Aktiviraj</b> vraća suspendovanog ili ugašenog kupca.</li>
+</ul>

@@ -16,6 +16,11 @@
     <label class="check"><input type="checkbox" name="dedicated" value="1" {{if .Data.Dedicated}}checked{{end}}>{{.T "Dedicated server: it belongs to one customer, domains need no verification"}}</label>
     <label class="check"><input type="checkbox" name="allow_private_imports" value="1" {{if .Data.AllowPrivateImports}}checked{{end}}>{{.T "Allow imports of mail from servers in private networks (company networks; leave off on hosting servers)"}}</label>
   </section>
+  <section class="panel" id="clamav">
+    <h2>{{template "icon" "shield"}}{{.T "Virus scan"}}</h2>
+    <label class="check"><input type="checkbox" name="clamav" value="1" {{if .Data.ClamAV}}checked{{end}}>{{.T "Scan every message with ClamAV and refuse infected mail"}}</label>
+    <small class="muted">{{.T "ClamAV is installed by itself when this is switched on and needs about 1 GB of memory; the scan starts once its virus signatures are downloaded (a few minutes). Switched off, ClamAV stops too."}}</small>
+  </section>
   <section class="panel" id="relay">
     <h2>{{template "icon" "route"}}{{.T "Outgoing mail through a smart host"}}</h2>
     <p class="muted">{{.T "Only when the provider blocks port 25 or wants all mail through its own server: then EmailZit hands every outgoing message to that server instead of delivering it itself. Leave empty to deliver directly."}}</p>

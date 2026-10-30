@@ -42,6 +42,8 @@ type Settings struct {
 	AuthPolicyToken string
 	// Rspamd is installed: milter, DKIM signing, spam to Junk.
 	Rspamd bool
+	// ClamAV is installed and switched on: Rspamd sends every message to it.
+	ClamAV bool
 }
 
 // File is one rendered file.
@@ -140,7 +142,7 @@ func Render(s Settings) ([]File, error) {
 		out = append(out, File{Path: RelayPasswordFile, Mode: 0o600, Content: []byte("# EmailZit: written by the root helper.\n" + s.Relay + " " + s.RelayUser + ":" + s.RelayPassword + "\n")})
 	}
 	if s.Rspamd {
-		rf, err := rspamdFiles()
+		rf, err := rspamdFiles(s.ClamAV)
 		if err != nil {
 			return nil, err
 		}
@@ -168,15 +170,17 @@ func render(name string, data any) ([]byte, error) {
 const (
 	RspamdLocal    = "/etc/rspamd/local.d"
 	RspamdOverride = "/etc/rspamd/override.d"
-	RspamdDKIM     = "/etc/rspamd/emailzit/dkim"
-	RspamdDKIMMap  = "/etc/rspamd/emailzit/dkim_selectors.map"
+	// RspamdAntivirus switches the ClamAV scan on (removed when it is off).
+	RspamdAntivirus = "/etc/rspamd/local.d/antivirus.conf"
+	RspamdDKIM      = "/etc/rspamd/emailzit/dkim"
+	RspamdDKIMMap   = "/etc/rspamd/emailzit/dkim_selectors.map"
 	// MailboxSpamSieve is each mailbox's spam script (written by the mail
 	// helper from the mailbox's and the customer's spam settings),
 	// relative to the mail home.
 	MailboxSpamSieve = ".emailzit/spam.sieve"
 )
 
-func rspamdFiles() ([]File, error) {
+func rspamdFiles(clamav bool) ([]File, error) {
 	names := []string{"dkim_signing.conf", "arc.conf", "redis.conf", "actions.conf", "milter_headers.conf", "worker-proxy.inc", "worker-controller.inc", "options.inc"}
 	var out []File
 	for _, n := range names {
@@ -189,6 +193,13 @@ func rspamdFiles() ([]File, error) {
 			dir = RspamdOverride // local.d would keep Rspamd's private networks as local
 		}
 		out = append(out, File{Path: dir + "/" + n, Mode: 0o644, Content: b})
+	}
+	if clamav {
+		b, err := tmplFS.ReadFile("templates/rspamd/antivirus.conf")
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, File{Path: RspamdAntivirus, Mode: 0o644, Content: b})
 	}
 	return out, nil
 }

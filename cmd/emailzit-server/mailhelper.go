@@ -60,10 +60,12 @@ func runMailHelper(ctx context.Context, dbURL, relay string) error {
 			MaxMessageMB int    `json:"max_message_mb"`
 			RelayHost    string `json:"relay_host"`
 			RelayUser    string `json:"relay_user"`
+			ClamAV       bool   `json:"clamav"`
 		}
 		if json.Unmarshal(raw, &m) == nil {
 			req.Hostname = m.Hostname
 			req.Relay, req.RelayUser, req.RelayPassword = startRelay(m.RelayHost, m.RelayUser)
+			req.ClamAV = m.ClamAV
 			if m.MaxMessageMB > 0 {
 				req.MaxMessageMB = m.MaxMessageMB
 			}

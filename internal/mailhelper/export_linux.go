@@ -17,6 +17,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/max-zit/emailzit/internal/mailconf"
 )
 
 // keepExports is how many exports of a customer are kept.
@@ -159,7 +161,11 @@ func pruneExports(dir string) {
 // status reports the health of the mail system (WatchZit).
 func (s *Server) status(ctx context.Context) *Status {
 	st := &Status{Services: map[string]string{}}
-	for _, u := range []string{"postfix", "dovecot", "rspamd", "valkey-server", "emailzit-submit.socket"} {
+	units := []string{"postfix", "dovecot", "rspamd", "valkey-server", "emailzit-submit.socket"}
+	if _, err := os.Stat(mailconf.RspamdAntivirus); err == nil {
+		units = append(units, "clamav-daemon") // only while the virus scan is on
+	}
+	for _, u := range units {
 		out, _ := s.Run(ctx, "systemctl", "is-active", u)
 		st.Services[strings.TrimSuffix(u, ".socket")] = strings.TrimSpace(string(out))
 	}

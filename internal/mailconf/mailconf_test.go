@@ -102,3 +102,26 @@ func TestRenderRelay(t *testing.T) {
 		}
 	}
 }
+
+func TestRenderClamAV(t *testing.T) {
+	s := Settings{Hostname: "mail.example.com", MaxMessageMB: 25, DBName: "emailzit", CertFile: "/a", KeyFile: "/b", Rspamd: true}
+	has := func() bool {
+		files, err := Render(s)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, f := range files {
+			if f.Path == RspamdAntivirus {
+				return strings.Contains(string(f.Content), `action = "reject"`)
+			}
+		}
+		return false
+	}
+	if has() {
+		t.Fatal("antivirus without ClamAV")
+	}
+	s.ClamAV = true
+	if !has() {
+		t.Fatal("no antivirus with ClamAV")
+	}
+}

@@ -67,6 +67,9 @@ type MailSettings struct {
 	// AllowPrivateImports lets mail be imported from servers in private
 	// networks (company servers, test labs); off on hosting servers.
 	AllowPrivateImports bool `json:"allow_private_imports"`
+	// ClamAV scans every message for viruses (installed by the helper when
+	// switched on; needs about 1 GB of memory).
+	ClamAV bool `json:"clamav,omitempty"`
 	// RelayHost sends all outgoing mail through the provider's smart host
 	// (host or host:port; 587 when no port is given); empty = deliver directly.
 	RelayHost string `json:"relay_host,omitempty"`
@@ -129,7 +132,7 @@ func (s *Server) showMailSettings(w http.ResponseWriter, r *http.Request, status
 
 func (s *Server) handleMailSettingsSave(w http.ResponseWriter, r *http.Request) {
 	m := MailSettings{Hostname: r.FormValue("hostname"), RequireVerification: r.FormValue("require_verification") == "1",
-		Dedicated: r.FormValue("dedicated") == "1", MaxMessageMB: formInt(r, "max_message_mb"), AllowPrivateImports: r.FormValue("allow_private_imports") == "1",
+		Dedicated: r.FormValue("dedicated") == "1", MaxMessageMB: formInt(r, "max_message_mb"), AllowPrivateImports: r.FormValue("allow_private_imports") == "1", ClamAV: r.FormValue("clamav") == "1",
 		RelayHost: r.FormValue("relay_host"), RelayUser: r.FormValue("relay_user")}
 	// the saved password stays unless a new one is entered (for the same login)
 	old := s.MailConfig(r.Context())
@@ -150,7 +153,7 @@ func (s *Server) handleMailSettingsSave(w http.ResponseWriter, r *http.Request) 
 		s.serverError(w, r, err)
 		return
 	}
-	s.audit(r, "settings.mail", "settings", "host name %q, verification %v, dedicated %v, max message %d MB, smart host %q (login %q)", m.Hostname, m.RequireVerification, m.Dedicated, m.MaxMessageMB, m.RelayHost, m.RelayUser)
+	s.audit(r, "settings.mail", "settings", "host name %q, verification %v, dedicated %v, max message %d MB, smart host %q (login %q), virus scan %v", m.Hostname, m.RequireVerification, m.Dedicated, m.MaxMessageMB, m.RelayHost, m.RelayUser, m.ClamAV)
 	s.applyMail(r)
 	go s.publishAllDNS(context.WithoutCancel(r.Context()))
 	s.redirect(w, r, "/settings/mail", "Saved.")

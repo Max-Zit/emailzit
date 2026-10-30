@@ -53,6 +53,7 @@ type Request struct {
 	Relay         string `json:"relay,omitempty"`
 	RelayUser     string `json:"relay_user,omitempty"`
 	RelayPassword string `json:"relay_password,omitempty"`
+	ClamAV        bool   `json:"clamav,omitempty"` // virus scan on
 	// customer, trash
 	Customer string `json:"customer,omitempty"` // UUID
 	UID      int    `json:"uid,omitempty"`

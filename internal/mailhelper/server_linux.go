@@ -39,11 +39,12 @@ type Server struct {
 	// mail views, UPDATE of the usage columns only).
 	DB *pgxpool.Pool
 	// Settings are completed by the helper (database, certificates).
-	DBName   string
-	CertFile string
-	KeyFile  string
-	Relay    string // lab: all outgoing mail to a sink
-	Policy   string // policy socket
+	DBName    string
+	CertFile  string
+	KeyFile   string
+	Relay     string // lab: all outgoing mail to a sink
+	nginxHost string // the mail host name of the last apply (nginx drop-in)
+	Policy    string // policy socket
 	// VMail is the root of the mail directories.
 	VMail string
 	// AllowUID may call besides root (the emailzit user).
@@ -228,8 +229,9 @@ func (s *Server) apply(ctx context.Context, r Request) error {
 	if relayUser == "" {
 		_ = os.Remove(mailconf.RelayPasswordFile)
 	}
+	clam := s.clamAV(ctx, r)
 	files, err := mailconf.Render(mailconf.Settings{Hostname: host, MaxMessageMB: r.MaxMessageMB, DBName: s.DBName,
-		CertFile: s.CertFile, KeyFile: s.KeyFile, Relay: relay, RelayUser: relayUser, RelayPassword: relayPass, PolicySocket: s.policySocket(), Rspamd: rspamdInstalled(),
+		CertFile: s.CertFile, KeyFile: s.KeyFile, Relay: relay, RelayUser: relayUser, RelayPassword: relayPass, ClamAV: clam, PolicySocket: s.policySocket(), Rspamd: rspamdInstalled(),
 		AuthPolicyToken: s.authPolicyToken()})
 	if err != nil {
 		return err
@@ -259,6 +261,9 @@ func (s *Server) apply(ctx context.Context, r Request) error {
 		}
 	}
 	fixOwners()
+	// HostZit's nginx (when present) answers for autoconfig and MTA-STS
+	s.nginxHost = host
+	s.writeNginx(ctx, host)
 	if !changed {
 		return nil
 	}
@@ -424,6 +429,11 @@ func (s *Server) usageLoop(ctx context.Context) {
 		if err := s.updateUsage(ctx); err != nil {
 			s.Log.Warn("mailbox usage", "err", err)
 		}
+		s.mu.Lock()
+		if s.nginxHost != "" {
+			s.writeNginx(ctx, s.nginxHost) // HostZit installed later
+		}
+		s.mu.Unlock()
 		// also catches mailboxes created while the panel could not reach the helper
 		if err := s.writeSpam(ctx, Request{}); err != nil {
 			s.Log.Warn("spam scripts", "err", err)

@@ -155,6 +155,8 @@ func (s *Server) do(ctx context.Context, r Request) error {
 		return s.customerDir(ctx, r)
 	case ActionTrash:
 		return s.trash(ctx, r)
+	case ActionDKIM:
+		return s.dkim(ctx, r)
 	}
 	return errors.New("unknown action")
 }
@@ -173,7 +175,7 @@ func (s *Server) apply(ctx context.Context, r Request) error {
 		}
 	}
 	files, err := mailconf.Render(mailconf.Settings{Hostname: host, MaxMessageMB: r.MaxMessageMB, DBName: s.DBName,
-		CertFile: s.CertFile, KeyFile: s.KeyFile, Relay: s.Relay, PolicySocket: s.Policy})
+		CertFile: s.CertFile, KeyFile: s.KeyFile, Relay: s.Relay, PolicySocket: s.policySocket(), Rspamd: rspamdInstalled()})
 	if err != nil {
 		return err
 	}
@@ -201,6 +203,7 @@ func (s *Server) apply(ctx context.Context, r Request) error {
 			_ = os.Chown(f.Path, 0, groupID("postfix"))
 		}
 	}
+	fixOwners()
 	if !changed {
 		return nil
 	}
@@ -219,10 +222,11 @@ func (s *Server) apply(ctx context.Context, r Request) error {
 			return fmt.Errorf("%s: %s", svc, firstLine(out, err))
 		}
 	}
-	return nil
+	return s.afterApply(ctx)
 }
 
 func (s *Server) restore(old map[string][]byte, files []mailconf.File) {
+	defer fixOwners()
 	for _, f := range files {
 		if b, ok := old[f.Path]; ok {
 			_ = writeFile(f.Path, b, os.FileMode(f.Mode))
@@ -233,6 +237,10 @@ func (s *Server) restore(old map[string][]byte, files []mailconf.File) {
 }
 
 func writeFile(path string, b []byte, mode os.FileMode) error {
+	// #nosec G301 -- configuration directories of the mail software
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
 	tmp := path + ".emailzit-new"
 	if err := os.WriteFile(tmp, b, mode); err != nil {
 		return err
@@ -325,6 +333,11 @@ func (s *Server) trash(ctx context.Context, r Request) error {
 	src := filepath.Join(s.VMail, r.Customer, r.Domain)
 	if r.Local != "" {
 		src = filepath.Join(src, r.Local)
+	}
+	if r.Local == "" && rspamdInstalled() {
+		if err := s.setSelector(r.Domain, ""); err != nil {
+			return err
+		}
 	}
 	if _, err := os.Lstat(src); errors.Is(err, os.ErrNotExist) {
 		return nil
@@ -420,6 +433,9 @@ func (s *Server) Start(ctx context.Context, r Request) error {
 	if s.Run == nil {
 		s.Run = run
 	}
+	if err := s.preparePolicyDir(); err != nil {
+		s.Log.Error("policy directory", "err", err)
+	}
 	if err := r.Validate(); err != nil {
 		return err
 	}
@@ -457,4 +473,141 @@ func (s *Server) EnsureCustomerDirs(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+// ---- policy service, Rspamd, DKIM
+
+// PolicyDir is where the panel's policy socket lives: inside the Postfix
+// queue directory (smtpd runs chrooted there), owned by the panel user,
+// readable by the group postfix.
+const PolicyDir = "/var/spool/postfix/emailzit"
+
+func (s *Server) policySocket() string {
+	if s.Policy != "" {
+		return s.Policy
+	}
+	if _, err := os.Stat(PolicyDir); err == nil {
+		return "emailzit/policy"
+	}
+	return ""
+}
+
+// preparePolicyDir creates PolicyDir for the panel user.
+func (s *Server) preparePolicyDir() error {
+	if err := os.MkdirAll(PolicyDir, 0o750); err != nil {
+		return err
+	}
+	return os.Chown(PolicyDir, s.AllowUID, groupID("postfix"))
+}
+
+func rspamdInstalled() bool {
+	_, err := os.Stat("/usr/bin/rspamd")
+	return err == nil
+}
+
+// afterApply checks and reloads Rspamd and compiles the spam filter.
+func (s *Server) afterApply(ctx context.Context) error {
+	if !rspamdInstalled() {
+		return nil
+	}
+	if err := os.MkdirAll(mailconf.RspamdDKIM, 0o750); err != nil {
+		return err
+	}
+	_ = os.Chown(mailconf.RspamdDKIM, 0, groupID("_rspamd"))
+	_ = os.Chown(filepath.Dir(mailconf.RspamdDKIM), 0, groupID("_rspamd"))
+	if _, err := os.Stat(mailconf.RspamdDKIMMap); errors.Is(err, os.ErrNotExist) {
+		if err := writeFile(mailconf.RspamdDKIMMap, nil, 0o644); err != nil {
+			return err
+		}
+	}
+	if out, err := s.Run(ctx, "sievec", mailconf.SpamSieve); err != nil {
+		return fmt.Errorf("sievec: %s", firstLine(out, err))
+	}
+	if out, err := s.Run(ctx, "rspamadm", "configtest"); err != nil {
+		return fmt.Errorf("rspamd: %s", firstLine(out, err))
+	}
+	if out, err := s.Run(ctx, "systemctl", "reload-or-restart", "rspamd"); err != nil {
+		return fmt.Errorf("rspamd: %s", firstLine(out, err))
+	}
+	return nil
+}
+
+// dkim installs the signing key of a domain that exists in the database.
+func (s *Server) dkim(ctx context.Context, r Request) error {
+	if !rspamdInstalled() {
+		return errors.New("rspamd is not installed")
+	}
+	var n int
+	if err := s.DB.QueryRow(ctx, `SELECT count(*) FROM domains WHERE name=$1`, r.Domain).Scan(&n); err != nil {
+		return err
+	}
+	if n == 0 {
+		return errors.New("unknown domain")
+	}
+	if err := os.MkdirAll(mailconf.RspamdDKIM, 0o750); err != nil {
+		return err
+	}
+	_ = os.Chown(mailconf.RspamdDKIM, 0, groupID("_rspamd"))
+	_ = os.Chown(filepath.Dir(mailconf.RspamdDKIM), 0, groupID("_rspamd"))
+	p := filepath.Join(mailconf.RspamdDKIM, r.Domain+"."+r.Selector+".key")
+	if err := writeFile(p, []byte(r.Key), 0o640); err != nil {
+		return err
+	}
+	_ = os.Chown(p, 0, groupID("_rspamd"))
+	return s.setSelector(r.Domain, r.Selector)
+}
+
+// setSelector writes the domain's line in the selector map ("" removes it
+// and the domain's keys).
+func (s *Server) setSelector(domain, selector string) error {
+	old, _ := os.ReadFile(mailconf.RspamdDKIMMap)
+	var lines []string
+	for _, l := range strings.Split(string(old), "\n") {
+		if f := strings.Fields(l); len(f) == 2 && f[0] != domain {
+			lines = append(lines, l)
+		}
+	}
+	if selector != "" {
+		lines = append(lines, domain+" "+selector)
+	} else {
+		keys, _ := filepath.Glob(filepath.Join(mailconf.RspamdDKIM, domain+".*.key"))
+		for _, k := range keys {
+			_ = os.Remove(k)
+		}
+	}
+	content := strings.Join(lines, "\n")
+	if content != "" {
+		content += "\n"
+	}
+	return writeFile(mailconf.RspamdDKIMMap, []byte(content), 0o644)
+}
+
+// PeerUID is the user ID of the process on the other end of a Unix socket.
+func PeerUID(c net.Conn) (int, error) {
+	uc, ok := c.(*net.UnixConn)
+	if !ok {
+		return -1, errors.New("not a Unix socket")
+	}
+	return peerUID(uc)
+}
+
+// PostfixUID is the user ID of postfix (-1 if unknown).
+func PostfixUID() int {
+	u, err := user.Lookup("postfix")
+	if err != nil {
+		return -1
+	}
+	n, _ := strconv.Atoi(u.Uid)
+	return n
+}
+
+// fixOwners gives the Postfix maps back to the group postfix (a rewrite or
+// a rollback creates new files owned by root).
+func fixOwners() {
+	maps, _ := filepath.Glob(filepath.Join(mailconf.PostfixMaps, "*.cf"))
+	g := groupID("postfix")
+	for _, m := range maps {
+		_ = os.Chown(m, 0, g)
+		_ = os.Chmod(m, 0o640)
+	}
 }

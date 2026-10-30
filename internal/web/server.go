@@ -60,6 +60,8 @@ type MailApplier interface {
 	// DomainDeleted and MailboxDeleted remove the mail files.
 	DomainDeleted(ctx context.Context, d *store.Domain) error
 	MailboxDeleted(ctx context.Context, m *store.Mailbox) error
+	// DKIM installs the signing key of a domain.
+	DKIM(ctx context.Context, k *store.DKIMKey) error
 }
 
 // New creates the server; settings are loaded from the database.
@@ -271,6 +273,8 @@ func (s *Server) Handler() http.Handler {
 	app("GET /domains/{id}", s.handleDomain)
 	write("POST /domains/{id}", s.handleDomainUpdate)
 	write("POST /domains/{id}/verify", s.handleDomainVerify)
+	app("POST /domains/{id}/check", s.handleDomain)
+	write("POST /domains/{id}/dkim", s.handleDomainDKIM)
 	write("POST /domains/{id}/delete", s.handleDomainDelete)
 	write("POST /domains/{id}/mailboxes", s.handleMailboxCreate)
 	write("POST /domains/{id}/aliases", s.handleAliasCreate)

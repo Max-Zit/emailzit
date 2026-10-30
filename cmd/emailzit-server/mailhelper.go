@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"os"
 	"os/user"
+	"path/filepath"
 	"strconv"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -78,4 +80,26 @@ func mailHelperInstalled() bool {
 		}
 	}
 	return false
+}
+
+// listenPolicy opens the policy socket inside the Postfix queue directory
+// (prepared by the mail helper); nil without a mail system.
+func listenPolicy() (net.Listener, error) {
+	if _, err := os.Stat(mailhelper.PolicyDir); err != nil {
+		return nil, nil
+	}
+	p := filepath.Join(mailhelper.PolicyDir, "policy")
+	_ = os.Remove(p)
+	l, err := net.Listen("unix", p)
+	if err != nil {
+		return nil, err
+	}
+	// the directory admits only the group postfix; every caller is checked
+	// by its user ID
+	// #nosec G302 -- see above
+	if err := os.Chmod(p, 0o666); err != nil {
+		_ = l.Close()
+		return nil, err
+	}
+	return l, nil
 }

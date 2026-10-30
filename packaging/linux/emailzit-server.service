@@ -27,7 +27,7 @@ ProtectControlGroups=true
 ProtectClock=true
 ProtectHostname=true
 RestrictSUIDSGID=true
-ReadWritePaths=/var/lib/emailzit
+ReadWritePaths=/var/lib/emailzit -/var/spool/postfix/emailzit
 # the panel never touches mail files: they belong to the customers' users
 InaccessiblePaths=-/var/vmail
 # Ports below 1024 (e.g. 443), nothing else.

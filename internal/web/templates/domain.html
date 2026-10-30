@@ -72,13 +72,18 @@
   {{if .Data.Mail.Hostname}}
   <p class="muted">{{.T "Put these records at the DNS provider of the domain. The required ones are needed for mail to work; the others make set-up of mail programs automatic and help that your mail is not treated as spam."}}</p>
   <div class="table-wrap"><table class="dns">
-    <thead><tr><th>{{.T "Name"}}</th><th>{{.T "Type"}}</th><th>{{.T "Value"}}</th></tr></thead>
-    <tbody>{{range .Data.Records}}<tr>
+    <thead><tr><th>{{.T "Name"}}</th><th>{{.T "Type"}}</th><th>{{.T "Value"}}</th>{{if .Data.Checked}}<th>{{.T "In the DNS"}}</th>{{end}}</tr></thead>
+    <tbody>{{range $i, $r := .Data.Records}}{{with $r}}<tr>
       <td class="mono small">{{.Name}}{{if .Required}} <span class="badge info">{{$.T "required"}}</span>{{end}}</td>
       <td>{{.Type}}</td>
       <td><code class="wrap" data-copy-text>{{.Value}}</code><br><small class="muted">{{$.T .Note}}</small></td>
-    </tr>{{end}}</tbody>
+      {{if $.Data.Checked}}<td>{{with index $.Data.Checked $i}}{{if eq . "ok"}}<span class="badge ok"><i></i>{{$.T "OK"}}</span>{{else if eq . "different"}}<span class="badge warn"><i></i>{{$.T "Different"}}</span>{{else}}<span class="badge bad"><i></i>{{$.T "Missing"}}</span>{{end}}{{end}}</td>{{end}}
+    </tr>{{end}}{{end}}</tbody>
   </table></div>
+  <div class="row mt">
+    <form method="post" action="/domains/{{$d.ID}}/check"><button class="secondary">{{template "icon" "refresh"}}{{.T "Check DNS"}}</button></form>
+    {{if .User.CanWrite}}<form method="post" action="/domains/{{$d.ID}}/dkim" data-confirm="{{.T "Create a new DKIM key? Mail is signed with it at once; put the new DKIM record at the DNS provider right away."}}"><button class="ghost">{{template "icon" "key"}}{{.T "New DKIM key"}}</button></form>{{end}}
+  </div>
   {{else}}<p class="muted">{{.T "The administrator has not set the host name of the mail server yet; the records are shown after that."}}</p>{{end}}
 </section>
 {{if .User.CanWrite}}

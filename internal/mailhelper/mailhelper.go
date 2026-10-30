@@ -10,11 +10,15 @@ package mailhelper
 import (
 	"bufio"
 	"context"
+	"crypto/rsa"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"net"
 	"regexp"
+	"strings"
 	"time"
 )
 
@@ -26,6 +30,7 @@ const (
 	ActionApply    = "apply"    // write the server-wide configuration and reload
 	ActionCustomer = "customer" // create the mail directory of a customer
 	ActionTrash    = "trash"    // move the mail of a deleted domain or mailbox away
+	ActionDKIM     = "dkim"     // install the DKIM key of a domain
 	ActionPing     = "ping"
 )
 
@@ -40,6 +45,9 @@ type Request struct {
 	UID      int    `json:"uid,omitempty"`
 	Domain   string `json:"domain,omitempty"`
 	Local    string `json:"local,omitempty"` // empty: the whole domain
+	// dkim
+	Selector string `json:"selector,omitempty"`
+	Key      string `json:"key,omitempty"` // PEM, PKCS#8 RSA
 	// who asked (for the helper's log)
 	By string `json:"by,omitempty"`
 }
@@ -54,6 +62,7 @@ var (
 	uuidRE   = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
 	domainRE = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$`)
 	localRE  = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9_+-]|\.[a-z0-9_+-]){0,63}$`)
+	selRE    = regexp.MustCompile(`^[a-z0-9]{1,32}$`)
 )
 
 // UID range of the customers' mail users.
@@ -78,6 +87,22 @@ func (r *Request) Validate() error {
 	case ActionCustomer:
 		if !uuidRE.MatchString(r.Customer) || r.UID < MinUID || r.UID > MaxUID {
 			return errors.New("invalid customer")
+		}
+		return nil
+	case ActionDKIM:
+		if !domainRE.MatchString(r.Domain) || len(r.Domain) > 253 || !selRE.MatchString(r.Selector) {
+			return errors.New("invalid domain or selector")
+		}
+		blk, rest := pem.Decode([]byte(r.Key))
+		if blk == nil || blk.Type != "PRIVATE KEY" || len(strings.TrimSpace(string(rest))) > 0 {
+			return errors.New("invalid key")
+		}
+		k, err := x509.ParsePKCS8PrivateKey(blk.Bytes)
+		if err != nil {
+			return errors.New("invalid key")
+		}
+		if rk, ok := k.(*rsa.PrivateKey); !ok || rk.N.BitLen() < 2048 {
+			return errors.New("the key must be RSA with at least 2048 bits")
 		}
 		return nil
 	case ActionTrash:

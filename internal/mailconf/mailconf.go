@@ -33,7 +33,9 @@ type Settings struct {
 	Relay string
 	// PolicySocket is the EmailZit policy service (sending limits);
 	// empty = none yet.
-	PolicySocket string
+	PolicySocket string // relative to the queue directory, e.g. emailzit/policy
+	// Rspamd is installed: milter, DKIM signing, spam to Junk.
+	Rspamd bool
 }
 
 // File is one rendered file.
@@ -48,6 +50,8 @@ var (
 	pathRE  = regexp.MustCompile(`^/[A-Za-z0-9._/-]+$`)
 	relayRE = regexp.MustCompile(`^\[[a-z0-9.:-]+\](:[0-9]{1,5})?$`)
 	dbRE    = regexp.MustCompile(`^[a-z_][a-z0-9_]{0,62}$`)
+	// relative to the Postfix queue directory (smtpd runs chrooted there)
+	relPathRE = regexp.MustCompile(`^[a-z]+/[a-z-]+$`)
 )
 
 // Validate checks every value that goes into a file.
@@ -63,7 +67,7 @@ func (s *Settings) Validate() error {
 		return errors.New("invalid certificate path")
 	case s.Relay != "" && !relayRE.MatchString(s.Relay):
 		return errors.New("invalid relay host")
-	case s.PolicySocket != "" && !pathRE.MatchString(s.PolicySocket):
+	case s.PolicySocket != "" && !relPathRE.MatchString(s.PolicySocket):
 		return errors.New("invalid policy socket")
 	}
 	return nil
@@ -114,6 +118,13 @@ func Render(s Settings) ([]File, error) {
 		// postfix reads them as root before dropping privileges, 0640
 		out = append(out, File{Path: PostfixMaps + "/" + m.name + ".cf", Mode: 0o640, Content: b.Bytes()})
 	}
+	if s.Rspamd {
+		rf, err := rspamdFiles()
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, rf...)
+	}
 	return out, nil
 }
 
@@ -130,4 +141,29 @@ func render(name string, data any) ([]byte, error) {
 		return nil, fmt.Errorf("%s: missing value", name)
 	}
 	return b.Bytes(), nil
+}
+
+// Rspamd and Sieve files (written when Settings.Rspamd is set).
+const (
+	RspamdLocal   = "/etc/rspamd/local.d"
+	RspamdDKIM    = "/etc/rspamd/emailzit/dkim"
+	RspamdDKIMMap = "/etc/rspamd/emailzit/dkim_selectors.map"
+	SpamSieve     = "/etc/dovecot/sieve/spam.sieve"
+)
+
+func rspamdFiles() ([]File, error) {
+	names := []string{"dkim_signing.conf", "arc.conf", "redis.conf", "actions.conf", "milter_headers.conf", "worker-proxy.inc", "worker-controller.inc", "options.inc"}
+	var out []File
+	for _, n := range names {
+		b, err := tmplFS.ReadFile("templates/rspamd/" + n)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, File{Path: RspamdLocal + "/" + n, Mode: 0o644, Content: b})
+	}
+	b, err := tmplFS.ReadFile("templates/sieve/spam.sieve")
+	if err != nil {
+		return nil, err
+	}
+	return append(out, File{Path: SpamSieve, Mode: 0o644, Content: b}), nil
 }

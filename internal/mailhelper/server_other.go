@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"net"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -30,3 +31,12 @@ func (s *Server) Start(ctx context.Context, r Request) error { return s.Serve(ct
 
 // EnsureCustomerDirs is not available on this system.
 func (s *Server) EnsureCustomerDirs(ctx context.Context) error { return nil }
+
+// PolicyDir is where the policy socket lives (Linux).
+const PolicyDir = "/var/spool/postfix/emailzit"
+
+// PeerUID is not available on this system.
+func PeerUID(c net.Conn) (int, error) { return -1, errors.New("not supported") }
+
+// PostfixUID is not available on this system.
+func PostfixUID() int { return -1 }

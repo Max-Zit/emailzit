@@ -6,6 +6,7 @@
 <div class="tiles">
   <div class="tile"><span class="tile-label">{{template "icon" "disk"}}{{.T "Used"}}</span><b>{{bytes $m.UsedBytes}}</b><small>{{.T "of %s" (mb (i64 $m.QuotaMB))}}{{with $m.UsedAt}} · {{$.Ago .}}{{end}}</small></div>
   <div class="tile"><span class="tile-label">{{template "icon" "key"}}{{.T "App passwords"}}</span><b>{{$m.AppPasswords}}</b></div>
+  <div class="tile"><span class="tile-label">{{template "icon" "upload"}}{{.T "Sent in the last hour"}}</span><b>{{.Data.Sent.Hour}}</b><small>{{.T "%d today" .Data.Sent.Day}}{{if .Data.Sent.RefusedHour}} · <span class="warn">{{.T "%d refused by the limit" .Data.Sent.RefusedHour}}</span>{{end}}</small></div>
   <div class="tile"><span class="tile-label">{{template "icon" "lock"}}{{.T "Two-factor"}}</span><b>{{if $m.TOTPEnabled}}{{.T "On"}}{{else}}{{.T "Not yet"}}{{end}}</b><small>{{.T "Last sign-in"}}: {{.Time $m.LastLoginAt}}</small></div>
 </div>
 <section class="panel">

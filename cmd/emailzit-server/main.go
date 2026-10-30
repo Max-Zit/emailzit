@@ -28,6 +28,7 @@ import (
 	"github.com/max-zit/emailzit/internal/logfile"
 	"github.com/max-zit/emailzit/internal/mailhelper"
 	"github.com/max-zit/emailzit/internal/netacl"
+	"github.com/max-zit/emailzit/internal/policy"
 	"github.com/max-zit/emailzit/internal/store"
 	"github.com/max-zit/emailzit/internal/tlsutil"
 	"github.com/max-zit/emailzit/internal/web"
@@ -226,6 +227,21 @@ func run() error {
 	log.Info("EmailZit server started", "version", version)
 
 	go srv.RunUpdates(ctx)
+	go srv.SyncMail(ctx)
+	if pl, err := listenPolicy(); err != nil {
+		log.Error("policy service (sending limits) not started", "err", err)
+	} else if pl != nil {
+		ps := &policy.Service{Store: st, Log: log, AllowUID: mailhelper.PostfixUID(), PeerUID: mailhelper.PeerUID,
+			Blocked: func(address, reason string) {
+				_ = st.Audit(context.Background(), "-", "local", "mailbox.send.blocked", "mailbox:"+address, "sending blocked automatically: "+reason)
+			}}
+		go func() {
+			if err := ps.Serve(ctx, pl); err != nil {
+				log.Error("policy service stopped", "err", err)
+			}
+		}()
+		log.Info("policy service listening", "socket", pl.Addr().String())
+	}
 	// For the root helper: which version runs and where (it checks this after an update).
 	if err := helper.WriteServerInfo(*dataDir, helper.ServerInfo{Version: version, MgmtListen: net0.MgmtListen}); err != nil {
 		log.Warn("cannot write the helper information", "err", err)
@@ -240,6 +256,7 @@ func run() error {
 			case <-t.C:
 				_ = st.PurgeSessions(ctx)
 				_ = st.PurgeMailSessions(ctx)
+				_ = st.PurgeSendLog(ctx)
 			}
 		}
 	}()

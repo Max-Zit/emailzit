@@ -1247,7 +1247,7 @@ func (s *Store) GrantMailRoles(ctx context.Context) error {
 		"postfix": {`GRANT SELECT ON mta_domains, mta_mailboxes, mta_aliases, mta_sender_logins TO postfix`},
 		"dovecot": {`GRANT SELECT ON mda_users, mda_logins TO dovecot`},
 		"root": {`GRANT SELECT ON mda_users, customers TO root`, `GRANT SELECT (id, address) ON mailboxes TO root`,
-			`GRANT UPDATE (used_bytes, used_at) ON mailboxes TO root`, `GRANT SELECT ON settings TO root`},
+			`GRANT UPDATE (used_bytes, used_at) ON mailboxes TO root`, `GRANT SELECT ON settings TO root`, `GRANT SELECT (name) ON domains TO root`},
 	}
 	for role, qs := range grants {
 		var ok bool

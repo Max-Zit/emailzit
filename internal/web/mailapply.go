@@ -39,3 +39,39 @@ func cutAt(a string) (string, string, bool) {
 	}
 	return a, "", false
 }
+
+// DKIM installs the domain's signing key.
+func (h *HelperMail) DKIM(ctx context.Context, k *store.DKIMKey) error {
+	return h.C.Call(ctx, mailhelper.Request{Action: mailhelper.ActionDKIM, Domain: k.Domain, Selector: k.Selector, Key: k.Private})
+}
+
+// SyncMail gives the helper what only the panel has (the DKIM keys, sealed
+// with the server key): at every start, for all domains.
+func (s *Server) SyncMail(ctx context.Context) {
+	if s.Mail == nil {
+		return
+	}
+	doms, err := s.store.Domains(ctx, store.Staff, "")
+	if err != nil {
+		s.log.Error("mail sync", "err", err)
+		return
+	}
+	for _, d := range doms {
+		s.installDKIM(ctx, d.ID)
+	}
+}
+
+// installDKIM makes sure the domain has a key and the helper has it.
+func (s *Server) installDKIM(ctx context.Context, domainID string) {
+	k, err := s.store.EnsureDKIM(ctx, domainID)
+	if err != nil {
+		s.log.Error("DKIM key", "domain", domainID, "err", err)
+		return
+	}
+	if s.Mail == nil {
+		return
+	}
+	if err := s.Mail.DKIM(ctx, k); err != nil {
+		s.log.Error("installing the DKIM key", "domain", k.Domain, "err", err)
+	}
+}

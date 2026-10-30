@@ -47,7 +47,7 @@ func TestRenderRefusesInjection(t *testing.T) {
 		"cert":         func(s *Settings) { s.CertFile = "/a b" },
 		"db":           func(s *Settings) { s.DBName = "x; drop" },
 		"size":         func(s *Settings) { s.MaxMessageMB = 0 },
-		"policy":       func(s *Settings) { s.PolicySocket = "relative" },
+		"policy":       func(s *Settings) { s.PolicySocket = "/abs/olute" },
 	} {
 		s := base
 		mod(&s)

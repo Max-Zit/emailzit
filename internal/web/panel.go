@@ -417,6 +417,7 @@ func (s *Server) handleDomainCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.audit(r, "domain.create", "domain:"+d.Name, "customer %s, verified %v", d.CustomerName, d.Verified)
+	s.installDKIM(r.Context(), d.ID)
 	s.redirect(w, r, "/domains/"+d.ID, "Domain added.")
 }
 
@@ -426,6 +427,7 @@ type domainData struct {
 	Aliases   []*store.Alias
 	Package   *store.Package
 	Records   []DNSRecord
+	Checked   map[int]string // index in Records → ok, missing, different (after "Check DNS")
 	Mail      MailSettings
 	Staff     bool
 }
@@ -459,7 +461,11 @@ func (s *Server) handleDomain(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 		return
 	}
-	d.Records = mailRecords(dom, d.Mail)
+	k, _ := s.store.DKIM(r.Context(), dom.ID)
+	d.Records = mailRecords(dom, d.Mail, k)
+	if r.Method == http.MethodPost {
+		d.Checked = s.checkRecords(r.Context(), d.Records)
+	}
 	s.render(w, r, http.StatusOK, "domain", &Page{Title: dom.Unicode(), Nav: "domains", Data: d})
 }
 
@@ -582,6 +588,7 @@ func (s *Server) handleMailboxCreate(w http.ResponseWriter, r *http.Request) {
 
 type mailboxData struct {
 	M            *store.Mailbox
+	Sent         store.SentStats
 	D            *store.Domain
 	AppPasswords []*store.AppPassword
 	Package      *store.Package
@@ -608,6 +615,7 @@ func (s *Server) handleMailbox(w http.ResponseWriter, r *http.Request) {
 	var err error
 	if d.D, err = s.store.DomainByID(r.Context(), sc, m.DomainID); err == nil {
 		if d.AppPasswords, err = s.store.AppPasswords(r.Context(), m.ID); err == nil {
+			d.Sent, _ = s.store.MailboxSentStats(r.Context(), m.ID)
 			var c *store.Customer
 			if c, err = s.store.CustomerByID(r.Context(), m.CustomerID); err == nil {
 				d.Package, err = s.store.PackageByID(r.Context(), c.PackageID)
@@ -865,4 +873,26 @@ func init() {
 	funcs["aliasTable"] = func(p *Page, l []*store.Alias, back string) aliasTableCtx {
 		return aliasTableCtx{P: p, List: l, Back: back}
 	}
+}
+
+// handleDomainDKIM makes a new DKIM key (rotation, or a key that leaked).
+func (s *Server) handleDomainDKIM(w http.ResponseWriter, r *http.Request) {
+	dom := s.loadDomain(w, r)
+	if dom == nil {
+		return
+	}
+	k, err := s.store.NewDKIM(r.Context(), dom.ID)
+	if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	if s.Mail != nil {
+		if err := s.Mail.DKIM(r.Context(), k); err != nil {
+			s.log.Error("installing the DKIM key", "domain", dom.Name, "err", err)
+			s.redirectErr(w, r, "/domains/"+dom.ID, "The new key could not be installed on the mail server; try again.")
+			return
+		}
+	}
+	s.audit(r, "domain.dkim", "domain:"+dom.Name, "new DKIM key, selector %s", k.Selector)
+	s.redirect(w, r, "/domains/"+dom.ID, "New DKIM key created. Put the new DKIM record at the DNS provider; until then receivers cannot check the signature.")
 }

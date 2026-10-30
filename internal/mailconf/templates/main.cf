@@ -85,3 +85,12 @@ emailzit_policy = check_policy_service unix:{{.PolicySocket}}
 # ---- all outgoing mail through a relay (lab or smart host)
 relayhost = {{.Relay}}
 {{- end}}
+{{- if .Rspamd}}
+
+# ---- Rspamd (spam, greylisting, DKIM signing) as a milter
+smtpd_milters = inet:127.0.0.1:11332
+non_smtpd_milters = $smtpd_milters
+milter_default_action = accept
+milter_protocol = 6
+milter_mail_macros = i {mail_addr} {client_addr} {client_name} {auth_authen}
+{{- end}}

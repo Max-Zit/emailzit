@@ -9,6 +9,8 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	"github.com/max-zit/emailzit/internal/store"
 )
 
 // uiTexts collects the English texts of the console: template {{.T "…"}}
@@ -47,6 +49,10 @@ func uiTexts(t *testing.T) map[string]bool {
 	out["the password must be between 12 and 256 characters"] = true
 	out["The name is already used."] = true
 	out["Not found."] = true
+	// notes of the DNS records
+	for _, r := range mailRecords(&store.Domain{Name: "example.com"}, MailSettings{Hostname: "mail.example.com"}, &store.DKIMKey{Domain: "example.com", Selector: "s"}) {
+		out[r.Note] = true
+	}
 	for _, p := range DocPages {
 		out[p.Title] = true
 	}

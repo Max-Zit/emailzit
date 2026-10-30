@@ -41,7 +41,7 @@ func (s *Server) clamAV(ctx context.Context, r Request) bool {
 	if clamInstalling.CompareAndSwap(false, true) {
 		go func() {
 			defer clamInstalling.Store(false)
-			ictx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+			ictx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Minute)
 			defer cancel()
 			s.Log.Info("installing ClamAV")
 			out, err := s.Run(ictx, "sh", "-c", "DEBIAN_FRONTEND=noninteractive apt-get -q update && DEBIAN_FRONTEND=noninteractive apt-get -yq install --no-install-recommends clamav-daemon clamav-freshclam")

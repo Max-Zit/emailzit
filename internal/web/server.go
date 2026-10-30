@@ -325,6 +325,8 @@ func (s *Server) Handler() http.Handler {
 	admin("POST /settings/backup/test", s.handleBackupTest)
 	admin("POST /settings/backup/delete", s.handleBackupDelete)
 	admin("GET /settings/backup/file/{name}", s.handleBackupDownload)
+	admin("GET /settings/hostzit", s.handleHostZit)
+	admin("POST /settings/hostzit", s.handleHostZitSave)
 	admin("GET /settings/api", s.handleAPITokens)
 	admin("POST /settings/api", s.handleAPITokenCreate)
 	admin("POST /settings/api/{id}/delete", s.handleAPITokenDelete)

@@ -117,6 +117,7 @@ func (s *Server) handleMailSettingsSave(w http.ResponseWriter, r *http.Request) 
 	}
 	s.audit(r, "settings.mail", "settings", "host name %q, verification %v, dedicated %v, max message %d MB", m.Hostname, m.RequireVerification, m.Dedicated, m.MaxMessageMB)
 	s.applyMail(r)
+	go s.publishAllDNS(context.WithoutCancel(r.Context()))
 	s.redirect(w, r, "/settings/mail", "Saved.")
 }
 
@@ -421,6 +422,7 @@ func (s *Server) handleDomainCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	s.audit(r, "domain.create", "domain:"+d.Name, "customer %s, verified %v", d.CustomerName, d.Verified)
 	s.installDKIM(r.Context(), d.ID)
+	s.publishDNS(r.Context(), d.ID, false, nil)
 	s.redirect(w, r, "/domains/"+d.ID, "Domain added.")
 }
 
@@ -543,6 +545,7 @@ func (s *Server) handleDomainDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.audit(r, "domain.delete", "domain:"+dom.Name, "deleted with %d mailboxes and %d aliases", dom.Mailboxes, dom.Aliases)
+	s.publishDNS(r.Context(), dom.ID, true, dom)
 	if s.Mail != nil {
 		if err := s.Mail.DomainDeleted(r.Context(), dom); err != nil {
 			s.log.Error("removing the mail files of a domain", "domain", dom.Name, "err", err)
@@ -899,5 +902,6 @@ func (s *Server) handleDomainDKIM(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	s.audit(r, "domain.dkim", "domain:"+dom.Name, "new DKIM key, selector %s", k.Selector)
+	s.publishDNS(r.Context(), dom.ID, false, nil)
 	s.redirect(w, r, "/domains/"+dom.ID, "New DKIM key created. Put the new DKIM record at the DNS provider; until then receivers cannot check the signature.")
 }

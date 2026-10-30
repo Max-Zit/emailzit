@@ -90,7 +90,9 @@ type Page struct {
 	Host     string // the console host as the browser sees it
 	// Customer is the customer of a customer login (customer panel).
 	Customer *store.Customer
-	Data     any
+	// HostZit is the address of the linked HostZit panel (product switch).
+	HostZit string
+	Data    any
 }
 
 // T translates a text for the page language.
@@ -257,6 +259,9 @@ func (s *Server) render(w http.ResponseWriter, r *http.Request, status int, name
 	p.Asset = assetVersion
 	p.Path = r.URL.RequestURI()
 	p.Host = r.Host
+	if p.User != nil {
+		p.HostZit = s.hostzitLink(r.Context()).URL
+	}
 	if p.User != nil && p.User.CustomerID != "" && p.Customer == nil {
 		if c, err := s.store.CustomerByID(r.Context(), p.User.CustomerID); err == nil {
 			p.Customer = c

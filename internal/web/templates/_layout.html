@@ -33,6 +33,7 @@
     {{end}}
     <a href="/docs" class="{{if eq .Nav "docs"}}on{{end}}">{{template "icon" "book"}}{{.T "User guide"}}</a>
   </nav>
+  {{with .HostZit}}{{if $.User.IsStaff}}<a class="product-switch" href="{{.}}/" title="{{$.T "Open HostZit"}}">{{template "icon" "globe"}}<span>Host<b>Zit</b></span></a>{{end}}{{end}}
   <div class="side-foot"><a class="support-link" href="https://portal.maxzit.com/tickets/new?product=emailzit&amp;version=server%20{{.Version}}" target="_blank" rel="noopener" title="{{.T "Paid support by MaxZit: open a ticket in the customer portal"}}">{{template "icon" "support"}} {{.T "Contact support"}}</a><a class="bug-link" href="https://github.com/Max-Zit/emailzit/issues/new?template=bug_report.yml&amp;version=server%20{{.Version}}" target="_blank" rel="noopener">{{template "icon" "bug"}} {{.T "Report a bug"}}</a>EmailZit {{.Version}}<br>{{.T "AGPLv3 · self-hosted"}}<br><span title="{{.T "Times in the panel are in this time zone"}}">{{template "icon" "clock"}} {{.Zone}}</span>{{with .Clock}}<br><span id="clock" title="{{$.T "Current time of the server"}}" data-ms="{{.MS}}" data-off="{{.Off}}">{{.Text}}</span>{{end}}</div>
 </aside>
 <div class="scrim" data-close="#side"></div>
@@ -79,6 +80,7 @@
   <a href="/settings/mail" class="{{if eq .Title "Mail server"}}on{{end}}">{{template "icon" "mail"}}<span>{{.T "Mail server"}}<small>{{.T "Host name, domain verification, limits"}}</small></span></a>
   <a href="/settings/certificate" class="{{if eq .Title "Certificate"}}on{{end}}">{{template "icon" "lock"}}<span>{{.T "Certificate"}}<small>{{.T "TLS for IMAP, POP3 and SMTP"}}</small></span></a>
   <a href="/settings/backup" class="{{if eq .Title "Backup of the panel"}}on{{end}}">{{template "icon" "disk"}}<span>{{.T "Backup of the panel"}}<small>{{.T "Database, keys and settings, encrypted"}}</small></span></a>
+  <a href="/settings/hostzit" class="{{if eq .Title "HostZit"}}on{{end}}">{{template "icon" "link"}}<span>HostZit<small>{{.T "DNS records and websites of the same customers"}}</small></span></a>
   <a href="/settings/api" class="{{if eq .Title "REST API"}}on{{end}}">{{template "icon" "key"}}<span>{{.T "REST API"}}<small>{{.T "Tokens for billing systems and HostZit"}}</small></span></a>
   <a href="/settings/network" class="{{if eq .Title "Network and access"}}on{{end}}">{{template "icon" "network"}}<span>{{.T "Network and access"}}<small>{{.T "Panel port and allowed networks"}}</small></span></a>
   <a href="/settings/security" class="{{if eq .Title "Sign-in and security"}}on{{end}}">{{template "icon" "lock"}}<span>{{.T "Sign-in and security"}}<small>{{.T "Session length, blocked addresses"}}</small></span></a>

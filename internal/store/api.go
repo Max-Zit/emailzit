@@ -226,3 +226,60 @@ func (s *Store) UseSSOTicket(ctx context.Context, tok string) (int64, error) {
 	}
 	return id, nil
 }
+
+// SetWebUIDs replaces the hosting account user IDs of a customer.
+func (s *Store) SetWebUIDs(ctx context.Context, customerID string, uids []int) error {
+	if len(uids) > 1000 {
+		return errors.New("too many user IDs")
+	}
+	for _, u := range uids {
+		if u < 1000000 || u > 1999999 {
+			return errors.New("user IDs of hosting accounts are 1000000–1999999")
+		}
+	}
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	if _, err := tx.Exec(ctx, `DELETE FROM customer_web_uids WHERE customer_id=$1`, customerID); err != nil {
+		return err
+	}
+	for _, u := range uids {
+		if _, err := tx.Exec(ctx, `INSERT INTO customer_web_uids(uid, customer_id) VALUES($1,$2)`, u, customerID); err != nil {
+			if isUnique(err) {
+				return errors.New("a user ID belongs to another customer")
+			}
+			return err
+		}
+	}
+	return tx.Commit(ctx)
+}
+
+// WebUIDs lists the hosting account user IDs of a customer.
+func (s *Store) WebUIDs(ctx context.Context, customerID string) ([]int, error) {
+	rows, err := s.db.Query(ctx, `SELECT uid FROM customer_web_uids WHERE customer_id=$1 ORDER BY uid`, customerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []int{}
+	for rows.Next() {
+		var u int
+		if err := rows.Scan(&u); err != nil {
+			return nil, err
+		}
+		out = append(out, u)
+	}
+	return out, rows.Err()
+}
+
+// SetDomainDNS stores the result of writing the domain's records into
+// HostZit's DNS.
+func (s *Store) SetDomainDNS(ctx context.Context, id string, managed bool, note string) error {
+	if len(note) > 300 {
+		note = note[:300]
+	}
+	_, err := s.db.Exec(ctx, `UPDATE domains SET dns_managed=$2, dns_note=$3, dns_at=now() WHERE id=$1`, id, managed, note)
+	return err
+}

@@ -50,6 +50,7 @@ func uiTexts(t *testing.T) map[string]bool {
 	out["The name is already used."] = true
 	out["Not found."] = true
 	out["The mail server refused the message: %s"] = true
+	out[errNoZone.Error()] = true
 	// notes of the DNS records
 	for _, r := range mailRecords(&store.Domain{Name: "example.com"}, MailSettings{Hostname: "mail.example.com"}, &store.DKIMKey{Domain: "example.com", Selector: "s"}) {
 		out[r.Note] = true

@@ -1,0 +1,19 @@
+{{template "app" .}}
+{{define "content"}}
+<h1>{{.T "Settings"}}</h1>
+<div class="settings">
+{{template "settingstabs" .}}
+<div class="settings-body">
+<form method="post" action="/settings/hostzit" class="stack wide">
+  <section class="panel">
+    <h2>{{template "icon" "link"}}HostZit</h2>
+    <p class="muted">{{.T "When HostZit hosts the websites and the DNS of the same customers, EmailZit writes the mail records (MX, SPF, DKIM, DMARC, MTA-STS, autoconfig) of every domain into HostZit's DNS by itself, and a domain whose zone is in HostZit for the same customer needs no verification. HostZit needs an API token of EmailZit (Settings → REST API) to tell EmailZit the user IDs of the hosting accounts."}}</p>
+    <label>{{.T "Address of HostZit's admin panel"}}<input name="url" value="{{.Data.L.URL}}" spellcheck="false" class="mono" placeholder="https://host.example.com:8442"><small>{{.T "Empty = not linked."}}</small></label>
+    <label>{{.T "HostZit API token with the permission dns:mail"}}<input type="password" name="token" autocomplete="off" spellcheck="false" class="mono" placeholder="{{if .Data.HasToken}}{{.T "saved; leave empty to keep it"}}{{else}}hzt_…{{end}}"></label>
+    <label class="check"><input type="checkbox" name="insecure" value="1" {{if .Data.L.Insecure}}checked{{end}}>{{.T "HostZit has a self-signed certificate (do not check it)"}}</label>
+  </section>
+  <div><button class="primary">{{.T "Save"}}</button></div>
+</form>
+</div>
+</div>
+{{end}}

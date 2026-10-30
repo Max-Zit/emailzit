@@ -447,6 +447,8 @@ type Domain struct {
 	Verified     bool
 	VerifyToken  string
 	CatchAll     string
+	DNSManaged   bool // the records are kept in HostZit's DNS
+	DNSNote      string
 	Disabled     bool
 	CreatedAt    time.Time
 	Mailboxes    int
@@ -493,12 +495,12 @@ func NormalizeDomain(name string) (string, error) {
 	return a, nil
 }
 
-const domainCols = `d.id, d.customer_id, c.name, d.name, d.verified, d.verify_token, d.catch_all, d.disabled, d.created_at,
+const domainCols = `d.id, d.customer_id, c.name, d.name, d.verified, d.verify_token, d.catch_all, d.dns_managed, d.dns_note, d.disabled, d.created_at,
 	(SELECT count(*) FROM mailboxes m WHERE m.domain_id=d.id), (SELECT count(*) FROM aliases a WHERE a.domain_id=d.id)`
 
 func scanDomain(row pgx.Row) (*Domain, error) {
 	d := &Domain{}
-	err := row.Scan(&d.ID, &d.CustomerID, &d.CustomerName, &d.Name, &d.Verified, &d.VerifyToken, &d.CatchAll, &d.Disabled, &d.CreatedAt,
+	err := row.Scan(&d.ID, &d.CustomerID, &d.CustomerName, &d.Name, &d.Verified, &d.VerifyToken, &d.CatchAll, &d.DNSManaged, &d.DNSNote, &d.Disabled, &d.CreatedAt,
 		&d.Mailboxes, &d.Aliases)
 	return d, err
 }

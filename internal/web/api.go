@@ -82,6 +82,7 @@ func (s *Server) apiHandler() http.Handler {
 	mux.Handle("POST /api/v1/customers/{id}/terminate", need(store.ScopeCustomersWrite, s.apiCustomerStatus(store.CustomerTerminated)))
 	mux.Handle("PUT /api/v1/customers/{id}/package", need(store.ScopeCustomersWrite, s.apiCustomerPackage))
 	mux.Handle("GET /api/v1/customers/{id}/usage", need(store.ScopeUsage, s.apiCustomerUsage))
+	mux.Handle("PUT /api/v1/customers/{id}/web-uids", need(store.ScopeCustomersWrite, s.apiWebUIDs))
 	mux.Handle("POST /api/v1/customers/{id}/sso", need(store.ScopeSSO, s.apiCustomerSSO))
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
 		apiError(w, http.StatusNotFound, "not_found", "unknown API path", "")

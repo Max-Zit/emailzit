@@ -49,6 +49,7 @@ func (h *HelperMail) DKIM(ctx context.Context, k *store.DKIMKey) error {
 // SyncMail gives the helper what only the panel has (the DKIM keys, sealed
 // with the server key): at every start, for all domains.
 func (s *Server) SyncMail(ctx context.Context) {
+	defer s.publishAllDNS(ctx)
 	if s.Mail == nil {
 		return
 	}

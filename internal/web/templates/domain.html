@@ -69,6 +69,7 @@
 </section>
 <section class="panel">
   <h2>{{template "icon" "globe"}}{{.T "DNS records"}}</h2>
+  {{if $d.DNSManaged}}<div class="flash ok" role="status">{{template "icon" "check"}}<span>{{.T "These records are kept in HostZit's DNS by EmailZit; nothing to do at a DNS provider."}}{{with $d.DNSNote}} {{$.T .}}{{end}}</span></div>{{else}}{{with $d.DNSNote}}<p class="small muted">{{$.T .}}</p>{{end}}{{end}}
   {{if .Data.Mail.Hostname}}
   <p class="muted">{{.T "Put these records at the DNS provider of the domain. The required ones are needed for mail to work; the others make set-up of mail programs automatic and help that your mail is not treated as spam."}}</p>
   <div class="table-wrap"><table class="dns">

@@ -242,6 +242,7 @@ func writeFile(path string, b []byte, mode os.FileMode) error {
 		return err
 	}
 	tmp := path + ".emailzit-new"
+	// #nosec G703 -- fixed configuration paths; domain and selector names are validated
 	if err := os.WriteFile(tmp, b, mode); err != nil {
 		return err
 	}
@@ -608,6 +609,6 @@ func fixOwners() {
 	g := groupID("postfix")
 	for _, m := range maps {
 		_ = os.Chown(m, 0, g)
-		_ = os.Chmod(m, 0o640)
+		_ = os.Chmod(m, 0o640) // #nosec G302 -- the group postfix reads the maps
 	}
 }

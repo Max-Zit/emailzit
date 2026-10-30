@@ -8,7 +8,6 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"errors"
-	"fmt"
 	"strings"
 	"time"
 )
@@ -141,7 +140,8 @@ func (s *Store) NewDKIM(ctx context.Context, domainID string) (*DKIMKey, error) 
 	var cur string
 	_ = s.db.QueryRow(ctx, `SELECT dkim_selector FROM domains WHERE id=$1`, domainID).Scan(&cur)
 	if strings.HasPrefix(cur, sel) {
-		sel = fmt.Sprintf("%s%c", sel, 'a'+rune(len(cur)-len(sel))%26)
+		i := (len(cur) - len(sel)) % 26
+		sel += "abcdefghijklmnopqrstuvwxyz"[i : i+1]
 	}
 	tag, err := s.db.Exec(ctx, `UPDATE domains SET dkim_selector=$2, dkim_private=$3, dkim_public=$4, dkim_created=$5 WHERE id=$1`,
 		domainID, sel, s.box.seal("domains.dkim_private", priv), base64.StdEncoding.EncodeToString(pub), s.now())

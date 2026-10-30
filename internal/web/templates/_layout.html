@@ -24,6 +24,7 @@
     <a href="/mailboxes" class="{{if eq .Nav "mailboxes"}}on{{end}}">{{template "icon" "mail"}}{{.T "Mailboxes"}}</a>
     <a href="/aliases" class="{{if eq .Nav "aliases"}}on{{end}}">{{template "icon" "route"}}{{.T "Aliases and forwarders"}}</a>
     <a href="/deliveries" class="{{if eq .Nav "deliveries"}}on{{end}}">{{template "icon" "file"}}{{.T "Delivery log"}}</a>
+    {{if .Approvals}}<a href="/approvals" class="{{if eq .Nav "approvals"}}on{{end}}">{{template "icon" "check"}}{{.T "Approvals"}}{{if gt .Approvals 0}} <span class="badge warn">{{.Approvals}}</span>{{end}}</a>{{end}}
     {{if .User.IsStaff}}<a href="/queue" class="{{if eq .Nav "queue"}}on{{end}}">{{template "icon" "layers"}}{{.T "Mail queue"}}</a>{{end}}
     {{if .User.IsAdmin}}
     <span class="navlabel">{{.T "Administration"}}</span>

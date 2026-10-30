@@ -20,6 +20,14 @@
     <div><button class="primary">{{.T "Save"}}</button></div>
   </form>
 </section>
+<section class="panel" id="four-eyes">
+  <h2>{{.T "Four-eyes approval"}}</h2>
+  <p class="muted">{{.T "When it is on, risky changes by staff wait until another administrator approves them: terminating or suspending a customer, deleting a domain or mailbox, resetting a second factor, staff accounts, API tokens, backups, and the network, sign-in and security settings (also turning this off). Needs at least two active administrators."}}</p>
+  <form method="post" action="/settings/four-eyes" class="row">
+    <input type="hidden" name="on" value="{{if .Data.FourEyes}}0{{else}}1{{end}}">
+    {{if .Data.FourEyes}}<span class="badge ok"><i></i>{{.T "On"}}</span> <button class="secondary">{{.T "Turn off"}}</button>{{else}}<span class="badge">{{.T "Off"}}</span> <button class="secondary">{{.T "Turn on"}}</button>{{end}}
+  </form>
+</section>
 <section class="panel">
   <h2>{{.T "Blocked addresses"}}</h2>
   {{if .Data.Blocks}}

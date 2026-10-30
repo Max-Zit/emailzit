@@ -92,7 +92,9 @@ type Page struct {
 	Customer *store.Customer
 	// HostZit is the address of the linked HostZit panel (product switch).
 	HostZit string
-	Data    any
+	// Approvals is the number of four-eyes requests waiting (staff, when on).
+	Approvals int
+	Data      any
 }
 
 // T translates a text for the page language.
@@ -261,6 +263,12 @@ func (s *Server) render(w http.ResponseWriter, r *http.Request, status int, name
 	p.Host = r.Host
 	if p.User != nil {
 		p.HostZit = s.hostzitLink(r.Context()).URL
+		if p.User.IsStaff() && s.fourEyesOn(r.Context()) {
+			p.Approvals, _ = s.store.PendingApprovals(r.Context())
+			if p.Approvals == 0 {
+				p.Approvals = -1 // on, nothing waiting
+			}
+		}
 	}
 	if p.User != nil && p.User.CustomerID != "" && p.Customer == nil {
 		if c, err := s.store.CustomerByID(r.Context(), p.User.CustomerID); err == nil {

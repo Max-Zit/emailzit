@@ -1,0 +1,22 @@
+{{template "app" .}}
+{{define "content"}}
+<h1>{{.T "Approvals"}}</h1>
+<section class="panel">
+  <p class="muted">{{if .Data.On}}{{.T "Four-eyes approval is on: risky changes by staff wait here until another administrator approves them. A request expires after 24 hours."}}{{else}}{{.T "Four-eyes approval is off (Settings → Sign-in and security)."}}{{end}}</p>
+  {{if .Data.List}}
+  <div class="table-wrap"><table>
+    <thead><tr><th>{{.T "Change"}}</th><th>{{.T "Requested by"}}</th><th class="hide-sm">{{.T "Time"}}</th><th>{{.T "Status"}}</th><th></th></tr></thead>
+    <tbody>{{range .Data.List}}<tr>
+      <td><b>{{.Action}}</b><br><code class="small">{{.Path}}</code>{{if .Summary}}<br><span class="muted small">{{.Summary}}</span>{{end}}</td>
+      <td>{{.Requester}}</td>
+      <td class="hide-sm muted">{{$.Time .RequestedAt}}</td>
+      <td>{{if eq .Status "pending"}}<span class="badge warn">{{$.T "Waiting"}}</span>{{else if eq .Status "approved"}}<span class="badge ok"><i></i>{{$.T "Approved"}}</span> <span class="muted small">{{.DecidedBy}}</span>{{else if eq .Status "rejected"}}<span class="badge bad">{{$.T "Rejected"}}</span> <span class="muted small">{{.DecidedBy}}</span>{{else}}<span class="badge">{{$.T "Expired"}}</span>{{end}}</td>
+      <td class="actions">{{if eq .Status "pending"}}
+        {{if and $.User.IsAdmin (ne .RequestedBy $.Data.Me)}}<form method="post" action="/approvals/{{.ID}}" data-confirm="{{$.T "Approve and run this change now?"}}"><input type="hidden" name="decision" value="approve"><button class="primary sm">{{$.T "Approve"}}</button></form>{{end}}
+        {{if or $.User.IsAdmin (eq .RequestedBy $.Data.Me)}}<form method="post" action="/approvals/{{.ID}}"><input type="hidden" name="decision" value="reject"><button class="ghost sm">{{if eq .RequestedBy $.Data.Me}}{{$.T "Withdraw"}}{{else}}{{$.T "Reject"}}{{end}}</button></form>{{end}}
+      {{end}}</td>
+    </tr>{{end}}</tbody>
+  </table></div>
+  {{else}}<p class="muted">{{.T "No requests."}}</p>{{end}}
+</section>
+{{end}}

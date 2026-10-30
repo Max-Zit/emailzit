@@ -1,0 +1,21 @@
+{{template "app" .}}
+{{define "content"}}
+<h1>{{.T "Aliases and forwarders"}}</h1>
+<section class="panel">
+  {{if .Data.List}}{{template "aliastable" (aliasTable $ .Data.List "aliases")}}{{else}}<p class="muted">{{.T "No aliases or forwarders yet."}}</p>{{end}}
+</section>
+{{if and .User.CanWrite .Data.Domains}}
+<section class="panel">
+  <h2>{{.T "Add alias or forwarder"}}</h2>
+  <form method="post" action="/aliases" class="stack">
+    <input type="hidden" name="back" value="aliases">
+    <div class="cols">
+      <label>{{.T "Address"}}<span class="addr"><input name="local" required maxlength="64" spellcheck="false" autocapitalize="none" placeholder="info"><span class="muted">@</span><select name="domain" aria-label="{{.T "Domain"}}">{{range .Data.Domains}}<option value="{{.ID}}">{{.Name}}</option>{{end}}</select></span></label>
+      <label>{{.T "Deliver to"}}<input name="destinations" required spellcheck="false" autocapitalize="none" placeholder="ana@example.com, marko@example.org"><small>{{.T "One or more addresses, separated by commas."}}</small></label>
+    </div>
+    <label class="check"><input type="checkbox" name="send_as" value="1">{{.T "The mailboxes it delivers to may also send as this address"}}</label>
+    <div><button class="primary">{{template "icon" "plus"}}{{.T "Add alias or forwarder"}}</button></div>
+  </form>
+</section>
+{{end}}
+{{end}}

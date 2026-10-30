@@ -1,0 +1,24 @@
+<h1>Getting started</h1>
+<p>EmailZit is mail hosting for many domains and customers on your own server: an <b>admin panel</b> for the server staff, a <b>customer panel</b> where every customer manages their own domains and mailboxes, and <b>pages for mail users</b> (webmail, own password, app passwords, auto-reply, filters).</p>
+<h2>How it is built</h2>
+<ul>
+  <li><b>EmailZit server</b> — the panels and the REST API, running as an unprivileged user.</li>
+  <li><b>Postfix</b> receives and sends mail (SMTP on port 25, submission for mail programs on 465 and 587, always encrypted).</li>
+  <li><b>Dovecot</b> stores the mail and serves IMAP (993) and POP3 (995).</li>
+  <li><b>PostgreSQL</b> holds everything the panels change; Postfix and Dovecot read it directly, so a new mailbox works at once without restarting anything.</li>
+  <li>A small <b>root helper</b> does the few things that need root (mail directories, certificates, updates); every request is checked and written to the audit log.</li>
+</ul>
+<h2>Who can do what</h2>
+<ul>
+  <li><b>Administrators</b> manage the server, staff accounts, packages and all customers. <b>Operators</b> manage customers, domains and mailboxes; <b>viewers</b> only look.</li>
+  <li><b>Customers</b> see and change only their own domains, mailboxes, aliases and forwarders, within the limits of their package.</li>
+  <li><b>Mail users</b> sign in with their address, their password and always a second factor (an authenticator app). Mail programs (Outlook, Thunderbird, phones) never use this password: every program gets its own <b>app password</b>.</li>
+</ul>
+<h2>First steps</h2>
+<ol>
+  <li>Set the server's host name under <b>Settings → Mail server</b> (the name mail programs connect to, e.g. <code>mail.example.com</code>).</li>
+  <li>Create a <b>package</b> with the limits you sell (domains, mailboxes, storage, sending per hour).</li>
+  <li>Create a <b>customer</b> with that package and give the customer a panel login.</li>
+  <li>Add the customer's <b>domain</b>, put the DNS records shown on the domain page at the domain's DNS provider, and verify the domain.</li>
+  <li>Create <b>mailboxes</b>. The mail user signs in at <code>/mail</code>, sets up the second factor and creates app passwords for their programs.</li>
+</ol>

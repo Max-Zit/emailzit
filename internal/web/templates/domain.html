@@ -1,0 +1,94 @@
+{{template "app" .}}
+{{define "content"}}
+{{$d := .Data.D}}
+<p class="back"><a href="/domains">{{.T "Domains"}}</a>{{if .Data.Staff}} · <a href="/customers/{{$d.CustomerID}}">{{$d.CustomerName}}</a>{{end}}</p>
+<h1>{{$d.Unicode}} {{if $d.Disabled}}<span class="badge bad"><i></i>{{.T "Disabled"}}</span>{{else if $d.Verified}}<span class="badge ok"><i></i>{{.T "Receives mail"}}</span>{{else}}<span class="badge warn"><i></i>{{.T "Not verified"}}</span>{{end}}</h1>
+{{if not $d.Verified}}
+<section class="panel notice-warn">
+  <h2>{{template "icon" "shield"}}{{.T "Verify the domain"}}</h2>
+  <p>{{.T "Mail for the domain is accepted only after you prove that it is yours. Add this TXT record at the domain's DNS provider, wait a few minutes, then check:"}}</p>
+  <div class="table-wrap"><table class="dns"><tbody><tr><td class="mono">{{$d.VerifyName}}</td><td>TXT</td><td class="mono wrap">{{$d.VerifyValue}}</td></tr></tbody></table></div>
+  {{if .User.CanWrite}}<div class="row mt">
+    <form method="post" action="/domains/{{$d.ID}}/verify"><button class="primary">{{template "icon" "refresh"}}{{.T "Check now"}}</button></form>
+    {{if .Data.Staff}}<form method="post" action="/domains/{{$d.ID}}/verify"><input type="hidden" name="manual" value="1"><button class="secondary">{{.T "Mark as verified"}}</button></form>{{end}}
+  </div>{{end}}
+</section>
+{{end}}
+<section class="panel">
+  <div class="panelhead"><h2>{{template "icon" "mail"}}{{.T "Mailboxes"}}</h2><span class="muted small">{{.T "%d of %d in the package" $d.Mailboxes .Data.Package.MaxMailboxes}}</span></div>
+  {{if .Data.Mailboxes}}
+  <div class="table-wrap"><table>
+    <thead><tr><th>{{.T "Address"}}</th><th class="hide-sm">{{.T "Name"}}</th><th>{{.T "Used"}}</th><th class="hide-sm">{{.T "Two-factor"}}</th></tr></thead>
+    <tbody>{{range .Data.Mailboxes}}<tr>
+      <td><a href="/mailboxes/{{.ID}}">{{.Address}}</a>{{if .Disabled}} <span class="badge bad">{{$.T "Disabled"}}</span>{{end}}{{if .SendBlocked}} <span class="badge bad">{{$.T "Sending blocked"}}</span>{{end}}</td>
+      <td class="hide-sm">{{.DisplayName}}</td>
+      <td>{{template "usage" (usage .UsedBytes (i64 .QuotaMB))}}</td>
+      <td class="hide-sm">{{if .TOTPEnabled}}<span class="badge ok"><i></i>{{$.T "On"}}</span>{{else}}<span class="badge warn">{{$.T "At next sign-in"}}</span>{{end}}</td>
+    </tr>{{end}}</tbody>
+  </table></div>
+  {{else}}<p class="muted">{{.T "No mailboxes yet."}}</p>{{end}}
+  {{if .User.CanWrite}}
+  <details class="mt" {{if not .Data.Mailboxes}}open{{end}}><summary>{{template "icon" "plus"}}{{.T "New mailbox"}}</summary>
+  <form method="post" action="/domains/{{$d.ID}}/mailboxes" class="stack mt">
+    <div class="cols">
+      <label>{{.T "Address"}}<span class="addr"><input name="local" required maxlength="64" spellcheck="false" autocapitalize="none" placeholder="ana"><span class="muted">@{{$d.Name}}</span></span></label>
+      <label>{{.T "Name"}} <small>{{.T "optional"}}</small><input name="display_name" maxlength="100" placeholder="Ana Anić"></label>
+    </div>
+    <div class="cols">
+      <label>{{.T "Password"}}<input type="password" name="password" required minlength="12" autocomplete="new-password"><small>{{.T "For webmail and the user's own settings (always with two-factor sign-in). Mail programs get app passwords."}}</small></label>
+      <label>{{.T "Repeat the password"}}<input type="password" name="password2" required minlength="12" autocomplete="new-password"></label>
+    </div>
+    <label>{{.T "Size (MB)"}}<input type="number" name="quota_mb" value="{{.Data.Package.MailboxMB}}" min="1" max="{{.Data.Package.MaxMailboxMB}}" class="num-sm"><small>{{.T "At most %d MB." .Data.Package.MaxMailboxMB}}</small></label>
+    <div><button class="primary">{{template "icon" "plus"}}{{.T "Create mailbox"}}</button></div>
+  </form>
+  </details>
+  {{end}}
+</section>
+<section class="panel">
+  <div class="panelhead"><h2>{{template "icon" "route"}}{{.T "Aliases and forwarders"}}</h2></div>
+  <p class="muted small">{{.T "An alias receives mail for an address without a mailbox and hands it on. A forwarder on a mailbox address sends copies elsewhere; list the mailbox itself too to keep a copy."}}</p>
+  {{if .Data.Aliases}}{{template "aliastable" (aliasTable $ .Data.Aliases "")}}{{end}}
+  {{if .User.CanWrite}}
+  <form method="post" action="/domains/{{$d.ID}}/aliases" class="stack mt">
+    <div class="cols">
+      <label>{{.T "Address"}}<span class="addr"><input name="local" required maxlength="64" spellcheck="false" autocapitalize="none" placeholder="info"><span class="muted">@{{$d.Name}}</span></span></label>
+      <label>{{.T "Deliver to"}}<input name="destinations" required spellcheck="false" autocapitalize="none" placeholder="ana@{{$d.Name}}, marko@example.org"><small>{{.T "One or more addresses, separated by commas."}}</small></label>
+    </div>
+    <label class="check"><input type="checkbox" name="send_as" value="1">{{.T "The mailboxes it delivers to may also send as this address"}}</label>
+    <div><button class="secondary">{{template "icon" "plus"}}{{.T "Add alias or forwarder"}}</button></div>
+  </form>
+  {{end}}
+</section>
+<section class="panel">
+  <h2>{{template "icon" "settings"}}{{.T "Domain settings"}}</h2>
+  <form method="post" action="/domains/{{$d.ID}}" class="stack">
+    <label>{{.T "Mail for unknown addresses (catch-all)"}}<input name="catch_all" value="{{$d.CatchAll}}" spellcheck="false" autocapitalize="none" placeholder="{{.T "empty = refuse it (recommended)"}}"><small>{{.T "A catch-all attracts a lot of spam; use it only when you really need it."}}</small></label>
+    {{if .Data.Staff}}<label class="check"><input type="checkbox" name="disabled" value="1" {{if $d.Disabled}}checked{{end}}>{{.T "Disabled: mail for the domain is refused and its mailboxes cannot sign in"}}</label>{{else}}{{if $d.Disabled}}<input type="hidden" name="disabled" value="1">{{end}}{{end}}
+    {{if .User.CanWrite}}<div><button class="primary">{{.T "Save"}}</button></div>{{end}}
+  </form>
+</section>
+<section class="panel">
+  <h2>{{template "icon" "globe"}}{{.T "DNS records"}}</h2>
+  {{if .Data.Mail.Hostname}}
+  <p class="muted">{{.T "Put these records at the DNS provider of the domain. The required ones are needed for mail to work; the others make set-up of mail programs automatic and help that your mail is not treated as spam."}}</p>
+  <div class="table-wrap"><table class="dns">
+    <thead><tr><th>{{.T "Name"}}</th><th>{{.T "Type"}}</th><th>{{.T "Value"}}</th></tr></thead>
+    <tbody>{{range .Data.Records}}<tr>
+      <td class="mono small">{{.Name}}{{if .Required}} <span class="badge info">{{$.T "required"}}</span>{{end}}</td>
+      <td>{{.Type}}</td>
+      <td><code class="wrap" data-copy-text>{{.Value}}</code><br><small class="muted">{{$.T .Note}}</small></td>
+    </tr>{{end}}</tbody>
+  </table></div>
+  {{else}}<p class="muted">{{.T "The administrator has not set the host name of the mail server yet; the records are shown after that."}}</p>{{end}}
+</section>
+{{if .User.CanWrite}}
+<section class="panel">
+  <h2>{{template "icon" "trash"}}{{.T "Delete the domain"}}</h2>
+  <p class="muted">{{.T "All mailboxes of the domain with all their mail, and all its aliases, are deleted. This cannot be undone."}}</p>
+  <form method="post" action="/domains/{{$d.ID}}/delete" class="row">
+    <input name="confirm" required placeholder="{{$d.Name}}" aria-label="{{.T "Type the domain name to confirm."}}" spellcheck="false" autocapitalize="none">
+    <button class="danger">{{.T "Delete domain"}}</button>
+  </form>
+</section>
+{{end}}
+{{end}}

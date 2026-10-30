@@ -1,0 +1,21 @@
+{{template "app" .}}
+{{define "content"}}
+<h1>{{.T "Mailboxes"}}</h1>
+<form method="get" action="/mailboxes" class="row filters">
+  <input type="search" name="q" value="{{.Data.Q}}" placeholder="{{.T "Address"}}" aria-label="{{.T "Search"}}">
+  <button class="secondary">{{.T "Search"}}</button>
+</form>
+<section class="panel">
+{{if .Data.List}}
+  <div class="table-wrap"><table>
+    <thead><tr><th>{{.T "Address"}}</th><th class="hide-sm">{{.T "Name"}}</th><th>{{.T "Used"}}</th><th class="hide-sm">{{.T "Last sign-in"}}</th></tr></thead>
+    <tbody>{{range .Data.List}}<tr>
+      <td><a href="/mailboxes/{{.ID}}">{{.Address}}</a>{{if .Disabled}} <span class="badge bad">{{$.T "Disabled"}}</span>{{end}}{{if .SendBlocked}} <span class="badge bad">{{$.T "Sending blocked"}}</span>{{end}}</td>
+      <td class="hide-sm">{{.DisplayName}}</td>
+      <td>{{template "usage" (usage .UsedBytes (i64 .QuotaMB))}}</td>
+      <td class="hide-sm muted small">{{$.Time .LastLoginAt}}</td>
+    </tr>{{end}}</tbody>
+  </table></div>
+{{else}}<p class="muted">{{if .Data.Q}}{{.T "No mailbox matches."}}{{else}}{{.T "No mailboxes yet. Open a domain to create one."}}{{end}}</p>{{end}}
+</section>
+{{end}}

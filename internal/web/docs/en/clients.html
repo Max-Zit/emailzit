@@ -1,0 +1,16 @@
+<h1>Setting up mail programs</h1>
+<h2>Step 1: an app password</h2>
+<ol>
+  <li>Open <code>https://&lt;server&gt;:8444/mail</code> and sign in with your address and password.</li>
+  <li>The first time, set up two-factor sign-in: scan the QR code with an authenticator app and keep the recovery codes.</li>
+  <li>Under <b>App passwords</b> give the program or device a name (for example "Outlook on the laptop") and create the password. Enter it in the program right away: it is shown only once.</li>
+</ol>
+<h2>Step 2: the program</h2>
+<p>Most programs (Outlook, Thunderbird, iOS and Android mail apps) find the settings by themselves when you enter only the address and the app password. Otherwise use:</p>
+<table>
+  <tr><th>User name</th><td>the full e-mail address</td></tr>
+  <tr><th>Incoming (IMAP)</th><td>the server's host name, port 993, SSL/TLS</td></tr>
+  <tr><th>Incoming (POP3)</th><td>the server's host name, port 995, SSL/TLS</td></tr>
+  <tr><th>Outgoing (SMTP)</th><td>the server's host name, port 465 SSL/TLS or 587 STARTTLS, sign-in required</td></tr>
+</table>
+<p>The mailbox page in the panels shows these values with the real host name.</p>

@@ -1,0 +1,20 @@
+<h1>Customers and packages</h1>
+<h2>Packages</h2>
+<p>A package holds the limits a customer gets: how many domains, mailboxes and aliases, how much storage all mailboxes may use together, the size of a new mailbox and the largest one, and the <b>sending limits</b>. Billing systems refer to a package by its short name (for example <code>business-10</code>).</p>
+<ul>
+  <li><b>Messages per hour / per day (per mailbox)</b> and <b>per hour for the whole customer</b> protect the reputation of the server's address: a mailbox whose password was stolen cannot send thousands of spam messages. Messages over the limit wait in the queue.</li>
+  <li><b>Recipients per message</b> stops one message from going to thousands of addresses.</li>
+  <li>Changing a customer to a smaller package deletes nothing; nothing new can be added above the new limits.</li>
+</ul>
+<h2>Customers</h2>
+<p>A customer owns domains and mailboxes. Every customer's mail is stored under its <b>own system user</b>, so even a fault in the mail software cannot let one customer read another customer's mail. A customer can never route mail into another customer's mailboxes, send as their addresses or see their domains.</p>
+<ul>
+  <li><b>Panel logins</b>: the customer signs in to the customer panel at the same address as the admin panel. Every login must set up two-factor sign-in at the first sign-in.</li>
+  <li><b>Billing ID</b>: the customer's number in your billing system; the REST API finds customers by it.</li>
+</ul>
+<h2>Suspend and terminate</h2>
+<ul>
+  <li><b>Suspended</b>: mail for the customer's domains is still received (nothing is lost), but nobody of the customer can sign in, use mail programs or send. Sessions end at once.</li>
+  <li><b>Terminated</b>: mail for the customer's domains is refused. The data stays until it is deleted.</li>
+  <li><b>Activate</b> brings a suspended or terminated customer back.</li>
+</ul>

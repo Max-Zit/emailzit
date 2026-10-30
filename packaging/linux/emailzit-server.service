@@ -1,0 +1,45 @@
+[Unit]
+Description=EmailZit server (admin panel, customer panel, mail users' pages, REST API)
+Documentation=https://github.com/Max-Zit/emailzit
+Wants=network-online.target emailzit-mail-helper.service
+After=network-online.target postgresql.service emailzit-mail-helper.service
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/emailzit/server.env
+ExecStart=/usr/bin/emailzit-server --data-dir /var/lib/emailzit
+User=emailzit
+Group=emailzit
+StateDirectory=emailzit
+StateDirectoryMode=0700
+Restart=always
+RestartSec=5
+LimitNOFILE=65536
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictSUIDSGID=true
+ReadWritePaths=/var/lib/emailzit
+# the panel never touches mail files: they belong to the customers' users
+InaccessiblePaths=-/var/vmail
+# Ports below 1024 (e.g. 443), nothing else.
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+MemoryDenyWriteExecute=true
+LockPersonality=true
+RestrictNamespaces=true
+RestrictRealtime=true
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+[Install]
+WantedBy=multi-user.target

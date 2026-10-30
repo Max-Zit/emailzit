@@ -1,0 +1,47 @@
+{{template "app" .}}
+{{define "content"}}
+<h1>{{.T "Customers"}}</h1>
+<form method="get" action="/customers" class="row filters">
+  <input type="search" name="q" value="{{.Data.Q}}" placeholder="{{.T "Name, e-mail, domain or billing ID"}}" aria-label="{{.T "Search"}}">
+  <select name="status" data-autosubmit aria-label="{{.T "Status"}}">
+    <option value="">{{.T "All"}}</option>
+    <option value="active" {{if eq .Data.Status "active"}}selected{{end}}>{{.T "Active"}}</option>
+    <option value="suspended" {{if eq .Data.Status "suspended"}}selected{{end}}>{{.T "Suspended"}}</option>
+    <option value="terminated" {{if eq .Data.Status "terminated"}}selected{{end}}>{{.T "Terminated"}}</option>
+  </select>
+  <button class="secondary">{{.T "Search"}}</button>
+</form>
+<section class="panel">
+{{if .Data.List}}
+  <div class="table-wrap"><table>
+    <thead><tr><th>{{.T "Customer"}}</th><th class="hide-sm">{{.T "Package"}}</th><th>{{.T "Domains"}}</th><th>{{.T "Mailboxes"}}</th><th class="hide-sm">{{.T "Used"}}</th><th>{{.T "Status"}}</th></tr></thead>
+    <tbody>{{range .Data.List}}<tr>
+      <td><a href="/customers/{{.ID}}">{{.Name}}</a>{{with .Email}}<br><small class="muted">{{.}}</small>{{end}}</td>
+      <td class="hide-sm">{{.PackageName}}</td>
+      <td>{{.Domains}}</td>
+      <td>{{.Mailboxes}}</td>
+      <td class="hide-sm small">{{bytes .UsedBytes}}</td>
+      <td>{{template "custstatus" (rowOf $ .Status)}}</td>
+    </tr>{{end}}</tbody>
+  </table></div>
+{{else}}<p class="muted">{{if or .Data.Q .Data.Status}}{{.T "No customer matches."}}{{else}}{{.T "No customers yet."}}{{end}}</p>{{end}}
+</section>
+{{if .User.CanWrite}}
+<section class="panel">
+  <h2>{{.T "Add a customer"}}</h2>
+  {{if .Data.Packages}}
+  <form method="post" action="/customers" class="stack">
+    <div class="cols">
+      <label>{{.T "Name"}}<input name="name" required maxlength="200" placeholder="{{.T "Company or person"}}"></label>
+      <label>{{.T "Contact e-mail"}} <small>{{.T "optional"}}</small><input type="email" name="email" maxlength="200"></label>
+    </div>
+    <div class="cols">
+      <label>{{.T "Package"}}<select name="package" required>{{range .Data.Packages}}<option value="{{.ID}}">{{.Name}}</option>{{end}}</select></label>
+      <label>{{.T "Billing ID"}} <small>{{.T "optional"}}</small><input name="external_id" maxlength="100" spellcheck="false" class="mono"><small>{{.T "The customer's number in your billing system."}}</small></label>
+    </div>
+    <div><button class="primary">{{template "icon" "plus"}}{{.T "Add customer"}}</button></div>
+  </form>
+  {{else}}<p class="muted">{{.T "Create a package first."}} <a href="/packages/new">{{.T "New package"}}</a></p>{{end}}
+</section>
+{{end}}
+{{end}}

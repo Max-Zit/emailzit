@@ -1,0 +1,33 @@
+{{template "app" .}}
+{{define "content"}}
+<h1>{{.T "Domains"}}</h1>
+<section class="panel">
+{{if .Data.List}}
+  <div class="table-wrap"><table>
+    <thead><tr><th>{{.T "Domain"}}</th>{{if .User.IsStaff}}<th class="hide-sm">{{.T "Customer"}}</th>{{end}}<th>{{.T "Mailboxes"}}</th><th class="hide-sm">{{.T "Aliases"}}</th><th>{{.T "Status"}}</th></tr></thead>
+    <tbody>{{range .Data.List}}<tr>
+      <td><a href="/domains/{{.ID}}">{{.Unicode}}</a></td>
+      {{if $.User.IsStaff}}<td class="hide-sm"><a href="/customers/{{.CustomerID}}">{{.CustomerName}}</a></td>{{end}}
+      <td>{{.Mailboxes}}</td>
+      <td class="hide-sm">{{.Aliases}}</td>
+      <td>{{if .Disabled}}<span class="badge bad"><i></i>{{$.T "Disabled"}}</span>{{else if .Verified}}<span class="badge ok"><i></i>{{$.T "Receives mail"}}</span>{{else}}<span class="badge warn"><i></i>{{$.T "Not verified"}}</span>{{end}}</td>
+    </tr>{{end}}</tbody>
+  </table></div>
+{{else}}<p class="muted">{{.T "No domains yet."}}</p>{{end}}
+</section>
+{{if .User.CanWrite}}
+<section class="panel">
+  <h2>{{.T "Add a domain"}}</h2>
+  {{if or (not .User.IsStaff) .Data.Customers}}
+  <form method="post" action="/domains" class="stack">
+    <div class="cols">
+      <label>{{.T "Domain"}}<input name="name" required placeholder="example.com" spellcheck="false" autocapitalize="none"></label>
+      {{if .User.IsStaff}}<label>{{.T "Customer"}}<select name="customer" required>{{range .Data.Customers}}<option value="{{.ID}}" {{if eq .ID $.Data.Customer}}selected{{end}}>{{.Name}}</option>{{end}}</select></label>{{end}}
+    </div>
+    {{if .User.IsStaff}}<label class="check"><input type="checkbox" name="verified" value="1">{{.T "Verified (I checked that the domain belongs to the customer)"}}</label>{{else}}<p class="small muted">{{.T "After adding it, you prove that the domain is yours with a DNS record; then it receives mail."}}</p>{{end}}
+    <div><button class="primary">{{template "icon" "plus"}}{{.T "Add domain"}}</button></div>
+  </form>
+  {{else}}<p class="muted">{{.T "Add an active customer first."}} <a href="/customers">{{.T "Customers"}}</a></p>{{end}}
+</section>
+{{end}}
+{{end}}

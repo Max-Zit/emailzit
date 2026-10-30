@@ -1,0 +1,32 @@
+{{template "app" .}}
+{{define "content"}}
+{{if .User.IsStaff}}{{with .Data.Totals}}
+<h1>{{$.T "Overview"}}</h1>
+{{if not $.Data.Mail.Hostname}}<div class="flash warn" role="status">{{template "icon" "alert"}}<span>{{$.T "Set the host name of this mail server first (Settings → Mail server): mail programs and the DNS records of the domains point to it."}} <a href="/settings/mail">{{$.T "Open the settings"}}</a></span></div>{{end}}
+<div class="tiles">
+  <a class="tile" href="/customers"><span class="tile-label">{{template "icon" "customers"}}{{$.T "Customers"}}</span><b>{{.Customers}}</b>{{if .Suspended}}<small class="warn">{{$.T "%d suspended" .Suspended}}</small>{{end}}</a>
+  <a class="tile" href="/domains"><span class="tile-label">{{template "icon" "globe"}}{{$.T "Domains"}}</span><b>{{.Domains}}</b>{{if .Unverified}}<small class="warn">{{$.T "%d not verified" .Unverified}}</small>{{end}}</a>
+  <a class="tile" href="/mailboxes"><span class="tile-label">{{template "icon" "mail"}}{{$.T "Mailboxes"}}</span><b>{{.Mailboxes}}</b></a>
+  <a class="tile" href="/aliases"><span class="tile-label">{{template "icon" "route"}}{{$.T "Aliases and forwarders"}}</span><b>{{.Aliases}}</b></a>
+  <div class="tile"><span class="tile-label">{{template "icon" "disk"}}{{$.T "Mail storage"}}</span><b>{{bytes .UsedBytes}}</b><small>{{$.T "of %s given to mailboxes" (mb .QuotaMB)}}</small></div>
+</div>
+{{end}}
+{{else}}{{with .Data.Customer}}
+<h1>{{.Name}}</h1>
+<div class="tiles">
+  <a class="tile" href="/domains"><span class="tile-label">{{template "icon" "globe"}}{{$.T "Domains"}}</span><b>{{.Domains}}</b><small>{{$.T "of %d" $.Data.Package.MaxDomains}}</small></a>
+  <a class="tile" href="/mailboxes"><span class="tile-label">{{template "icon" "mail"}}{{$.T "Mailboxes"}}</span><b>{{.Mailboxes}}</b><small>{{$.T "of %d" $.Data.Package.MaxMailboxes}}</small></a>
+  <a class="tile" href="/aliases"><span class="tile-label">{{template "icon" "route"}}{{$.T "Aliases and forwarders"}}</span><b>{{.Aliases}}</b><small>{{$.T "of %d" $.Data.Package.MaxAliases}}</small></a>
+  <div class="tile"><span class="tile-label">{{template "icon" "disk"}}{{$.T "Storage given to mailboxes"}}</span><b>{{mb .QuotaMB}}</b><small>{{if $.Data.Package.StorageMB}}{{$.T "of %s" (mb (i64 $.Data.Package.StorageMB))}}{{else}}{{$.T "no limit"}}{{end}} · {{$.T "%s used" (bytes .UsedBytes)}}</small></div>
+</div>
+<section class="panel">
+  <h2>{{template "icon" "package"}}{{$.T "Package"}}: {{$.Data.Package.Name}}</h2>
+  <dl class="facts">
+    <dt>{{$.T "Largest mailbox"}}</dt><dd>{{mb (i64 $.Data.Package.MaxMailboxMB)}}</dd>
+    <dt>{{$.T "Sending per mailbox"}}</dt><dd>{{$.T "%d per hour, %d per day" $.Data.Package.SendPerHour $.Data.Package.SendPerDay}}</dd>
+    <dt>{{$.T "Recipients per message"}}</dt><dd>{{$.Data.Package.RcptPerMsg}}</dd>
+  </dl>
+</section>
+{{if not $.Data.Domains}}<section class="panel"><h2>{{$.T "Start here"}}</h2><p>{{$.T "Add your first domain, put the DNS records shown there at your DNS provider, then create mailboxes."}}</p><p><a class="btn primary" href="/domains">{{template "icon" "plus"}}{{$.T "Add a domain"}}</a></p></section>{{end}}
+{{end}}{{end}}
+{{end}}

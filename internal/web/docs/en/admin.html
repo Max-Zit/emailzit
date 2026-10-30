@@ -1,0 +1,18 @@
+<h1>Staff, settings and updates</h1>
+<h2>Staff accounts</h2>
+<ul>
+  <li><b>Administrators</b> may do everything, including staff accounts and server settings.</li>
+  <li><b>Operators</b> manage packages, customers, domains and mailboxes.</li>
+  <li><b>Viewers</b> only look.</li>
+</ul>
+<p>Every account signs in with a password and an authenticator app. The <b>audit log</b> records every change; each entry is chained to the previous one by a hash, so later edits of the log are detected.</p>
+<h2>Mail server settings</h2>
+<ul>
+  <li><b>Host name</b>: the full name of the server (e.g. <code>mail.example.com</code>). It must resolve to the server's public address, and that address should resolve back to it (PTR record at your hosting provider); otherwise other servers treat your mail as spam.</li>
+  <li><b>Largest message</b> for incoming and outgoing mail.</li>
+  <li><b>Domain verification</b> and <b>dedicated server</b>: see Domains, mailboxes and aliases.</li>
+</ul>
+<h2>How the server is built</h2>
+<p>The panels run as the unprivileged user <code>emailzit</code>. A small <b>mail helper</b> runs as root and does only a fixed list of tasks: write the Postfix and Dovecot configuration from the server settings (checked before it is used, the old files are put back on any error), create the mail directory of a new customer, move the mail of deleted mailboxes to the trash. Postfix and Dovecot read domains, mailboxes and app passwords directly from PostgreSQL through read-only views, so customer input never reaches a configuration file.</p>
+<h2>Network and sign-in</h2>
+<p>The panels listen on port 8444 (HostZit uses 8443). Allowed networks, session length and the blocking of addresses after failed sign-ins are under Settings. If you lock yourself out: <code>emailzit-server --reset-allowlist</code> or <code>--unblock-ip ADDRESS</code> on the server.</p>

@@ -1,0 +1,68 @@
+{{template "app" .}}
+{{define "content"}}
+{{$m := .Data.M}}
+<p class="back"><a href="/domains/{{$m.DomainID}}">{{.Data.D.Unicode}}</a></p>
+<h1>{{$m.Address}}{{if $m.Disabled}} <span class="badge bad">{{.T "Disabled"}}</span>{{end}}{{if $m.SendBlocked}} <span class="badge bad">{{.T "Sending blocked"}}</span>{{end}}</h1>
+<div class="tiles">
+  <div class="tile"><span class="tile-label">{{template "icon" "disk"}}{{.T "Used"}}</span><b>{{bytes $m.UsedBytes}}</b><small>{{.T "of %s" (mb (i64 $m.QuotaMB))}}{{with $m.UsedAt}} · {{$.Ago .}}{{end}}</small></div>
+  <div class="tile"><span class="tile-label">{{template "icon" "key"}}{{.T "App passwords"}}</span><b>{{$m.AppPasswords}}</b></div>
+  <div class="tile"><span class="tile-label">{{template "icon" "lock"}}{{.T "Two-factor"}}</span><b>{{if $m.TOTPEnabled}}{{.T "On"}}{{else}}{{.T "Not yet"}}{{end}}</b><small>{{.T "Last sign-in"}}: {{.Time $m.LastLoginAt}}</small></div>
+</div>
+<section class="panel">
+  <h2>{{template "icon" "mail"}}{{.T "Mailbox"}}</h2>
+  <form method="post" action="/mailboxes/{{$m.ID}}" class="stack">
+    <div class="cols">
+      <label>{{.T "Name"}}<input name="display_name" value="{{$m.DisplayName}}" maxlength="100"></label>
+      <label>{{.T "Size (MB)"}}<input type="number" name="quota_mb" value="{{$m.QuotaMB}}" min="1" max="{{.Data.Package.MaxMailboxMB}}"><small>{{.T "At most %d MB." .Data.Package.MaxMailboxMB}}</small></label>
+    </div>
+    <label class="check"><input type="checkbox" name="disabled" value="1" {{if $m.Disabled}}checked{{end}}>{{.T "Disabled: nobody can sign in; mail is still received"}}</label>
+    {{if .Data.Staff}}
+    <fieldset><legend>{{.T "Sending (staff only)"}}</legend>
+      <label class="check"><input type="checkbox" name="send_blocked" value="1" {{if $m.SendBlocked}}checked{{end}}>{{.T "Sending blocked (for example after abuse)"}}</label>
+      <div class="cols">
+        <label>{{.T "Messages per hour"}}<input type="number" name="send_per_hour" value="{{deref $m.SendPerHour}}" min="0" placeholder="{{.Data.Package.SendPerHour}}"><small>{{.T "Empty = from the package (%d)." .Data.Package.SendPerHour}}</small></label>
+        <label>{{.T "Messages per day"}}<input type="number" name="send_per_day" value="{{deref $m.SendPerDay}}" min="0" placeholder="{{.Data.Package.SendPerDay}}"><small>{{.T "Empty = from the package (%d)." .Data.Package.SendPerDay}}</small></label>
+      </div>
+    </fieldset>
+    {{else}}{{if $m.SendBlocked}}<input type="hidden" name="send_blocked" value="1">{{end}}{{end}}
+    {{if .User.CanWrite}}<div><button class="primary">{{.T "Save"}}</button></div>{{end}}
+  </form>
+</section>
+<section class="panel">
+  <h2>{{template "icon" "key"}}{{.T "Sign-in"}}</h2>
+  <p class="muted">{{.T "The mail user signs in at %s with this address, the password and a second factor, and creates app passwords for mail programs there." (printf "https://%s/mail" .Host)}}</p>
+  {{if .Data.AppPasswords}}
+  <div class="table-wrap"><table>
+    <thead><tr><th>{{.T "App password"}}</th><th class="hide-sm">{{.T "Created"}}</th><th>{{.T "Last used"}}</th><th></th></tr></thead>
+    <tbody>{{range .Data.AppPasswords}}<tr>
+      <td>{{.Name}}</td>
+      <td class="hide-sm muted small">{{$.Time .CreatedAt}}</td>
+      <td class="small">{{if .LastUsedAt}}{{$.Ago .LastUsedAt}}{{with .LastIP}} · <span class="mono">{{.}}</span>{{end}}{{else}}{{$.T "never"}}{{end}}</td>
+      <td class="actions">{{if $.User.CanWrite}}<form method="post" action="/mailboxes/{{$m.ID}}/apppasswords/{{.ID}}/delete" data-confirm="{{$.T "Revoke the app password %s? The program using it stops working." .Name}}"><button class="ghost sm">{{$.T "Revoke"}}</button></form>{{end}}</td>
+    </tr>{{end}}</tbody>
+  </table></div>
+  {{end}}
+  {{if .User.CanWrite}}
+  <form method="post" action="/mailboxes/{{$m.ID}}/password" class="row mt">
+    <input type="password" name="password" required minlength="12" autocomplete="new-password" placeholder="{{.T "New password"}}" aria-label="{{.T "New password"}}">
+    <input type="password" name="password2" required minlength="12" autocomplete="new-password" placeholder="{{.T "Repeat the password"}}" aria-label="{{.T "Repeat the password"}}">
+    <button class="secondary">{{.T "Set password"}}</button>
+  </form>
+  {{if $m.TOTPEnabled}}<form method="post" action="/mailboxes/{{$m.ID}}/reset-2fa" class="mt" data-confirm="{{.T "Reset two-factor sign-in of this mailbox?"}}"><button class="danger">{{.T "Reset two-factor sign-in"}}</button> <small class="muted">{{.T "For a user who lost the phone and the recovery codes."}}</small></form>{{end}}
+  {{end}}
+</section>
+<section class="panel">
+  <h2>{{template "icon" "settings"}}{{.T "Settings for mail programs"}}</h2>
+  {{template "clientsettings" (rowOf $ $m.Address)}}
+</section>
+{{if .User.CanWrite}}
+<section class="panel">
+  <h2>{{template "icon" "trash"}}{{.T "Delete the mailbox"}}</h2>
+  <p class="muted">{{.T "The mailbox and all its mail are deleted. This cannot be undone."}}</p>
+  <form method="post" action="/mailboxes/{{$m.ID}}/delete" class="row">
+    <input name="confirm" required placeholder="{{$m.Address}}" aria-label="{{.T "Type the address to confirm."}}" spellcheck="false" autocapitalize="none">
+    <button class="danger">{{.T "Delete mailbox"}}</button>
+  </form>
+</section>
+{{end}}
+{{end}}

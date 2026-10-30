@@ -1,0 +1,41 @@
+{{template "app" .}}
+{{define "content"}}
+<h1>{{.T "My account"}}</h1>
+{{if .User.MustChangePassword}}<div class="flash warn" role="alert">{{template "icon" "alert"}}<span>{{.T "Please choose your own password before you continue."}}</span></div>{{end}}
+{{with .Data.Codes}}
+<section class="panel accent">
+  <h2>{{$.T "New recovery codes"}}</h2>
+  <p>{{$.T "Keep these codes in a safe place: each one signs you in once if you lose your phone. They are shown only now; the old codes no longer work."}}</p>
+  <ul class="codes">{{range .}}<li><code>{{.}}</code></li>{{end}}</ul>
+  <p><button type="button" class="secondary" data-copy="ul.codes">{{template "icon" "copy"}}{{$.T "Copy"}}</button></p>
+</section>
+{{end}}
+<section class="panel">
+  <h2>{{.T "Change password"}}</h2>
+  <form method="post" action="/account/password" class="stack">
+    <label>{{.T "Current password"}}<input type="password" name="current" required autocomplete="current-password"></label>
+    <label>{{.T "New password"}}<input type="password" name="password" required minlength="12" autocomplete="new-password"><small>{{.T "At least 12 characters. A passphrase of several words is best."}}</small></label>
+    <label>{{.T "Repeat the password"}}<input type="password" name="password2" required minlength="12" autocomplete="new-password"></label>
+    <div><button class="primary">{{.T "Change password"}}</button></div>
+  </form>
+</section>
+{{if not .User.MustChangePassword}}
+<section class="panel">
+  <h2>{{.T "Recovery codes"}}</h2>
+  <p class="muted">{{.T "Make new recovery codes if you used most of them or think someone saw them. Enter a code from your authenticator app to confirm."}}</p>
+  <form method="post" action="/account/recovery" class="row">
+    <input name="code" required inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="123456" aria-label="{{.T "Code from the app"}}" class="code">
+    <button class="secondary">{{.T "Make new recovery codes"}}</button>
+  </form>
+</section>
+<section class="panel">
+  <h2>{{.T "Active sessions"}}</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>{{.T "Address"}}</th><th class="hide-sm">{{.T "Browser"}}</th><th>{{.T "Signed in"}}</th><th class="hide-sm">{{.T "Last activity"}}</th></tr></thead>
+    <tbody>{{range .Data.Sessions}}<tr><td>{{.IP}}{{if eq .Hash $.Data.Current}} <span class="badge ok">{{$.T "This session"}}</span>{{end}}</td><td class="hide-sm muted ellipsis">{{.UserAgent}}</td><td class="muted">{{$.Time .CreatedAt}}</td><td class="hide-sm muted">{{$.Time .LastSeen}}</td></tr>{{end}}</tbody>
+  </table></div>
+  <form method="post" action="/account/sessions/signout" class="mt"><button class="secondary">{{.T "Sign out all other sessions"}}</button></form>
+</section>
+
+{{end}}
+{{end}}

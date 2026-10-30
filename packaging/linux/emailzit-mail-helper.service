@@ -1,0 +1,28 @@
+[Unit]
+Description=EmailZit mail helper (root: Postfix and Dovecot configuration, mail directories)
+Documentation=https://github.com/Max-Zit/emailzit
+After=postgresql.service
+Before=emailzit-server.service
+
+[Service]
+Type=simple
+EnvironmentFile=-/etc/emailzit/mail-helper.env
+ExecStart=/usr/bin/emailzit-server --mail-helper
+Restart=always
+RestartSec=5
+RuntimeDirectory=emailzit
+RuntimeDirectoryMode=0750
+LogsDirectory=emailzit-helper
+NoNewPrivileges=true
+ProtectHome=true
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictRealtime=true
+LockPersonality=true
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+
+[Install]
+WantedBy=multi-user.target

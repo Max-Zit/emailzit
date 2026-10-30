@@ -1,0 +1,51 @@
+{{template "mailapp" .}}
+{{define "content"}}
+{{$m := .Data.M}}
+<h1>{{$m.Address}}</h1>
+<div class="tiles">
+  <div class="tile"><span class="tile-label">{{template "icon" "disk"}}{{.T "Used"}}</span><b>{{bytes $m.UsedBytes}}</b><small>{{.T "of %s" (mb (i64 $m.QuotaMB))}}</small></div>
+  <div class="tile"><span class="tile-label">{{template "icon" "key"}}{{.T "App passwords"}}</span><b>{{len .Data.AppPasswords}}</b></div>
+</div>
+<section class="panel" id="apps">
+  <h2>{{template "icon" "key"}}{{.T "App passwords"}}</h2>
+  <p class="muted">{{.T "Outlook, Thunderbird, the mail app of your phone and every other mail program sign in with an app password, never with your own password. Create one for every program or device; if a device is lost, revoke only its password."}}</p>
+  {{with .Data.NewPassword}}
+  <div class="notice-ok panel">
+    <p><b>{{$.T "App password for %s" $.Data.NewName}}</b> — {{$.T "enter it in the program now: it is shown only once."}}</p>
+    <pre class="token" id="newpw">{{.}}</pre>
+    <p><button type="button" class="btn secondary sm" data-copy="#newpw">{{template "icon" "copy"}}{{$.T "Copy"}}</button></p>
+  </div>
+  {{end}}
+  {{if .Data.AppPasswords}}
+  <div class="table-wrap"><table>
+    <thead><tr><th>{{.T "Program or device"}}</th><th class="hide-sm">{{.T "Created"}}</th><th>{{.T "Last used"}}</th><th></th></tr></thead>
+    <tbody>{{range .Data.AppPasswords}}<tr>
+      <td>{{.Name}}</td>
+      <td class="hide-sm muted small">{{$.Time .CreatedAt}}</td>
+      <td class="small">{{if .LastUsedAt}}{{$.Ago .LastUsedAt}}{{with .LastIP}} · <span class="mono">{{.}}</span>{{end}}{{else}}{{$.T "never"}}{{end}}</td>
+      <td class="actions"><form method="post" action="/mail/apppasswords/{{.ID}}/delete" data-confirm="{{$.T "Revoke the app password %s? The program using it stops working." .Name}}"><button class="ghost sm">{{$.T "Revoke"}}</button></form></td>
+    </tr>{{end}}</tbody>
+  </table></div>
+  {{end}}
+  <form method="post" action="/mail/apppasswords" class="row mt">
+    <input name="name" required maxlength="60" placeholder="{{.T "for example Outlook on the laptop"}}" aria-label="{{.T "Program or device"}}">
+    <button class="primary">{{template "icon" "plus"}}{{.T "Create app password"}}</button>
+  </form>
+</section>
+<section class="panel">
+  <h2>{{template "icon" "settings"}}{{.T "Settings for mail programs"}}</h2>
+  {{template "clientsettings" (rowOf $ $m.Address)}}
+</section>
+<section class="panel">
+  <h2>{{template "icon" "lock"}}{{.T "Change your password"}}</h2>
+  <p class="muted">{{.T "This password (with the second factor) is only for these pages and webmail."}}</p>
+  <form method="post" action="/mail/password" class="stack">
+    <label>{{.T "Current password"}}<input type="password" name="old" required autocomplete="current-password"></label>
+    <div class="cols">
+      <label>{{.T "New password"}}<input type="password" name="new" required minlength="12" autocomplete="new-password"></label>
+      <label>{{.T "Repeat the password"}}<input type="password" name="new2" required minlength="12" autocomplete="new-password"></label>
+    </div>
+    <div><button class="secondary">{{.T "Change password"}}</button></div>
+  </form>
+</section>
+{{end}}

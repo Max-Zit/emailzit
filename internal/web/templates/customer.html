@@ -1,0 +1,78 @@
+{{template "app" .}}
+{{define "content"}}
+{{$c := .Data.C}}
+<p class="back"><a href="/customers">{{.T "Customers"}}</a></p>
+<h1>{{$c.Name}} {{template "custstatus" (rowOf $ $c.Status)}}</h1>
+{{if ne $c.Status "active"}}<div class="flash warn" role="status">{{template "icon" "alert"}}<span>{{if eq $c.Status "suspended"}}{{.T "Suspended since %s: mail is still received, but nobody of this customer can sign in or send." (.Time $c.StatusAt)}}{{else}}{{.T "Terminated since %s: mail for the customer's domains is refused; the data is kept until it is deleted." (.Time $c.StatusAt)}}{{end}}{{with $c.StatusReason}} {{$.T "Reason:"}} {{.}}{{end}}</span></div>{{end}}
+<div class="tiles">
+  <div class="tile"><span class="tile-label">{{template "icon" "globe"}}{{.T "Domains"}}</span><b>{{$c.Domains}}</b><small>{{.T "of %d" .Data.Package.MaxDomains}}</small></div>
+  <div class="tile"><span class="tile-label">{{template "icon" "mail"}}{{.T "Mailboxes"}}</span><b>{{$c.Mailboxes}}</b><small>{{.T "of %d" .Data.Package.MaxMailboxes}}</small></div>
+  <div class="tile"><span class="tile-label">{{template "icon" "route"}}{{.T "Aliases and forwarders"}}</span><b>{{$c.Aliases}}</b><small>{{.T "of %d" .Data.Package.MaxAliases}}</small></div>
+  <div class="tile"><span class="tile-label">{{template "icon" "disk"}}{{.T "Storage given to mailboxes"}}</span><b>{{mb $c.QuotaMB}}</b><small>{{.T "%s used" (bytes $c.UsedBytes)}}</small></div>
+</div>
+<section class="panel">
+  <h2>{{template "icon" "customers"}}{{.T "Customer"}}</h2>
+  <form method="post" action="/customers/{{$c.ID}}" class="stack">
+    <div class="cols">
+      <label>{{.T "Name"}}<input name="name" value="{{$c.Name}}" required maxlength="200"></label>
+      <label>{{.T "Contact e-mail"}}<input type="email" name="email" value="{{$c.Email}}" maxlength="200"></label>
+    </div>
+    <div class="cols">
+      <label>{{.T "Package"}}<select name="package">{{range .Data.Packages}}<option value="{{.ID}}" {{if eq .ID $c.PackageID}}selected{{end}}>{{.Name}}</option>{{end}}</select><small>{{.T "With a smaller package nothing is deleted, but nothing new can be added above the limits."}}</small></label>
+      <label>{{.T "Billing ID"}}<input name="external_id" value="{{$c.ExternalID}}" maxlength="100" spellcheck="false" class="mono"></label>
+    </div>
+    <dl class="facts"><dt>{{.T "Customer ID"}}</dt><dd class="mono small">{{$c.ID}}</dd><dt>{{.T "Added"}}</dt><dd>{{.Time $c.CreatedAt}}</dd></dl>
+    {{if .User.CanWrite}}<div><button class="primary">{{.T "Save"}}</button></div>{{end}}
+  </form>
+</section>
+<section class="panel">
+  <h2>{{template "icon" "globe"}}{{.T "Domains"}}</h2>
+  {{if .Data.Domains}}<ul class="plain">{{range .Data.Domains}}<li><a href="/domains/{{.ID}}">{{.Unicode}}</a> <span class="muted small">· {{$.T "%d mailboxes" .Mailboxes}}</span>{{if not .Verified}} <span class="badge warn">{{$.T "Not verified"}}</span>{{end}}{{if .Disabled}} <span class="badge bad">{{$.T "Disabled"}}</span>{{end}}</li>{{end}}</ul>{{else}}<p class="muted">{{.T "No domains yet."}}</p>{{end}}
+  {{if and .User.CanWrite (eq $c.Status "active")}}
+  <form method="post" action="/domains" class="row mt">
+    <input type="hidden" name="customer" value="{{$c.ID}}">
+    <input name="name" required placeholder="example.com" aria-label="{{.T "Domain"}}" spellcheck="false" autocapitalize="none">
+    <label class="check"><input type="checkbox" name="verified" value="1">{{.T "Verified (I checked that the domain belongs to the customer)"}}</label>
+    <button class="primary">{{template "icon" "plus"}}{{.T "Add domain"}}</button>
+  </form>
+  {{end}}
+</section>
+<section class="panel">
+  <h2>{{template "icon" "users"}}{{.T "Panel logins"}}</h2>
+  <p class="muted">{{.T "The customer signs in to the customer panel with these logins (always with two-factor sign-in) and sees only their own domains and mailboxes."}}</p>
+  {{if .Data.Logins}}
+  <div class="table-wrap"><table>
+    <thead><tr><th>{{.T "Username"}}</th><th>{{.T "Two-factor"}}</th><th class="hide-sm">{{.T "Last sign-in"}}</th><th></th></tr></thead>
+    <tbody>{{range .Data.Logins}}<tr>
+      <td>{{.Username}}{{if .DisplayName}} <span class="muted">· {{.DisplayName}}</span>{{end}}{{if .Disabled}} <span class="badge bad">{{$.T "Disabled"}}</span>{{end}}</td>
+      <td>{{if .TOTPEnabled}}<span class="badge ok"><i></i>{{$.T "On"}}</span>{{else}}<span class="badge warn">{{$.T "At next sign-in"}}</span>{{end}}</td>
+      <td class="hide-sm muted">{{$.Time .LastLoginAt}}</td>
+      <td class="actions">{{if $.User.CanWrite}}<form method="post" action="/customers/{{$c.ID}}/logins"><input type="hidden" name="login" value="{{.ID}}"><input type="hidden" name="disabled" value="{{if .Disabled}}0{{else}}1{{end}}"><button class="ghost sm">{{if .Disabled}}{{$.T "Enable"}}{{else}}{{$.T "Disable"}}{{end}}</button></form>{{end}}</td>
+    </tr>{{end}}</tbody>
+  </table></div>
+  {{end}}
+  {{if .User.CanWrite}}
+  <form method="post" action="/customers/{{$c.ID}}/logins" class="stack mt">
+    <div class="cols">
+      <label>{{.T "Username"}}<input name="username" required autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="{{.T "for example the customer's e-mail address"}}"></label>
+      <label>{{.T "Full name"}} <small>{{.T "optional"}}</small><input name="display_name"></label>
+    </div>
+    <label>{{.T "Initial password"}}<input type="password" name="password" required minlength="12" autocomplete="new-password"><small>{{.T "The customer must change it and set up two-factor sign-in at the first sign-in."}}</small></label>
+    <div><button class="secondary">{{template "icon" "plus"}}{{.T "Add login"}}</button></div>
+  </form>
+  {{end}}
+</section>
+{{if .User.CanWrite}}
+<section class="panel">
+  <h2>{{template "icon" "power"}}{{.T "Status"}}</h2>
+  <form method="post" action="/customers/{{$c.ID}}/status" class="stack">
+    <label>{{.T "Reason"}} <small>{{.T "optional, shown to staff"}}</small><input name="reason" maxlength="300" value="{{$c.StatusReason}}"></label>
+    <div class="row">
+      {{if ne $c.Status "active"}}<button class="primary" name="status" value="active">{{.T "Activate"}}</button>{{end}}
+      {{if eq $c.Status "active"}}<button class="secondary" name="status" value="suspended" data-confirm="{{.T "Suspend %s? Nobody of this customer can sign in or send mail until you activate it again." $c.Name}}">{{.T "Suspend"}}</button>{{end}}
+      {{if ne $c.Status "terminated"}}<button class="danger" name="status" value="terminated" data-confirm="{{.T "Terminate %s? Mail for the customer's domains is refused from now on." $c.Name}}">{{.T "Terminate"}}</button>{{end}}
+    </div>
+  </form>
+</section>
+{{end}}
+{{end}}

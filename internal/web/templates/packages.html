@@ -1,0 +1,21 @@
+{{template "app" .}}
+{{define "content"}}
+<div class="pagehead"><h1>{{.T "Packages"}}</h1>{{if .User.CanWrite}}<a class="btn primary" href="/packages/new">{{template "icon" "plus"}}{{.T "New package"}}</a>{{end}}</div>
+<p class="muted">{{.T "A package holds the limits a customer gets. Billing systems refer to packages by their short name."}}</p>
+<section class="panel">
+{{if .Data}}
+  <div class="table-wrap"><table>
+    <thead><tr><th>{{.T "Name"}}</th><th class="hide-sm">{{.T "Short name"}}</th><th>{{.T "Domains"}}</th><th>{{.T "Mailboxes"}}</th><th class="hide-sm">{{.T "Storage"}}</th><th class="hide-sm">{{.T "Sending per mailbox"}}</th><th>{{.T "Customers"}}</th></tr></thead>
+    <tbody>{{range .Data}}<tr>
+      <td><a href="/packages/{{.ID}}">{{.Name}}</a></td>
+      <td class="hide-sm mono small">{{.Slug}}</td>
+      <td>{{.MaxDomains}}</td>
+      <td>{{.MaxMailboxes}}</td>
+      <td class="hide-sm">{{if .StorageMB}}{{mb (i64 .StorageMB)}}{{else}}{{$.T "no limit"}}{{end}}</td>
+      <td class="hide-sm small">{{$.T "%d per hour, %d per day" .SendPerHour .SendPerDay}}</td>
+      <td>{{.Customers}}</td>
+    </tr>{{end}}</tbody>
+  </table></div>
+{{else}}<p class="muted">{{.T "No packages yet. Create one before adding customers."}}</p>{{end}}
+</section>
+{{end}}

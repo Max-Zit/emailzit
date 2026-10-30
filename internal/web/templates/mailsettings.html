@@ -1,0 +1,22 @@
+{{template "app" .}}
+{{define "content"}}
+<h1>{{.T "Settings"}}</h1>
+<div class="settings">
+{{template "settingstabs" .}}
+<div class="settings-body">
+<form method="post" action="/settings/mail" class="stack wide">
+  <section class="panel">
+    <h2>{{template "icon" "mail"}}{{.T "Mail server"}}</h2>
+    <label>{{.T "Host name"}}<input name="hostname" value="{{.Data.Hostname}}" spellcheck="false" autocapitalize="none" class="mono" placeholder="mail.example.com"><small>{{.T "The full name of this server: it greets other mail servers with it, mail programs connect to it, and the MX records of all domains point to it. It must resolve to this server's public address, and that address should resolve back to it (PTR record at your provider)."}}</small></label>
+    <label>{{.T "Largest message (MB)"}}<input type="number" name="max_message_mb" value="{{.Data.MaxMessageMB}}" min="1" max="200" class="num-sm"></label>
+  </section>
+  <section class="panel">
+    <h2>{{template "icon" "shield"}}{{.T "Domains of customers"}}</h2>
+    <label class="check"><input type="checkbox" name="require_verification" value="1" {{if .Data.RequireVerification}}checked{{end}}>{{.T "A customer's new domain receives mail only after a DNS record proves it is theirs (recommended on shared servers)"}}</label>
+    <label class="check"><input type="checkbox" name="dedicated" value="1" {{if .Data.Dedicated}}checked{{end}}>{{.T "Dedicated server: it belongs to one customer, domains need no verification"}}</label>
+  </section>
+  <div><button class="primary">{{.T "Save"}}</button></div>
+</form>
+</div>
+</div>
+{{end}}

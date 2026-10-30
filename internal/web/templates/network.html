@@ -1,0 +1,28 @@
+{{template "app" .}}
+{{define "content"}}
+<h1>{{.T "Settings"}}</h1>
+<div class="settings">
+{{template "settingstabs" .}}
+<div class="settings-body">
+{{if .Data.Restart}}<div class="flash warn" role="status">{{template "icon" "alert"}}<span>{{.T "The saved address differs from the running one (%s). Restart the EmailZit service to use it." .Data.RunningMgmt}}</span></div>{{end}}
+{{if .Data.Override}}<div class="flash info" role="status">{{template "icon" "alert"}}<span>{{.T "The service runs with the address from its command line (%s). The address saved here is used when it starts without this option." .Data.RunningMgmt}}</span></div>{{end}}
+<form method="post" action="/settings/network" class="stack wide">
+  <section class="panel">
+    <h2>{{template "icon" "lock"}}{{.T "Panels"}}</h2>
+    <p class="muted">{{.T "The admin panel, the customer panel and the mail users' pages share this address. On a hosting server customers and mail users reach it from anywhere; on a company server limit it to your own networks."}}</p>
+    <label>{{.T "Listen address"}}<input name="mgmt_listen" value="{{.Data.N.MgmtListen}}" required spellcheck="false" class="mono"><small>{{.T ":8444 listens on all addresses; 192.168.1.10:8444 only on one address of this server."}}</small></label>
+    <label>{{.T "Allowed networks"}}<textarea name="mgmt_allowed" rows="5" spellcheck="false" placeholder="0.0.0.0/0">{{.Data.MgmtText}}</textarea><small>{{.T "One IP address or network per line (CIDR, e.g. 192.168.1.0/24, or 0.0.0.0/0 and ::/0 for everyone). Connections from other addresses are closed before TLS. The server itself (127.0.0.1) is always allowed."}}</small></label>
+    <p class="small">{{.T "Your address:"}} <code>{{.Data.ClientIP}}</code> — {{.T "it must stay in the list, otherwise saving is refused."}}</p>
+  </section>
+  <section class="panel">
+    <h2>{{.T "Recommended second layer"}}</h2>
+    <ul class="tips">
+      <li>{{.T "Sign-ins are limited per address and per account; repeated failures block the address for a while (Sign-in and security)."}}</li>
+      <li>{{.T "If you lock yourself out, run on the server: emailzit-server --reset-allowlist"}}</li>
+    </ul>
+  </section>
+  <div><button class="primary">{{.T "Save"}}</button></div>
+</form>
+</div>
+</div>
+{{end}}

@@ -1,0 +1,21 @@
+{{template "app" .}}
+{{define "content"}}
+<h1>{{.T "Settings"}}</h1>
+<div class="settings">
+{{template "settingstabs" .}}
+<div class="settings-body">
+<section class="panel">
+  <h2>{{template "icon" "key"}}{{.T "Trust this SFTP server?"}}</h2>
+  <p>{{.T "The server %s shows this host key:" (index .Data "Host")}}</p>
+  <p><code class="wrap">{{index .Data "Fingerprint"}}</code></p>
+  <p class="small muted">{{.T "Compare it with the key of the server (ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub on it). The backup copies go only to a server with this key."}}</p>
+  <form method="post" action="/settings/backup/test" class="row">
+    <input type="hidden" name="trust" value="1">
+    <input type="hidden" name="fingerprint" value="{{index .Data "Fingerprint"}}">
+    <button>{{.T "Trust and test"}}</button>
+    <a class="btn secondary" href="/settings/backup">{{.T "Cancel"}}</a>
+  </form>
+</section>
+</div>
+</div>
+{{end}}

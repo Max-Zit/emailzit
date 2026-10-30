@@ -23,3 +23,5 @@
   <li>Mail from outside that claims to come from a domain of this server is refused; signed-in users can send only from their own addresses and their send-as aliases.</li>
   <li>Mail programs must use TLS; plain-text sign-in is refused.</li>
 </ul>
+<h2>Moving mail from another server</h2>
+<p>On the mailbox page, <b>Bring mail from another server</b> copies every folder of the old mailbox over IMAP (port 993, or 143 with STARTTLS) with read flags and dates; Sent, Trash, Junk and Drafts land in the matching folders here. Messages that are already here are skipped, so run it once before and once after you move the MX record to pick up what came late. The old password is kept encrypted only until the import ends. On hosting servers imports only come from servers on the internet; a company server can allow private networks under Settings → Mail server.</p>

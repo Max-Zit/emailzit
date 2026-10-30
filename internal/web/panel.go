@@ -58,6 +58,9 @@ type MailSettings struct {
 	Dedicated bool `json:"dedicated"`
 	// MaxMessageMB is the largest message accepted and sent.
 	MaxMessageMB int `json:"max_message_mb"`
+	// AllowPrivateImports lets mail be imported from servers in private
+	// networks (company servers, test labs); off on hosting servers.
+	AllowPrivateImports bool `json:"allow_private_imports"`
 }
 
 func defaultMail() MailSettings {
@@ -103,7 +106,7 @@ func (s *Server) showMailSettings(w http.ResponseWriter, r *http.Request, status
 
 func (s *Server) handleMailSettingsSave(w http.ResponseWriter, r *http.Request) {
 	m := MailSettings{Hostname: r.FormValue("hostname"), RequireVerification: r.FormValue("require_verification") == "1",
-		Dedicated: r.FormValue("dedicated") == "1", MaxMessageMB: formInt(r, "max_message_mb")}
+		Dedicated: r.FormValue("dedicated") == "1", MaxMessageMB: formInt(r, "max_message_mb"), AllowPrivateImports: r.FormValue("allow_private_imports") == "1"}
 	if err := m.Validate(); err != nil {
 		s.showMailSettings(w, r, http.StatusBadRequest, m, err.Error())
 		return
@@ -587,6 +590,7 @@ func (s *Server) handleMailboxCreate(w http.ResponseWriter, r *http.Request) {
 }
 
 type mailboxData struct {
+	Imports      []*store.Import
 	M            *store.Mailbox
 	Sent         store.SentStats
 	D            *store.Domain
@@ -616,6 +620,7 @@ func (s *Server) handleMailbox(w http.ResponseWriter, r *http.Request) {
 	if d.D, err = s.store.DomainByID(r.Context(), sc, m.DomainID); err == nil {
 		if d.AppPasswords, err = s.store.AppPasswords(r.Context(), m.ID); err == nil {
 			d.Sent, _ = s.store.MailboxSentStats(r.Context(), m.ID)
+			d.Imports, _ = s.store.Imports(r.Context(), m.ID)
 			var c *store.Customer
 			if c, err = s.store.CustomerByID(r.Context(), m.CustomerID); err == nil {
 				d.Package, err = s.store.PackageByID(r.Context(), c.PackageID)

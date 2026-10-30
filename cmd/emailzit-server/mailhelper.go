@@ -16,8 +16,10 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/max-zit/emailzit/internal/backup"
 	"github.com/max-zit/emailzit/internal/logfile"
 	"github.com/max-zit/emailzit/internal/mailhelper"
+	"github.com/max-zit/emailzit/internal/store"
 )
 
 // runMailHelper is the root mail helper service. It connects to the
@@ -113,4 +115,32 @@ func readAuthPolicyToken() string {
 		return ""
 	}
 	return strings.TrimSpace(string(b))
+}
+
+// restoreBackup puts a backup of the panel back (server stopped): the
+// database in one transaction, then the data files. The mail helper writes
+// the mail configuration and the DKIM keys again when the services start.
+func restoreBackup(ctx context.Context, file, passFile, dataDir, dbURL string) error {
+	pass := os.Getenv("EMAILZIT_BACKUP_PASSPHRASE")
+	if passFile != "" {
+		b, err := os.ReadFile(passFile) // #nosec G304 -- the administrator names the file
+		if err != nil {
+			return err
+		}
+		pass = strings.TrimRight(string(b), "\r\n")
+	}
+	f, err := os.Open(file) // #nosec G304 -- the administrator names the file
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	m, err := backup.Restore(ctx, f, pass, dataDir, func(ctx context.Context, r io.Reader) error {
+		return store.RestoreDump(ctx, dbURL, r)
+	})
+	if err != nil {
+		return fmt.Errorf("restore: %w", err)
+	}
+	fmt.Printf("Restored the backup of %s (EmailZit %s, %d files). Start the services now.\n",
+		m.Created.Local().Format("2006-01-02 15:04"), m.ServerVersion, len(m.Files))
+	return nil
 }

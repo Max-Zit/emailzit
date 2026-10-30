@@ -57,6 +57,35 @@
   {{template "clientsettings" (rowOf $ $m.Address)}}
 </section>
 {{if .User.CanWrite}}
+<section class="panel" id="import">
+  <h2>{{template "icon" "download"}}{{.T "Bring mail from another server"}}</h2>
+  <p class="muted">{{.T "Copies every folder of the old mailbox (IMAP) into this one, with read flags and dates. Messages that are already here are skipped, so you can run it again after moving the MX record."}}</p>
+  {{if .Data.Imports}}
+  <div class="table-wrap"><table>
+    <thead><tr><th>{{.T "Old server"}}</th><th>{{.T "Status"}}</th><th>{{.T "Copied"}}</th><th class="hide-sm">{{.T "Started"}}</th></tr></thead>
+    <tbody>{{range .Data.Imports}}<tr>
+      <td class="small mono">{{.Username}} @ {{.Host}}:{{.Port}}</td>
+      <td>{{if eq .Status "done"}}<span class="badge ok"><i></i>{{$.T "Done"}}</span>{{else if eq .Status "failed"}}<span class="badge bad"><i></i>{{$.T "Failed"}}</span><br><small class="muted">{{$.T .Error}}</small>{{else}}<span class="badge warn"><i></i>{{$.T "Running"}}</span>{{end}}</td>
+      <td class="small">{{.Copied}} · {{$.T "%d skipped" .Skipped}} · {{$.T "%d folders" .Folders}}</td>
+      <td class="hide-sm small muted">{{$.Time .CreatedAt}}</td>
+    </tr>{{end}}</tbody>
+  </table></div>
+  {{end}}
+  {{if .User.CanWrite}}
+  <form method="post" action="/mailboxes/{{.Data.M.ID}}/import" class="stack mt">
+    <div class="cols">
+      <label>{{.T "Old server"}}<input name="host" required spellcheck="false" autocapitalize="none" placeholder="imap.example.com"></label>
+      <label>{{.T "Port"}}<select name="port"><option value="993">993 (TLS)</option><option value="143">143 (STARTTLS)</option></select></label>
+    </div>
+    <div class="cols">
+      <label>{{.T "User name on the old server"}}<input name="username" required autocomplete="off" autocapitalize="none" spellcheck="false"></label>
+      <label>{{.T "Password on the old server"}}<input type="password" name="password" required autocomplete="new-password"><small>{{.T "Kept encrypted only until the import ends."}}</small></label>
+    </div>
+    <label class="check"><input type="checkbox" name="insecure" value="1">{{.T "The old server has a self-signed certificate (do not check it)"}}</label>
+    <div><button class="secondary">{{.T "Start the import"}}</button></div>
+  </form>
+  {{end}}
+</section>
 <section class="panel">
   <h2>{{template "icon" "trash"}}{{.T "Delete the mailbox"}}</h2>
   <p class="muted">{{.T "The mailbox and all its mail are deleted. This cannot be undone."}}</p>

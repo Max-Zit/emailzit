@@ -65,6 +65,8 @@ func run() error {
 	unblock := flag.String("unblock-ip", "", "lift the sign-in block of an address (or \"all\") and exit")
 	showVersion := flag.Bool("version", false, "print the version and exit")
 	runHelper := flag.Bool("helper", false, "root helper: handle a request of the console (updates, time zone, network) and exit; started by emailzit-helper.service")
+	restoreFile := flag.String("restore", "", "restore this backup of the panel (database, keys, certificates) and exit; stop the server first")
+	restorePass := flag.String("restore-passphrase-file", "", "file with the passphrase of the backup (or set EMAILZIT_BACKUP_PASSPHRASE)")
 	mailHelper := flag.Bool("mail-helper", false, "root mail helper: serve the panel's mail requests (configuration, mail directories) on "+mailhelper.Socket+"; started by emailzit-mail-helper.service")
 	mailRelay := flag.String("mail-relay", os.Getenv("EMAILZIT_MAIL_RELAY"), "mail helper: send all outgoing mail through this host, e.g. [192.168.1.5]:1025 (test labs)")
 	flag.Parse()
@@ -78,6 +80,12 @@ func run() error {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	if *restoreFile != "" {
+		if *dbURL == "" {
+			return errors.New("database URL required (--db or EMAILZIT_DB)")
+		}
+		return restoreBackup(ctx, *restoreFile, *restorePass, *dataDir, *dbURL)
+	}
 	if *mailHelper {
 		return runMailHelper(ctx, *dbURL, *mailRelay)
 	}
@@ -250,6 +258,19 @@ func run() error {
 
 	go srv.RunUpdates(ctx)
 	go srv.SyncMail(ctx)
+	go srv.RunImports(ctx)
+	go func() {
+		t := time.NewTicker(5 * time.Minute)
+		defer t.Stop()
+		for {
+			srv.RunBackups(ctx)
+			select {
+			case <-ctx.Done():
+				return
+			case <-t.C:
+			}
+		}
+	}()
 	if pl, err := listenPolicy(); err != nil {
 		log.Error("policy service (sending limits) not started", "err", err)
 	} else if pl != nil {

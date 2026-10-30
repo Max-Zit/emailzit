@@ -1,0 +1,93 @@
+{{template "app" .}}
+{{define "content"}}
+{{$b := .Data.S}}
+<h1>{{.T "Settings"}}</h1>
+<div class="settings">
+{{template "settingstabs" .}}
+<div class="settings-body">
+<section class="panel" {{if .Data.Running}}data-autorefresh{{end}}>
+  <h2>{{template "icon" "disk"}}{{.T "Backup of the panel"}}</h2>
+  <p class="muted small">{{.T "A backup holds the database (customers, domains, mailboxes, settings, DKIM keys), the secret key of the server and the panel certificate: everything a new server needs to take over the panels. The mail itself is not in it: back up /var/vmail with BackupZit. The whole file is encrypted with the backup passphrase."}}</p>
+  {{if .Data.Running}}<div class="flash" role="status">{{template "icon" "clock"}}<span>{{.T "A backup is running."}}</span></div>
+  {{else if not $b.LastRun.IsZero}}
+  <div class="flash {{if $b.LastOK}}ok{{else}}err{{end}}" role="status">{{if $b.LastOK}}{{template "icon" "check"}}{{else}}{{template "icon" "alert"}}{{end}}<span>
+    {{.T "Last backup"}}: {{.Time $b.LastRun}} —
+    {{if $b.LastError}}{{.T "failed"}}: {{$b.LastError}}{{else}}{{$b.LastFile}} ({{.Bytes $b.LastBytes}}){{if eq $b.LastCopy "ok"}}, {{.T "copied to the SFTP folder"}}{{else if $b.LastCopy}}; {{$b.LastCopy}}{{end}}{{end}}
+  </span></div>{{end}}
+  <form method="post" action="/settings/backup/run" class="row"><button {{if .Data.Running}}disabled{{end}}>{{template "icon" "download"}}{{.T "Back up now"}}</button></form>
+</section>
+
+<section class="panel">
+  <h2>{{.T "Schedule and storage"}}</h2>
+  <form method="post" action="/settings/backup" class="stack">
+    <label class="check"><input type="checkbox" name="enabled" value="1" {{if $b.Enabled}}checked{{end}}>{{.T "Back up every day"}}</label>
+    <div class="cols">
+      <label>{{.T "At (server time)"}}<select name="hour">{{range .Data.Hours}}<option value="{{.}}" {{if eq . $b.Hour}}selected{{end}}>{{printf "%02d:00" .}}</option>{{end}}</select></label>
+      <label>{{.T "Keep the newest"}}<input type="number" name="keep" value="{{$b.Keep}}" min="1" max="90"></label>
+    </div>
+    <p class="small muted">{{.T "Backups are written to the folder backups in the data directory of the server."}}</p>
+
+    <fieldset class="box">
+      <legend>{{.T "Encryption"}}</legend>
+      <p class="small muted">{{.T "Backups are always encrypted (AES-256) with this passphrase; without one no backup is written. Keep it somewhere else: without it a backup cannot be restored."}}</p>
+      {{if .Data.HasPass}}<p class="small">{{template "icon" "lock"}} {{.T "Backups are encrypted."}}</p>{{end}}
+      <div class="cols">
+        <label>{{if .Data.HasPass}}{{.T "New passphrase"}}{{else}}{{.T "Passphrase"}}{{end}}<input type="password" name="passphrase" autocomplete="new-password" minlength="12"></label>
+        <label>{{.T "Repeat"}}<input type="password" name="passphrase2" autocomplete="new-password"></label>
+      </div>
+    </fieldset>
+
+    <fieldset class="box">
+      <legend>{{.T "Copy to an SFTP folder"}}</legend>
+      <label class="check"><input type="checkbox" name="sftp_enabled" value="1" {{if $b.SFTP.Enabled}}checked{{end}}>{{.T "Copy every backup to another server over SFTP"}}</label>
+      <div class="cols">
+        <label>{{.T "Server"}}<input name="sftp_host" value="{{$b.SFTP.Host}}" placeholder="nas.example.com" autocomplete="off"></label>
+        <label>{{.T "Port"}}<input type="number" name="sftp_port" value="{{if $b.SFTP.Port}}{{$b.SFTP.Port}}{{else}}22{{end}}" min="1" max="65535"></label>
+        <label>{{.T "User"}}<input name="sftp_user" value="{{$b.SFTP.User}}" autocomplete="off"></label>
+      </div>
+      <label>{{.T "Folder"}} <small>{{.T "created when missing"}}</small><input name="sftp_dir" value="{{$b.SFTP.Dir}}" placeholder="backups/emailzit"></label>
+      <div class="cols">
+        <label>{{.T "Password"}} {{if .Data.HasPw}}<small>{{.T "saved; leave empty to keep it"}}</small>{{end}}<input type="password" name="sftp_password" autocomplete="new-password"></label>
+      </div>
+      {{if .Data.HasPw}}<label class="check"><input type="checkbox" name="sftp_password_clear" value="1">{{.T "Remove the saved password"}}</label>{{end}}
+      <label>{{.T "Private key"}} <small>{{if .Data.HasKey}}{{.T "saved; leave empty to keep it"}}{{else}}{{.T "optional; OpenSSH or PEM, without a passphrase"}}{{end}}</small><textarea name="sftp_key" rows="3" spellcheck="false" autocomplete="off" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"></textarea></label>
+      {{if .Data.HasKey}}<label class="check"><input type="checkbox" name="sftp_key_clear" value="1">{{.T "Remove the saved key"}}</label>{{end}}
+      {{if $b.SFTP.HostKey}}<p class="small muted">{{.T "Trusted host key"}}: <code class="wrap">{{$b.SFTP.HostKey}}</code></p>{{end}}
+      <p class="small muted">{{.T "The folder keeps as many backups as the server."}}</p>
+    </fieldset>
+    <div class="row">
+      <button>{{.T "Save"}}</button>
+      {{if $b.SFTP.Host}}<button class="ghost" formaction="/settings/backup/test" formnovalidate>{{.T "Test the SFTP folder"}}</button>{{end}}
+    </div>
+  </form>
+</section>
+
+<section class="panel">
+  <h2>{{.T "Backups on this server"}}</h2>
+  {{if .Data.Files}}
+  <div class="table-wrap"><table>
+    <thead><tr><th>{{.T "File"}}</th><th>{{.T "Size"}}</th><th class="hide-sm">{{.T "Written"}}</th><th></th></tr></thead>
+    <tbody>{{range .Data.Files}}<tr>
+      <td>{{if .Encrypted}}<span title="{{$.T "encrypted"}}">{{template "icon" "lock"}}</span> {{end}}{{.Name}}</td>
+      <td class="nowrap">{{$.Bytes .Size}}</td>
+      <td class="hide-sm nowrap">{{$.Time .At}}</td>
+      <td class="actions nowrap"><a class="btn secondary sm" href="/settings/backup/file/{{.Name}}">{{template "icon" "download"}}{{$.T "Download"}}</a>
+        <form method="post" action="/settings/backup/delete" class="inline" data-confirm="{{$.T "Delete this backup?"}}"><input type="hidden" name="name" value="{{.Name}}"><button class="ghost sm">{{template "icon" "trash"}}{{$.T "Delete"}}</button></form></td>
+    </tr>{{end}}</tbody>
+  </table></div>
+  {{else}}<p class="muted">{{.T "No backups yet."}}</p>{{end}}
+</section>
+
+<section class="panel">
+  <h2>{{.T "Restore"}}</h2>
+  <p class="small">{{.T "A restore replaces the whole panel (database, keys, certificates) with the backup. It runs on the server while EmailZit is stopped:"}}</p>
+  <ul class="small">
+    <li>{{.T "Linux packages:"}}<pre>sudo systemctl stop emailzit-server
+sudo -u emailzit sh -c 'set -a; . /etc/emailzit/server.env; emailzit-server -data-dir /var/lib/emailzit -restore /path/emailzit-backup-….ezb'
+sudo systemctl start emailzit-server</pre></li>
+  </ul>
+  <p class="small muted">{{.T "The restore asks for the passphrase in EMAILZIT_BACKUP_PASSPHRASE or a file given with -restore-passphrase-file. When the services start again, the mail configuration and the DKIM keys are written again."}}</p>
+</section>
+</div>
+</div>
+{{end}}

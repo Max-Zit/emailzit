@@ -78,6 +78,7 @@
 {{define "settingstabs"}}<nav class="sidetabs" aria-label="{{.T "Settings"}}">
   <a href="/settings/mail" class="{{if eq .Title "Mail server"}}on{{end}}">{{template "icon" "mail"}}<span>{{.T "Mail server"}}<small>{{.T "Host name, domain verification, limits"}}</small></span></a>
   <a href="/settings/certificate" class="{{if eq .Title "Certificate"}}on{{end}}">{{template "icon" "lock"}}<span>{{.T "Certificate"}}<small>{{.T "TLS for IMAP, POP3 and SMTP"}}</small></span></a>
+  <a href="/settings/backup" class="{{if eq .Title "Backup of the panel"}}on{{end}}">{{template "icon" "disk"}}<span>{{.T "Backup of the panel"}}<small>{{.T "Database, keys and settings, encrypted"}}</small></span></a>
   <a href="/settings/api" class="{{if eq .Title "REST API"}}on{{end}}">{{template "icon" "key"}}<span>{{.T "REST API"}}<small>{{.T "Tokens for billing systems and HostZit"}}</small></span></a>
   <a href="/settings/network" class="{{if eq .Title "Network and access"}}on{{end}}">{{template "icon" "network"}}<span>{{.T "Network and access"}}<small>{{.T "Panel port and allowed networks"}}</small></span></a>
   <a href="/settings/security" class="{{if eq .Title "Sign-in and security"}}on{{end}}">{{template "icon" "lock"}}<span>{{.T "Sign-in and security"}}<small>{{.T "Session length, blocked addresses"}}</small></span></a>

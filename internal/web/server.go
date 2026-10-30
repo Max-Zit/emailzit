@@ -50,6 +50,7 @@ type Server struct {
 	Mail    MailApplier
 	upd     updateState
 	apiRate apiRate
+	backups backupRunner
 }
 
 // MailApplier is the part of the root helper the panels use.
@@ -287,6 +288,7 @@ func (s *Server) Handler() http.Handler {
 	write("POST /mailboxes/{id}/password", s.handleMailboxPassword)
 	write("POST /mailboxes/{id}/reset-2fa", s.handleMailboxReset2FA)
 	write("POST /mailboxes/{id}/apppasswords/{pid}/delete", s.handleMailboxAppPasswordDelete)
+	write("POST /mailboxes/{id}/import", s.handleMailboxImport)
 	write("POST /mailboxes/{id}/delete", s.handleMailboxDelete)
 	app("GET /aliases", s.handleAliases)
 	write("POST /aliases/{id}", s.handleAliasUpdate)
@@ -317,6 +319,12 @@ func (s *Server) Handler() http.Handler {
 	admin("POST /settings/mail", s.handleMailSettingsSave)
 	admin("GET /settings/certificate", s.handleCertificate)
 	admin("POST /settings/certificate", s.handleCertificateSave)
+	admin("GET /settings/backup", s.handleBackupSettings)
+	admin("POST /settings/backup", s.handleBackupSave)
+	admin("POST /settings/backup/run", s.handleBackupRun)
+	admin("POST /settings/backup/test", s.handleBackupTest)
+	admin("POST /settings/backup/delete", s.handleBackupDelete)
+	admin("GET /settings/backup/file/{name}", s.handleBackupDownload)
 	admin("GET /settings/api", s.handleAPITokens)
 	admin("POST /settings/api", s.handleAPITokenCreate)
 	admin("POST /settings/api/{id}/delete", s.handleAPITokenDelete)

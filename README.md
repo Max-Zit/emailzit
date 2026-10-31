@@ -16,7 +16,7 @@
 - **Works with the other MaxZit products:** [HostZit](https://github.com/Max-Zit/hostzit) with one sign-in, [BackupZit](https://github.com/Max-Zit/backupzit) for mailbox backups, [WatchZit](https://github.com/Max-Zit/watchzit) for monitoring; REST API for billing systems.
 - **Self-hosted:** Debian package or appliance image, 14 languages.
 
-EmailZit is made by [MaxZit](https://maxzit.com), like [BackupZit](https://github.com/Max-Zit/backupzit), [ControlZit](https://github.com/Max-Zit/controlzit), [WatchZit](https://github.com/Max-Zit/watchzit) and [PassZit](https://github.com/Max-Zit/passzit).
+EmailZit is made by [MaxZit](https://maxzit.com), like [BackupZit](https://github.com/Max-Zit/backupzit), [RMMZit](https://github.com/Max-Zit/rmmzit), [WatchZit](https://github.com/Max-Zit/watchzit) and [PassZit](https://github.com/Max-Zit/passzit).
 
 ## License
 

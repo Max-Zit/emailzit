@@ -35,7 +35,7 @@
     <a href="/docs" class="{{if eq .Nav "docs"}}on{{end}}">{{template "icon" "book"}}{{.T "User guide"}}</a>
   </nav>
   {{with .HostZit}}{{if $.User.IsStaff}}<a class="product-switch" href="{{.}}/" title="{{$.T "Open HostZit"}}">{{template "icon" "globe"}}<span>Host<b>Zit</b></span></a>{{end}}{{end}}
-  <div class="side-foot"><a class="support-link" href="https://portal.maxzit.com/tickets/new?product=emailzit&amp;version=server%20{{.Version}}" target="_blank" rel="noopener" title="{{.T "Paid support by MaxZit: open a ticket in the customer portal"}}">{{template "icon" "support"}} {{.T "Contact support"}}</a><a class="bug-link" href="https://github.com/Max-Zit/emailzit/issues/new?template=bug_report.yml&amp;version=server%20{{.Version}}" target="_blank" rel="noopener">{{template "icon" "bug"}} {{.T "Report a bug"}}</a>EmailZit {{.Version}}<br>{{.T "AGPLv3 · self-hosted"}}<br><span title="{{.T "Times in the panel are in this time zone"}}">{{template "icon" "clock"}} {{.Zone}}</span>{{with .Clock}}<br><span id="clock" title="{{$.T "Current time of the server"}}" data-ms="{{.MS}}" data-off="{{.Off}}">{{.Text}}</span>{{end}}</div>
+  <div class="side-foot"><a class="support-link" href="https://portal.maxzit.com/tickets/new?product=emailzit&amp;version=server%20{{.Version}}" target="_blank" rel="noopener" title="{{.T "Paid support by MaxZit: open a ticket in the customer portal"}}">{{template "icon" "support"}} {{.T "Contact support"}}</a><a class="bug-link" href="https://github.com/Max-Zit/emailzit/issues/new?template=bug_report.yml&amp;version=server%20{{.Version}}" target="_blank" rel="noopener">{{template "icon" "bug"}} {{.T "Report a bug"}}</a>EmailZit {{.Version}}<br><a href="https://github.com/Max-Zit/emailzit" target="_blank" rel="noopener" title="{{.T "Source code"}}">{{.T "AGPLv3 · self-hosted"}}</a><br><span title="{{.T "Times in the panel are in this time zone"}}">{{template "icon" "clock"}} {{.Zone}}</span>{{with .Clock}}<br><span id="clock" title="{{$.T "Current time of the server"}}" data-ms="{{.MS}}" data-off="{{.Off}}">{{.Text}}</span>{{end}}</div>
 </aside>
 <div class="scrim" data-close="#side"></div>
 <div class="shell">
@@ -132,7 +132,7 @@
     <a href="/mail/filters" class="{{if eq .Nav "filters"}}on{{end}}">{{template "icon" "route"}}{{.T "Auto-reply and filters"}}</a>
     <a href="/mail#apps">{{template "icon" "key"}}{{.T "App passwords"}}</a>
   </nav>
-  <div class="side-foot">EmailZit {{.Version}}<br>{{.T "AGPLv3 · self-hosted"}}</div>
+  <div class="side-foot">EmailZit {{.Version}}<br><a href="https://github.com/Max-Zit/emailzit" target="_blank" rel="noopener" title="{{.T "Source code"}}">{{.T "AGPLv3 · self-hosted"}}</a></div>
 </aside>
 <div class="scrim" data-close="#side"></div>
 <div class="shell">

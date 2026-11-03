@@ -66,6 +66,23 @@ func licenseText(dir string) (string, error) {
 	return "", fmt.Errorf("no license file in %s", dir)
 }
 
+// noticeText is a module's NOTICE file (Apache-2.0 section 4(d): its
+// attribution notices must be passed on); "" when there is none.
+func noticeText(dir string) string {
+	ents, err := os.ReadDir(dir)
+	if err != nil {
+		return ""
+	}
+	for _, e := range ents {
+		if n := strings.ToUpper(e.Name()); !e.IsDir() && (n == "NOTICE" || n == "NOTICE.TXT" || n == "NOTICE.MD") {
+			if b, err := os.ReadFile(filepath.Join(dir, e.Name())); err == nil { // #nosec G304 -- module cache
+				return strings.TrimSpace(string(b))
+			}
+		}
+	}
+	return ""
+}
+
 func modCache() string { return goEnv("GOMODCACHE") }
 
 func goEnv(name string) string {
@@ -125,7 +142,7 @@ func main() {
 	b.WriteString("Its programs contain the following components under their own licenses, all compatible with the AGPL-3.0.\n\n")
 	b.WriteString("| Component | Version | License |\n|---|---|---|\n")
 	b.WriteString("| Go standard library and runtime | " + goVersion + " | BSD-3-Clause |\n")
-	type entry struct{ path, version, kind, text string }
+	type entry struct{ path, version, kind, text, notice string }
 	var list []entry
 	failed := false
 	for _, p := range paths {
@@ -137,7 +154,7 @@ func main() {
 			failed = true
 			continue
 		}
-		list = append(list, entry{p, mods[p], kind, text})
+		list = append(list, entry{p, mods[p], kind, text, noticeText(dir)})
 		fmt.Fprintf(&b, "| %s | %s | %s |\n", p, mods[p], kind)
 	}
 	b.WriteString("\nOther components:\n\n")
@@ -149,6 +166,9 @@ func main() {
 	}
 	for _, e := range list {
 		fmt.Fprintf(&b, "## %s %s (%s)\n\n```\n%s\n```\n\n", e.path, e.version, e.kind, strings.TrimSpace(e.text))
+		if e.notice != "" {
+			fmt.Fprintf(&b, "NOTICE of %s:\n\n```\n%s\n```\n\n", e.path, e.notice)
+		}
 	}
 	b.WriteString("## Feather Icons (MIT)\n\n```\n" + featherLicense + "\n```\n")
 	if err := os.WriteFile(*out, b.Bytes(), 0o644); err != nil { // #nosec G306 -- a public document

@@ -269,6 +269,16 @@ Apache License
    limitations under the License.
 ```
 
+NOTICE of github.com/coreos/go-oidc/v3:
+
+```
+CoreOS Project
+Copyright 2014 CoreOS, Inc
+
+This product includes software developed at CoreOS, Inc.
+(http://www.coreos.com/).
+```
+
 ## github.com/emersion/go-imap v1.2.1 (MIT)
 
 ```

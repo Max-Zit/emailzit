@@ -1,6 +1,15 @@
-<p align="center"><img src="brand/emailzit-logo-on-light.svg" alt="EmailZit" height="64"></p>
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="brand/emailzit-logo-on-dark.svg">
+    <img src="brand/emailzit-logo-on-light.svg" alt="EmailZit" height="64">
+  </picture>
+</p>
 
 # EmailZit
+
+[![License: AGPL v3](https://img.shields.io/badge/license-AGPLv3-blue)](LICENSE)
+[![CI](https://github.com/Max-Zit/emailzit/actions/workflows/ci.yml/badge.svg)](https://github.com/Max-Zit/emailzit/actions/workflows/ci.yml)
+[![Security scan](https://github.com/Max-Zit/emailzit/actions/workflows/security.yml/badge.svg)](https://github.com/Max-Zit/emailzit/actions/workflows/security.yml)
 
 **Free, open-source, self-hosted mail hosting** — mailboxes for many domains and customers with a modern admin panel, a panel for every customer and webmail; on its own or together with [HostZit](https://github.com/Max-Zit/hostzit).
 
@@ -16,7 +25,7 @@
 - **Works with the other MaxZit products:** [HostZit](https://github.com/Max-Zit/hostzit) with one sign-in, [BackupZit](https://github.com/Max-Zit/backupzit) for mailbox backups, [WatchZit](https://github.com/Max-Zit/watchzit) for monitoring; REST API for billing systems.
 - **Self-hosted:** Debian package or appliance image, 14 languages.
 
-EmailZit is made by [MaxZit](https://maxzit.com), like [BackupZit](https://github.com/Max-Zit/backupzit), [ControlZit](https://github.com/Max-Zit/controlzit), [WatchZit](https://github.com/Max-Zit/watchzit) and [PassZit](https://github.com/Max-Zit/passzit).
+EmailZit is made by [MaxZit](https://maxzit.com), like [BackupZit](https://github.com/Max-Zit/backupzit), [RMMZit](https://github.com/Max-Zit/rmmzit), [WatchZit](https://github.com/Max-Zit/watchzit) and [PassZit](https://github.com/Max-Zit/passzit).
 
 ## License
 

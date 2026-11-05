@@ -46,7 +46,11 @@ smtp_tls_security_level = {{if .RelayUser}}encrypt{{else}}may{{end}}
 smtp_tls_protocols = >=TLSv1.2
 smtp_tls_loglevel = 1
 smtp_tls_session_cache_database = btree:${data_directory}/smtp_scache
-tls_preempt_cipherlist = no
+# mail programs and smart hosts (the "high" grade: submission, IMAP, POP3)
+# get only forward-secret AEAD suites; port 25 keeps the wider "medium"
+# grade, since any encryption beats none for mail between servers
+tls_high_cipherlist = ECDHE+AESGCM:ECDHE+CHACHA20:DHE+AESGCM:DHE+CHACHA20
+tls_preempt_cipherlist = yes
 
 # ---- virtual domains (EmailZit)
 virtual_mailbox_domains = proxy:pgsql:/etc/postfix/emailzit/domains.cf

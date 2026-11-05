@@ -27,3 +27,34 @@ jobs:
         run: go test -count=1 -timeout 20m ./...
       - name: Shell scripts
         run: sh -n packaging/setup.sh
+
+  race:
+    name: Race detector (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Fetch the test PostgreSQL once (parallel test binaries would all download it)
+        run: go test -race -count=1 ./internal/store
+      - name: Tests with -race
+        run: go test -race -count=1 -timeout 40m ./...
+
+  fuzz:
+    name: Fuzz parsers of untrusted input (short)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Fuzz each target for 20 s
+        run: |
+          set -e
+          for t in dmarc:FuzzParseMessage dmarc:FuzzParse webmail:FuzzSafeHTML sieve:FuzzCleanSenders netacl:FuzzParsePrefix \
+                   mailimport:FuzzScan mailimport:FuzzMailPath submit:FuzzPrepare maillog:FuzzLine policy:FuzzReadRequest; do
+            go test "./internal/${t%%:*}" -run '^$' -fuzz "^${t##*:}\$" -fuzztime 20s
+          done

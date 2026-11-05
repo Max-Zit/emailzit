@@ -13,20 +13,38 @@
 
 **Free, open-source, self-hosted mail hosting** — mailboxes for many domains and customers with a modern admin panel, a panel for every customer and webmail; on its own or together with [HostZit](https://github.com/Max-Zit/hostzit).
 
-> **Status:** in development. There is no release yet; follow the repository or [Discussions](https://github.com/Max-Zit/emailzit/discussions) for news.
+> **Status:** first public release (0.7). Tested in our lab with Outlook, Thunderbird, phones and HostZit; tell us how it works for you in [Discussions](https://github.com/Max-Zit/emailzit/discussions) or [Issues](https://github.com/Max-Zit/emailzit/issues).
 
-## Planned
+## Features
 
-- **Two panels:** the server administrator manages packages, domains, limits and the server; every customer manages their own mailboxes, aliases, forwarders and spam settings; every mail user can change their own password, auto-reply and filters.
-- **Proven mail software underneath:** Postfix, Dovecot (IMAP/POP3, quotas, Sieve filters) and Rspamd (spam and virus filtering), configured and kept up to date by EmailZit.
-- **Deliverability done right:** DKIM, SPF, DMARC, MTA-STS and TLS reporting set up automatically, outgoing limits per account so one compromised mailbox cannot ruin the server's reputation, queue and delivery logs.
-- **Easy setup for users:** autoconfig/autodiscover for Outlook, Thunderbird, iOS and Android; webmail; import from other IMAP servers.
-- **Security:** isolation between customers, brute-force protection, two-factor sign-in for the panels, roles, hash-chained audit log, signed updates.
-- **Works with the other MaxZit products:** [HostZit](https://github.com/Max-Zit/hostzit) with one sign-in, [BackupZit](https://github.com/Max-Zit/backupzit) for mailbox backups, [WatchZit](https://github.com/Max-Zit/watchzit) for monitoring; REST API for billing systems.
-- **Self-hosted:** Debian package or appliance image, 14 languages.
+- **Two panels and webmail:** the server administrator manages packages, customers, domains, limits and the server; every customer manages their own mailboxes, aliases, forwarders and spam settings; every mail user has webmail (with contacts and a signature), password and app passwords, auto-reply and filters.
+- **Proven mail software underneath:** Postfix, Dovecot (IMAP/POP3, quotas, Sieve filters) and Rspamd (spam filtering, greylisting, optional ClamAV virus scan), configured and kept up to date by EmailZit.
+- **Deliverability done right:** DKIM, SPF, DMARC (with the receivers' reports shown per domain), MTA-STS and TLS reporting set up automatically; a host name and PTR check for IPv4 and IPv6; outgoing limits per mailbox, customer and website, so one compromised account cannot ruin the server's reputation; queue and delivery log; an optional smart host.
+- **Easy setup for users:** Autodiscover and autoconfig for Outlook, Thunderbird, iOS and Android; mail programs use app passwords only, the web always asks for a second factor; quota warnings in the Inbox.
+- **Moving in:** import from other IMAP servers, from cPanel account backups and from another EmailZit server; export per customer.
+- **Security:** isolation between customers, brute-force protection, two-factor sign-in, company sign-in (OIDC) for staff, four-eyes approval for risky changes, hash-chained audit log, signed updates, encrypted backups of the panel.
+- **Works with the other MaxZit products:** [HostZit](https://github.com/Max-Zit/hostzit) writes the DNS records and sends the websites' mail through EmailZit; [WatchZit](https://github.com/Max-Zit/watchzit) monitors it; REST API for billing systems.
+- **Self-hosted:** Debian 13 package or appliance image (ISO, OVA, qcow2, VHDX), 14 languages, user guide in English and Serbian.
+
+## Install
+
+On a fresh **Debian 13** server with a public address (ports 25, 465, 587, 993, 995 and 8444 open):
+
+```sh
+curl -fsSLO https://github.com/Max-Zit/emailzit/releases/latest/download/install.sh
+sudo sh install.sh --hostname mail.example.com
+```
+
+Or download the **appliance image** from the [newest release](https://github.com/Max-Zit/emailzit/releases/latest) (Proxmox: qcow2, VMware: OVA, Hyper-V: VHDX, or the installer ISO). The console of the appliance shows the panel's address and a setup token.
+
+Open `https://<server>:8444`, create the first administrator and set the server's host name; the panel then shows every DNS record a domain needs. The host name must point at the server and the server's address back at the host name (PTR record at your provider).
+
+Requirements: 2 vCPU, 2 GB RAM (4 GB with the virus scan), 20 GB disk plus the mail itself.
+
+The appliance image is checked before every release with Trivy, Lynis, testssl.sh and Nuclei; see [SECURITY.md](SECURITY.md).
 
 EmailZit is made by [MaxZit](https://maxzit.com), like [BackupZit](https://github.com/Max-Zit/backupzit), [RMMZit](https://github.com/Max-Zit/rmmzit), [WatchZit](https://github.com/Max-Zit/watchzit) and [PassZit](https://github.com/Max-Zit/passzit).
 
 ## License
 
-GNU Affero General Public License v3.0 — see [LICENSE](LICENSE). Paid support will be offered by MaxZit.
+GNU Affero General Public License v3.0 — see [LICENSE](LICENSE). Third-party components and their licenses: [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md). Paid support is offered by MaxZit.

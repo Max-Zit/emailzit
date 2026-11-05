@@ -20,6 +20,8 @@ set -eu
 pkg=$(readlink -f "${1:?usage: build-images.sh emailzit-server_X_amd64.deb}")
 ver=$(basename "$pkg" | sed -n 's/^emailzit-server_\([0-9.]*\)_.*/\1/p')
 src=$(cd "$(dirname "$0")" && pwd)
+[ -x "$src/vmdkstream" ] || { echo "missing $src/vmdkstream (GOOS=linux go build -o packaging/appliance/vmdkstream ./tools/vmdkstream)" >&2; exit 1; }
+[ -x "$src/vmdkstream" ] || { echo "missing $src/vmdkstream (GOOS=linux go build -o packaging/appliance/vmdkstream ./tools/vmdkstream)" >&2; exit 1; }
 vmid=${VMID:-10190}
 storage=${STORAGE:-local-lvm}
 bridge=${BRIDGE:-vmbr0}
@@ -60,7 +62,21 @@ fi
 cd "$outdir"
 qemu-img convert -c -O qcow2 "$disk" "$base.qcow2"
 qemu-img convert -O vhdx -o subformat=dynamic "$disk" "$base.vhdx"
-qemu-img convert -O vmdk -o subformat=streamOptimized,adapter_type=lsilogic "$disk" "$base-disk1.vmdk"
+# Not qemu-img for the VMDK: its stream-optimized VMDKs lack the trailing
+# grain tables, directory and footer, and VMware Workstation rejects them
+# ("SHA digest ... does not match manifest"). vmdkstream is built from
+# tools/vmdkstream (GOOS=linux go build -o packaging/appliance/vmdkstream
+# ./tools/vmdkstream), reads a raw disk and checks its result like VMware
+# reads it.
+raw=$disk
+if [ -n "${DISK:-}" ]; then
+    raw=$outdir/$base.raw
+    qemu-img convert -O raw "$disk" "$raw"
+fi
+"$src/vmdkstream" -adapter lsilogic "$raw" "$base-disk1.vmdk"
+[ "$("$src/vmdkstream" -verify "$base-disk1.vmdk")" = "$(sha256sum < "$raw" | cut -d" " -f1)" ] ||
+    { echo "the VMDK does not hold the same disk" >&2; exit 1; }
+if [ -n "${DISK:-}" ]; then rm -f "$raw"; fi
 
 # 3. The OVA: an OVF descriptor (first), its manifest and the disk.
 vmdk_size=$(stat -c %s "$base-disk1.vmdk")

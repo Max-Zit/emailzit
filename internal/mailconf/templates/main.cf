@@ -51,6 +51,11 @@ smtp_tls_session_cache_database = btree:${data_directory}/smtp_scache
 # grade, since any encryption beats none for mail between servers
 tls_high_cipherlist = ECDHE+AESGCM:ECDHE+CHACHA20:DHE+AESGCM:DHE+CHACHA20
 tls_preempt_cipherlist = yes
+# post-quantum key exchange first (TLS 1.3, OpenSSL 3.5 of Debian 13)
+tls_eecdh_auto_curves = X25519MLKEM768 X25519 X448 prime256v1 secp384r1 secp521r1
+# no SHA-1 or SHA-224 signatures in TLS 1.2 (openssl.cnf next to the maps)
+tls_config_file = {{.OpenSSLConf}}
+tls_config_name = postfix
 
 # ---- virtual domains (EmailZit)
 virtual_mailbox_domains = proxy:pgsql:/etc/postfix/emailzit/domains.cf

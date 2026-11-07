@@ -97,7 +97,9 @@ const (
 	PostfixMaps   = "/etc/postfix/emailzit"
 	// RelayPasswordFile holds the smart host login (root only).
 	RelayPasswordFile = "/etc/postfix/emailzit/relay_passwd" // #nosec G101 -- a file path, not a password
-	DovecotConf       = "/etc/dovecot/dovecot.conf"
+	// PostfixOpenSSL holds the TLS settings main.cf cannot express.
+	PostfixOpenSSL = "/etc/postfix/emailzit/openssl.cnf"
+	DovecotConf    = "/etc/dovecot/dovecot.conf"
 )
 
 // Render returns every file for the settings.
@@ -110,7 +112,8 @@ func Render(s Settings) ([]File, error) {
 		MaxBytes          int
 		RelayPasswordFile string
 		RelayWrapper      bool // port 465: TLS from the start
-	}{s, s.MaxMessageMB << 20, RelayPasswordFile, strings.HasSuffix(s.Relay, ":465")}
+		OpenSSLConf       string
+	}{s, s.MaxMessageMB << 20, RelayPasswordFile, strings.HasSuffix(s.Relay, ":465"), PostfixOpenSSL}
 	out := []File{
 		{Path: PostfixMain, Mode: 0o644, Content: nil},
 		{Path: PostfixMaster, Mode: 0o644},
@@ -140,6 +143,7 @@ func Render(s Settings) ([]File, error) {
 		// postfix reads them as root before dropping privileges, 0640
 		out = append(out, File{Path: PostfixMaps + "/" + m.name + ".cf", Mode: 0o640, Content: b.Bytes()})
 	}
+	out = append(out, File{Path: PostfixOpenSSL, Mode: 0o644, Content: []byte(postfixOpenSSL)})
 	if s.RelayUser != "" {
 		// the relay's login, readable by root only; Postfix reads it before
 		// dropping privileges
@@ -207,3 +211,18 @@ func rspamdFiles(clamav bool) ([]File, error) {
 	}
 	return out, nil
 }
+
+// postfixOpenSSL is read by Postfix (tls_config_file, section "postfix"):
+// TLS 1.2 handshakes sign only with SHA-2 (testssl.sh flags SHA-1/SHA-224).
+const postfixOpenSSL = `# EmailZit: written by the root helper; changes are overwritten.
+postfix = postfix_settings
+
+[postfix_settings]
+ssl_conf = postfix_ssl
+
+[postfix_ssl]
+system_default = postfix_tls
+
+[postfix_tls]
+SignatureAlgorithms = ECDSA+SHA256:ECDSA+SHA384:ECDSA+SHA512:ed25519:ed448:rsa_pss_rsae_sha256:rsa_pss_rsae_sha384:rsa_pss_rsae_sha512:rsa_pss_pss_sha256:rsa_pss_pss_sha384:rsa_pss_pss_sha512:RSA+SHA256:RSA+SHA384:RSA+SHA512
+`

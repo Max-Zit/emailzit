@@ -55,7 +55,7 @@ type sender struct {
 func (p *Parser) Line(at time.Time, program, msg string) []Event {
 	if strings.HasPrefix(msg, "NOQUEUE: reject:") {
 		if m := rejectRE.FindStringSubmatch(msg); m != nil {
-			return []Event{{At: at, Sender: m[2], Recipient: strings.ToLower(m[3]), Status: Rejected, Info: clip(m[1])}}
+			return []Event{{At: at, Sender: addr(m[2]), Recipient: addr(m[3]), Status: Rejected, Info: clip(m[1])}}
 		}
 		return nil
 	}
@@ -67,16 +67,16 @@ func (p *Parser) Line(at time.Time, program, msg string) []Event {
 	switch {
 	case strings.HasSuffix(program, "/qmgr") && strings.HasPrefix(rest, "from=<"):
 		if f := fromRE.FindStringSubmatch(rest); f != nil {
-			p.remember(qid, f[1], at)
+			p.remember(qid, addr(f[1]), at)
 		}
 	case strings.HasPrefix(rest, "milter-reject:"):
 		if r := milterRE.FindStringSubmatch(rest); r != nil {
-			return []Event{{At: at, QueueID: qid, Sender: r[2], Recipient: strings.ToLower(r[3]), Status: Rejected, Info: clip(r[1])}}
+			return []Event{{At: at, QueueID: qid, Sender: addr(r[2]), Recipient: addr(r[3]), Status: Rejected, Info: clip(r[1])}}
 		}
 	case strings.HasPrefix(rest, "to=<"):
 		if d := deliveryRE.FindStringSubmatch(rest); d != nil {
-			return []Event{{At: at, QueueID: qid, Sender: p.sender(qid), Recipient: strings.ToLower(d[1]), Relay: clip(d[2]),
-				DSN: d[3], Status: d[4], Info: clip(d[5])}}
+			return []Event{{At: at, QueueID: qid, Sender: p.sender(qid), Recipient: addr(d[1]), Relay: clip(d[2]),
+				DSN: clip(d[3]), Status: d[4], Info: clip(d[5])}}
 		}
 	case rest == "removed":
 		p.forget(qid)
@@ -84,11 +84,21 @@ func (p *Parser) Line(at time.Time, program, msg string) []Event {
 	return nil
 }
 
+// clip shortens a text of a log line for the delivery log (valid UTF-8).
 func clip(s string) string {
 	if len(s) > 300 {
-		return s[:300]
+		s = s[:300]
 	}
-	return s
+	return strings.ToValidUTF8(s, "")
+}
+
+// addr is an address of a log line: lower case, at most 254 bytes.
+func addr(s string) string {
+	s = strings.ToLower(s)
+	if len(s) > 254 {
+		s = s[:254]
+	}
+	return strings.ToValidUTF8(s, "")
 }
 
 func (p *Parser) remember(qid, from string, at time.Time) {

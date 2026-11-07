@@ -122,9 +122,11 @@ autoconfig/autodiscover + SRV records (RFC 6186/8314).
 - **On its own:** "Email deliverability" page shows the records to set at
   the customer's DNS provider and checks them (DNS lookups with own
   resolver, status per record, like cPanel but with DKIM/MTA-STS/TLS-RPT).
-- Certificates: own ACME client (golang.org/x/crypto/acme) for the server
-  host name and per domain `mail.`, `autoconfig.`, `mta-sts.` (SNI in
-  Postfix and Dovecot); HTTP-01, DNS-01 through HostZit when available.
+- Certificates: today only an uploaded certificate (*Settings → Certificate*,
+  used by Postfix and Dovecot). Planned, not done yet: own ACME client
+  (golang.org/x/crypto/acme) for the server host name and per domain
+  `mail.`, `autoconfig.`, `mta-sts.` (SNI in Postfix and Dovecot); HTTP-01,
+  DNS-01 through HostZit when available.
 - DMARC aggregate reports received and shown per domain (later).
 
 ## 6. Webmail (to decide)

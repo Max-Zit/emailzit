@@ -7,23 +7,26 @@
 
 # EmailZit
 
+[![Latest release](https://img.shields.io/github/v/release/Max-Zit/emailzit?label=release)](https://github.com/Max-Zit/emailzit/releases/latest)
 [![License: AGPL v3](https://img.shields.io/badge/license-AGPLv3-blue)](LICENSE)
 [![CI](https://github.com/Max-Zit/emailzit/actions/workflows/ci.yml/badge.svg)](https://github.com/Max-Zit/emailzit/actions/workflows/ci.yml)
 [![Security scan](https://github.com/Max-Zit/emailzit/actions/workflows/security.yml/badge.svg)](https://github.com/Max-Zit/emailzit/actions/workflows/security.yml)
 
 **Free, open-source, self-hosted mail hosting** — mailboxes for many domains and customers with a modern admin panel, a panel for every customer and webmail; on its own or together with [HostZit](https://github.com/Max-Zit/hostzit).
 
-> **Status:** first public release (0.7). Tested in our lab with Outlook, Thunderbird, phones and HostZit; tell us how it works for you in [Discussions](https://github.com/Max-Zit/emailzit/discussions) or [Issues](https://github.com/Max-Zit/emailzit/issues).
+> **Status:** under active development; releases with VM images are on [Releases](https://github.com/Max-Zit/emailzit/releases). Tested in our lab with Outlook, Thunderbird, phones and HostZit; tell us how it works for you in [Discussions](https://github.com/Max-Zit/emailzit/discussions) or [Issues](https://github.com/Max-Zit/emailzit/issues).
 
 ## Features
 
 - **Two panels and webmail:** the server administrator manages packages, customers, domains, limits and the server; every customer manages their own mailboxes, aliases, forwarders and spam settings; every mail user has webmail (with contacts and a signature), password and app passwords, auto-reply and filters.
 - **Proven mail software underneath:** Postfix, Dovecot (IMAP/POP3, quotas, Sieve filters) and Rspamd (spam filtering, greylisting, optional ClamAV virus scan), configured and kept up to date by EmailZit.
-- **Deliverability done right:** DKIM, SPF, DMARC (with the receivers' reports shown per domain), MTA-STS and TLS reporting set up automatically; a host name and PTR check for IPv4 and IPv6; outgoing limits per mailbox, customer and website, so one compromised account cannot ruin the server's reputation; queue and delivery log; an optional smart host.
-- **Easy setup for users:** Autodiscover and autoconfig for Outlook, Thunderbird, iOS and Android; mail programs use app passwords only, the web always asks for a second factor; quota warnings in the Inbox.
+- **Spam control per customer:** spam levels and allowed/blocked senders per customer and per mailbox.
+- **Deliverability done right:** DKIM, SPF, DMARC (with the receivers' reports shown per domain), MTA-STS and TLS reporting set up automatically; a host name and PTR check for IPv4 and IPv6; a blacklist check of the server's addresses; sending over IPv4 only when IPv6 is not set up for mail; outgoing limits per mailbox, customer and website, so one compromised account cannot ruin the server's reputation; queue and delivery log; an optional smart host.
+- **Easy setup for users:** Autodiscover and autoconfig for Outlook, Thunderbird, iOS and Android (also on ports 443/80 when no web server runs); mail programs use app passwords only, the web always asks for a second factor; quota warnings in the Inbox.
 - **Moving in:** import from other IMAP servers, from cPanel account backups and from another EmailZit server; export per customer.
-- **Security:** isolation between customers, brute-force protection, two-factor sign-in, company sign-in (OIDC) for staff, four-eyes approval for risky changes, hash-chained audit log, signed updates, encrypted backups of the panel.
-- **Works with the other MaxZit products:** [HostZit](https://github.com/Max-Zit/hostzit) writes the DNS records and sends the websites' mail through EmailZit; [WatchZit](https://github.com/Max-Zit/watchzit) monitors it; REST API for billing systems.
+- **Server from the panel:** operating system updates, reboot and SSH port; upload of the server's certificate; encrypted backups of the panel, also to SFTP.
+- **Security:** isolation between customers, brute-force protection, two-factor sign-in, company sign-in (OIDC) for staff, four-eyes approval for risky changes, hash-chained audit log, signed updates; TLS for mail programs offers post-quantum key exchange first and signs with SHA-2 only.
+- **Works with the other MaxZit products:** [HostZit](https://github.com/Max-Zit/hostzit) writes the DNS records and sends the websites' mail through EmailZit; a status API (`GET /api/v1/server/status`) that [WatchZit](https://github.com/Max-Zit/watchzit) can watch with a JSON/HTTP check; REST API for billing systems.
 - **Self-hosted:** Debian 13 package or appliance image (ISO, OVA, qcow2, VHDX), 14 languages, user guide in English and Serbian.
 
 ## Install

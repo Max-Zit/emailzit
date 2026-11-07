@@ -5,7 +5,7 @@
 # sets everything up.
 #
 #   curl -fsSLO https://github.com/Max-Zit/emailzit/releases/latest/download/install.sh
-#   sudo sh install.sh [--version 0.6.0] [--hostname mail.example.com]
+#   sudo sh install.sh [--version 0.7.1] [--hostname mail.example.com]
 #
 # The running server verifies later updates with the EmailZit release key
 # (signed manifest) before it installs them.

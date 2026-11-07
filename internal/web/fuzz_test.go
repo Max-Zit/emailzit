@@ -30,3 +30,17 @@ func FuzzAutodiscoverAddress(f *testing.F) {
 		}
 	})
 }
+
+func FuzzSafeNext(f *testing.F) {
+	for _, s := range []string{"/customers", "//evil.example", `/\evil.example`, "/\t/evil.example", "https://evil.example", "/mail?x=1"} {
+		f.Add(s)
+	}
+	f.Fuzz(func(t *testing.T, p string) {
+		for _, out := range []string{safeNext(p), safeMailNext(p)} {
+			if !strings.HasPrefix(out, "/") || strings.HasPrefix(out, "//") || strings.HasPrefix(out, "/\\") ||
+				strings.IndexFunc(out, func(r rune) bool { return r < 0x20 || r == 0x7f }) >= 0 {
+				t.Fatalf("unsafe redirect target %q from %q", out, p)
+			}
+		}
+	})
+}

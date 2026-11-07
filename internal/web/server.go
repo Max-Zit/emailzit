@@ -55,6 +55,9 @@ type Server struct {
 	upd     updateState
 	apiRate apiRate
 	backups backupRunner
+	// routes lists the protected routes and who may use them (the role test)
+	routes    []routeInfo
+	apiRoutes []routeInfo // API routes and the scope each needs
 }
 
 // MailApplier is the part of the root helper the panels use.
@@ -261,13 +264,18 @@ func (s *Server) Handler() http.Handler {
 	// app: any panel login (staff or customer); staff: server staff
 	// (admin, operator, viewer); write: may change mail objects (admin,
 	// operator, customer); admin: server settings and staff accounts.
-	app := func(pattern string, h http.HandlerFunc) { mux.Handle(pattern, s.requireUser(h)) }
-	staff := func(pattern string, h http.HandlerFunc) { mux.Handle(pattern, s.requireUser(s.requireStaff(h))) }
-	staffWrite := func(pattern string, h http.HandlerFunc) {
-		mux.Handle(pattern, s.requireUser(s.requireStaff(s.requireWrite(h))))
+	s.routes = nil
+	reg := func(pattern, who string, h http.Handler) {
+		s.routes = append(s.routes, routeInfo{pattern, who})
+		mux.Handle(pattern, h)
 	}
-	write := func(pattern string, h http.HandlerFunc) { mux.Handle(pattern, s.requireUser(s.requireWrite(h))) }
-	admin := func(pattern string, h http.HandlerFunc) { mux.Handle(pattern, s.requireUser(s.requireAdmin(h))) }
+	app := func(pattern string, h http.HandlerFunc) { reg(pattern, "app", s.requireUser(h)) }
+	staff := func(pattern string, h http.HandlerFunc) { reg(pattern, "staff", s.requireUser(s.requireStaff(h))) }
+	staffWrite := func(pattern string, h http.HandlerFunc) {
+		reg(pattern, "staffWrite", s.requireUser(s.requireStaff(s.requireWrite(h))))
+	}
+	write := func(pattern string, h http.HandlerFunc) { reg(pattern, "write", s.requireUser(s.requireWrite(h))) }
+	admin := func(pattern string, h http.HandlerFunc) { reg(pattern, "admin", s.requireUser(s.requireAdmin(h))) }
 
 	app("GET /{$}", s.handleOverview)
 	staff("GET /packages", s.handlePackages)
@@ -512,3 +520,8 @@ func storeErr(err error) string {
 	}
 	return err.Error()
 }
+
+// routeInfo is a protected route: app (any panel login), staff, staffWrite
+// (admin, operator), write (admin, operator, customer), admin, or mail (a
+// mail user's own pages).
+type routeInfo struct{ pattern, who string }

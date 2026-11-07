@@ -115,7 +115,10 @@ func (s *Server) mailUserRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /mail/login/enroll", s.handleMailEnroll)
 	mux.HandleFunc("POST /mail/logout", s.handleMailLogout)
 	mux.HandleFunc("POST /mail/lang", s.handleMailLang)
-	m := func(pattern string, h http.HandlerFunc) { mux.Handle(pattern, s.requireMailUser(h)) }
+	m := func(pattern string, h http.HandlerFunc) {
+		s.routes = append(s.routes, routeInfo{pattern, "mail"})
+		mux.Handle(pattern, s.requireMailUser(h))
+	}
 	m("GET /mail", s.handleMailHome)
 	m("GET /mail/{$}", s.handleMailHome)
 	m("POST /mail/password", s.handleMailPassword)

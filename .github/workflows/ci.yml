@@ -9,6 +9,13 @@ on:
 permissions:
   contents: read
 
+# A newer push to the same branch cancels the older run (fewer runs, and
+# one e-mail per push at most: the security checks are a job here too;
+# security.yml only repeats them weekly for new CVEs).
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     name: Build and test (Linux)
@@ -26,7 +33,39 @@ jobs:
       - name: Tests (PostgreSQL runs embedded)
         run: go test -count=1 -timeout 20m ./...
       - name: Shell scripts
-        run: sh -n packaging/setup.sh
+        run: |
+          sh -n packaging/setup.sh
+          sh -n packaging/install.sh
+          for f in packaging/appliance/*.sh; do sh -n "$f"; done
+
+  # Security checks (the required check "go" of main): staticcheck, gosec,
+  # govulncheck and gitleaks over the whole history.
+  go:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # gitleaks reads the whole history
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: staticcheck
+        run: |
+          go install honnef.co/go/tools/cmd/staticcheck@v0.8.2
+          staticcheck ./...
+      - name: gosec
+        run: |
+          go install github.com/securego/gosec/v2/cmd/gosec@v2.30.0
+          gosec -quiet ./...
+      - name: govulncheck
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
+          govulncheck ./...
+      - name: gitleaks (secrets in the history)
+        run: |
+          go install github.com/zricethezav/gitleaks/v8@v8.30.1
+          gitleaks git --redact --no-banner .
 
   race:
     name: Race detector (Linux)
@@ -45,7 +84,7 @@ jobs:
   fuzz:
     name: Fuzz parsers of untrusted input (short)
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -54,7 +93,8 @@ jobs:
       - name: Fuzz each target for 20 s
         run: |
           set -e
-          for t in dmarc:FuzzParseMessage dmarc:FuzzParse webmail:FuzzSafeHTML sieve:FuzzCleanSenders netacl:FuzzParsePrefix \
-                   mailimport:FuzzScan mailimport:FuzzMailPath submit:FuzzPrepare maillog:FuzzLine policy:FuzzReadRequest; do
+          for t in dmarc:FuzzParseMessage dmarc:FuzzParse webmail:FuzzParse webmail:FuzzSafeHTML webmail:FuzzTargetFolder \
+                   mailimport:FuzzScan mailimport:FuzzMailPath submit:FuzzPrepare policy:FuzzReadRequest authpolicy:FuzzGuard \
+                   maillog:FuzzLine sieve:FuzzCleanSenders netacl:FuzzParsePrefix web:FuzzTXTStatus web:FuzzAutodiscoverAddress; do
             go test "./internal/${t%%:*}" -run '^$' -fuzz "^${t##*:}\$" -fuzztime 20s
           done

@@ -128,14 +128,8 @@ var autodiscoverTmpl = template.Must(template.New("").Parse(`<?xml version="1.0"
 `))
 
 func (s *Server) handleAutodiscover(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		Request struct {
-			EMailAddress string `xml:"EMailAddress"`
-		} `xml:"Request"`
-	}
-	_ = xml.NewDecoder(io.LimitReader(r.Body, 16<<10)).Decode(&req)
 	host := s.MailConfig(r.Context()).Hostname
-	addr, dom := s.knownDomain(r, req.Request.EMailAddress)
+	addr, dom := s.knownDomain(r, autodiscoverAddress(r.Body))
 	if host == "" || dom == "" {
 		http.NotFound(w, r)
 		return
@@ -228,4 +222,16 @@ func (s *Server) handleMTASTS(w http.ResponseWriter, r *http.Request) {
 func mtaSTSID(host string) string {
 	h := sha256.Sum256([]byte(host))
 	return hex.EncodeToString(h[:6])
+}
+
+// autodiscoverAddress reads the e-mail address of an Autodiscover request
+// (Outlook's POX XML); "" when there is none.
+func autodiscoverAddress(body io.Reader) string {
+	var req struct {
+		Request struct {
+			EMailAddress string `xml:"EMailAddress"`
+		} `xml:"Request"`
+	}
+	_ = xml.NewDecoder(io.LimitReader(body, 16<<10)).Decode(&req)
+	return strings.TrimSpace(req.Request.EMailAddress)
 }

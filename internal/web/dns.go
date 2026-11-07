@@ -127,20 +127,8 @@ func (s *Server) checkRecords(ctx context.Context, list []DNSRecord) map[int]str
 				}
 			}
 		case "TXT":
-			if txt, err := res.LookupTXT(ctx, rec.Name); err == nil && len(txt) > 0 {
-				st = CheckDifferent
-				prefix := strings.SplitN(rec.Value, ";", 2)[0]
-				prefix = strings.Fields(prefix)[0]
-				for _, t := range txt {
-					switch {
-					case strings.ReplaceAll(t, " ", "") == strings.ReplaceAll(rec.Value, " ", ""):
-						st = CheckOK
-					case strings.HasPrefix(rec.Value, "v=spf1") && strings.HasPrefix(t, "v=spf1") && (strings.Contains(t, " mx") || strings.Contains(t, "a:")):
-						st = CheckOK // an own SPF record that includes this server
-					case strings.HasPrefix(rec.Value, "v=DMARC1") && strings.HasPrefix(t, prefix):
-						st = CheckOK // any DMARC policy
-					}
-				}
+			if txt, err := res.LookupTXT(ctx, rec.Name); err == nil {
+				st = txtStatus(rec.Value, txt)
 			}
 		case "CNAME":
 			if c, err := res.LookupCNAME(ctx, rec.Name); err == nil {
@@ -166,4 +154,28 @@ func (s *Server) checkRecords(ctx context.Context, list []DNSRecord) map[int]str
 		out[i] = st
 	}
 	return out
+}
+
+// txtStatus compares the TXT records found in the DNS with the one EmailZit
+// suggests: the same text, an own SPF record that includes this server, or
+// any DMARC policy count as present.
+func txtStatus(want string, found []string) string {
+	if len(found) == 0 {
+		return CheckMissing
+	}
+	prefix := ""
+	if f := strings.Fields(strings.SplitN(want, ";", 2)[0]); len(f) > 0 {
+		prefix = f[0]
+	}
+	for _, t := range found {
+		switch {
+		case strings.ReplaceAll(t, " ", "") == strings.ReplaceAll(want, " ", ""):
+			return CheckOK
+		case strings.HasPrefix(want, "v=spf1") && strings.HasPrefix(t, "v=spf1") && (strings.Contains(t, " mx") || strings.Contains(t, "a:")):
+			return CheckOK // an own SPF record that includes this server
+		case prefix != "" && strings.HasPrefix(want, "v=DMARC1") && strings.HasPrefix(t, prefix):
+			return CheckOK // any DMARC policy
+		}
+	}
+	return CheckDifferent
 }

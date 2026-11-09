@@ -184,6 +184,11 @@ autoconfig/autodiscover + SRV records (RFC 6186/8314).
 - **0.7 Together:** HostZit one sign-in + automatic DNS + product switcher,
   BackupZit mailbox backup, WatchZit monitoring, LDAP/SSO for admins,
   four-eyes approval.
+- **0.8 Protection:** local resolver (Unbound), DANE and MTA-STS for
+  outgoing mail, postscreen, risky attachments, phishing marks,
+  Sanesecurity signatures, outgoing spam block, notices for
+  administrators, own outgoing address per customer.
+- Next: server migration in one step (after the VPS test).
 - Later: quarantine with release, shared mailboxes, mailing lists,
   CalDAV/CardDAV, own webmail.
 

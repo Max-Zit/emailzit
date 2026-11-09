@@ -45,12 +45,24 @@ func (s *Server) systemResolverPossible(ctx context.Context) bool {
 		return false
 	}
 	// #nosec G304 -- fixed path
-	if b, err := os.ReadFile(mailconf.UnboundConf); err == nil && bytes.Contains(b, []byte("127.0.0.1@53\n")) {
+	b, err := os.ReadFile(mailconf.UnboundConf)
+	if err == nil && bytes.Contains(b, []byte("127.0.0.1@53\n")) {
 		if _, err := s.Run(ctx, "systemctl", "is-active", "--quiet", "unbound"); err == nil {
 			return true
 		}
 	}
-	return portFree("127.0.0.1:53")
+	if portFree("127.0.0.1:53") {
+		return true
+	}
+	// Debian's package starts Unbound with its own configuration (port 53)
+	// right after it is installed; ours, written next, replaces it
+	if err != nil {
+		if _, err := s.Run(ctx, "systemctl", "is-active", "--quiet", "unbound"); err == nil {
+			_, _ = s.Run(ctx, "systemctl", "stop", "unbound")
+			return portFree("127.0.0.1:53")
+		}
+	}
+	return false
 }
 
 func portFree(addr string) bool {

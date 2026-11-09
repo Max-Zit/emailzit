@@ -11,6 +11,7 @@
 <ul>
   <li><b>Panel logins</b>: the customer signs in to the customer panel at the same address as the admin panel. Every login must set up two-factor sign-in at the first sign-in.</li>
   <li><b>Billing ID</b>: the customer's number in your billing system; the REST API finds customers by it.</li>
+  <li><b>Outbound address</b> (when the server has extra outbound addresses, see Staff, settings and updates): the customer's mail leaves from its own IP address and host name, so its sending reputation is its own. Publish the SPF record shown on each of the customer's domains afterwards.</li>
 </ul>
 <h2>Suspend and terminate</h2>
 <ul>

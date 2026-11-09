@@ -17,6 +17,8 @@ languages. Shared decisions with HostZit live in `zit-hosting/INTEGRATION.md`
 | Postfix | Debian package | SMTP in (25), submission (465 implicit TLS, 587 STARTTLS required), no open relay |
 | Dovecot 2.4 | Debian package | IMAP (993), POP3 (995, can be switched off), LMTP, quotas, Sieve/ManageSieve |
 | Rspamd + Valkey/Redis | Debian/Rspamd packages | spam, greylisting, DNSBLs, DKIM signing, ARC, DMARC checks, rate data; ClamAV optional |
+| Unbound | Debian package | local validating resolver: 127.0.0.1:5335 for Rspamd (block lists refuse public resolvers); also 127.0.0.1:53 for the whole server when no other DNS server uses port 53 (not with HostZit's PowerDNS), then Postfix checks DANE |
+| ClamAV + Sanesecurity | Debian package + signatures downloaded by the mail helper | optional virus scan of whole messages; Sanesecurity's files are installed only when their GPG signature (gpgv, key embedded) checks out |
 | Webmail | PHP-FPM pool as its own user | Roundcube from Debian (proposed) or SnappyMail — see 6 |
 | nginx | Debian package | front for webmail, autoconfig, MTA-STS, ACME HTTP-01; shared with HostZit when both are installed |
 

@@ -1,0 +1,33 @@
+<h1>Dominios, buzones y alias</h1>
+<h2>Dominios</h2>
+<p>En un servidor compartido, un dominio nuevo de un cliente solo recibe correo después de ser <b>verificado</b>: la página del dominio muestra un registro TXT (<code>_emailzit.example.com</code>) que hay que poner en el proveedor DNS del dominio; después, <b>Comprobar ahora</b>. El personal puede marcar un dominio como verificado a mano cuando sabe que pertenece al cliente; en un servidor dedicado los dominios no necesitan verificación (Configuración → Servidor de correo).</p>
+<p>La página del dominio enumera los <b>registros DNS</b> que necesita el dominio: MX (correo a este servidor), SPF, DMARC y los registros que permiten a los programas de correo encontrar su configuración (autoconfig, autodiscover, SRV). Los registros obligatorios están marcados.</p>
+<p><b>Informes DMARC</b>: el registro DMARC sugerido envía los informes diarios de los receptores a <code>dmarc-reports@&lt;domain&gt;</code>. EmailZit toma esa dirección para sí (ningún buzón ni alias puede usarla), lee los informes y muestra en la página del dominio, para los últimos 30 días, qué servidores enviaron correo con el dominio como remitente y cuánto de él superó DMARC. Sus propios servidores deberían superarlo; el correo que falla desde direcciones desconocidas suele ser falsificado. Cuando todos sus remitentes lo superen, la política puede pasar de <code>p=none</code> a <code>quarantine</code> o <code>reject</code>. Los informes se conservan durante 180 días.</p>
+<p>El <b>catch-all</b> (correo para direcciones desconocidas) está desactivado de forma predeterminada: las direcciones desconocidas se rechazan durante el diálogo SMTP, lo que mantiene alejados el spam y el backscatter. Actívelo solo cuando sea realmente necesario.</p>
+<h2>Buzones</h2>
+<ul>
+  <li>Un buzón tiene un tamaño (cuota) dentro del plan; el uso se actualiza cada diez minutos. Cuando un buzón alcanza el 80 % y de nuevo el 95 % de su cuota, el servidor deja un aviso en su bandeja de entrada (en el idioma del buzón); después de bajar del 70 % puede volver a ser avisado.</li>
+  <li>Su <b>contraseña</b> sirve solo para el webmail y las páginas propias del usuario, siempre con inicio de sesión en dos pasos.</li>
+  <li>Los programas de correo usan <b>contraseñas de aplicación</b> que el usuario de correo crea en <code>/mail</code>, una por programa o dispositivo. Perder un teléfono significa revocar una contraseña de aplicación, no cambiarlo todo.</li>
+  <li>Un buzón <b>desactivado</b> sigue recibiendo correo, pero nadie puede iniciar sesión. El personal también puede <b>bloquear el envío</b> (por ejemplo, tras un abuso) y fijar otros límites de envío para un solo buzón.</li>
+  <li>Al eliminar un buzón, su correo se mueve a una carpeta de papelera en el servidor durante 7 días; después desaparece.</li>
+</ul>
+<h2>Alias y reenvíos</h2>
+<ul>
+  <li>Un <b>alias</b> (p. ej. <code>info@</code>) recibe correo y lo entrega a una o varias direcciones: buzones del mismo cliente o direcciones externas.</li>
+  <li>Un <b>reenvío</b> es un alias sobre la dirección de un buzón. Para conservar una copia en el buzón, incluya el propio buzón entre los destinos.</li>
+  <li><b>Enviar como</b>: los buzones a los que entrega un alias también pueden enviar con el alias como remitente.</li>
+</ul>
+<h2>Protección</h2>
+<ul>
+  <li>Nadie puede usar el servidor para retransmitir correo a otros servidores sin iniciar sesión (no hay relay abierto).</li>
+  <li>El correo de fuera que afirma venir de un dominio de este servidor se rechaza; los usuarios que han iniciado sesión solo pueden enviar desde sus propias direcciones y sus alias de «enviar como».</li>
+  <li>Los programas de correo deben usar TLS; el inicio de sesión en texto plano se rechaza.</li>
+  <li>Los programas, scripts, accesos directos, imágenes de disco y archivos de Office con macros se rechazan como adjuntos (también dentro de archivos comprimidos), salvo que el administrador los haya permitido; comparta esos archivos mediante un enlace.</li>
+  <li>Los mensajes con enlaces de phishing conocidos, o cuyo remitente se hace pasar en el nombre por alguien de su dominio, reciben <code>[Phishing?]</code> delante del asunto.</li>
+  <li>Un buzón que envía spam (3 mensajes rechazados como spam o virus en una hora) ya no puede enviar hasta que el proveedor lo vuelva a permitir; recibe un aviso en su bandeja de entrada. Cambie su contraseña: normalmente otra persona la conoce.</li>
+</ul>
+<h2>Ajustes de spam</h2>
+<p>Rspamd asigna una puntuación a cada mensaje entrante; por encima de 15 se rechaza, y el correo por encima del nivel elegido va a la carpeta Junk del buzón. Los niveles son <b>Estricto</b> (puntuación de 4 o más), <b>Normal</b> (6, el predeterminado), <b>Suave</b> (10) y <b>Nunca</b> (el spam se queda en la bandeja de entrada, marcado con una cabecera <code>X-Spam</code>). El personal fija el nivel de un cliente en la página del cliente; se aplica a todos los buzones del cliente que no tienen uno propio. En la página del buzón (personal y cliente) y en la página <i>Respuesta automática y filtros</i> del usuario de correo, un buzón recibe su propio nivel y listas de <b>remitentes permitidos</b> (nunca Junk) y <b>remitentes bloqueados</b> (siempre Junk): direcciones o dominios enteros, hasta 200 de cada uno, comparados con la dirección From. Las reglas se ejecutan antes que los filtros propios del usuario y la respuesta automática, de modo que el spam nunca recibe una respuesta automática. El ayudante de correo las escribe como un script Sieve en el directorio de correo de cada buzón (<code>.emailzit/spam.sieve</code>) cuando cambian y las comprueba todas cada 10 minutos.</p>
+<h2>Traer el correo desde otro servidor</h2>
+<p>En la página del buzón, <b>Traer correo de otro servidor</b> copia cada carpeta del buzón antiguo por IMAP (puerto 993, o 143 con STARTTLS) con las marcas de lectura y las fechas; Enviados, Papelera, Junk y Borradores van a las carpetas correspondientes de aquí. Los mensajes que ya están aquí se omiten, así que ejecútelo una vez antes y otra después de cambiar el registro MX para recoger lo que llegó tarde. La contraseña antigua se guarda cifrada solo hasta que termina la importación. En servidores de alojamiento, las importaciones solo llegan desde servidores en Internet; un servidor de empresa puede permitir redes privadas en Configuración → Servidor de correo.</p>

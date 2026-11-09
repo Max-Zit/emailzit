@@ -1,0 +1,30 @@
+<h1>Primeiros passos</h1>
+<p>O EmailZit é alojamento de correio para muitos domínios e clientes no seu próprio servidor: um <b>painel de administração</b> para o pessoal do servidor, um <b>painel do cliente</b> onde cada cliente gere os seus próprios domínios e caixas de correio, e <b>páginas para os utilizadores de correio</b> (webmail, palavra-passe própria, palavras-passe de aplicação, resposta automática, filtros).</p>
+<h2>Como é construído</h2>
+<ul>
+  <li><b>Servidor EmailZit</b> — os painéis e a API REST, executados como utilizador sem privilégios.</li>
+  <li>O <b>Postfix</b> recebe e envia correio (SMTP na porta 25, envio para programas de correio em 465 e 587, sempre cifrado).</li>
+  <li>O <b>Dovecot</b> guarda o correio e disponibiliza IMAP (993) e POP3 (995).</li>
+  <li>O <b>PostgreSQL</b> guarda tudo o que os painéis alteram; o Postfix e o Dovecot leem-no diretamente, por isso uma nova caixa de correio funciona de imediato, sem reiniciar nada.</li>
+  <li>Um pequeno <b>assistente root</b> faz as poucas coisas que precisam de root (diretórios de correio, certificados, atualizações); cada pedido é verificado e escrito no log de auditoria.</li>
+</ul>
+<h2>Instalação</h2>
+<ul>
+  <li><b>Appliance</b> — uma máquina virtual pronta (OVA para VMware ESXi e Workstation, qcow2 para Proxmox VE e KVM, VHDX para Hyper-V geração 1) ou o ISO de instalação para uma nova VM ou um servidor físico (apaga o primeiro disco). Atribua-lhe pelo menos 2 CPUs, 2 GB de memória e um disco para o correio (o sistema de ficheiros raiz cresce sozinho quando o disco virtual é aumentado). Depois do primeiro arranque, o ecrã mostra o endereço do painel e o token de configuração; iniciar sessão no ecrã como <code>ezadmin</code> (primeira palavra-passe <code>emailzit</code>, que tem de ser alterada) abre o menu de configuração: rede (use um endereço fixo para um servidor de correio), nome do servidor, fuso horário, endereço do painel e token de configuração, palavra-passe de uma conta do pessoal, estado dos serviços, reinício.</li>
+  <li><b>Pacote Debian 13</b> — <code>sudo sh install.sh</code> a partir da versão, ou o <code>.deb</code> com <code>apt install</code>: instala o Postfix, o Dovecot, o Rspamd, o Valkey e o PostgreSQL a partir do Debian e configura tudo.</li>
+  <li>Portas: 25 (correio de outros servidores), 465 e 587 (envio a partir de programas de correio), 993 (IMAP), 995 (POP3), 8444 (painéis e webmail), e 443 e 80 para a configuração automática de programas de correio (autoconfig para o Thunderbird, Autodiscover para o Outlook, a política MTA-STS; tudo o resto aí leva ao webmail). O EmailZit usa 443 e 80 apenas quando não há nenhum servidor web instalado e o HostZit não está ligado; caso contrário, o servidor web do HostZit responde por estes nomes (<code>--public-web off</code> desativa isto). O servidor precisa de um nome de DNS inverso (PTR) que corresponda ao seu nome de host de correio, e a porta 25 de saída tem de estar aberta.</li>
+</ul>
+<h2>Quem pode fazer o quê</h2>
+<ul>
+  <li>Os <b>Administradores</b> gerem o servidor, as contas do pessoal, os planos e todos os clientes. Os <b>Operadores</b> gerem clientes, domínios e caixas de correio; os <b>observadores</b> apenas veem.</li>
+  <li>Os <b>Clientes</b> veem e alteram apenas os seus próprios domínios, caixas de correio, aliases e reencaminhamentos, dentro dos limites do seu plano.</li>
+  <li>Os <b>Utilizadores de correio</b> iniciam sessão com o seu endereço, a sua palavra-passe e sempre um segundo fator (uma app de autenticação). Os programas de correio (Outlook, Thunderbird, telemóveis) nunca usam esta palavra-passe: cada programa recebe a sua própria <b>palavra-passe de aplicação</b>.</li>
+</ul>
+<h2>Primeiros passos</h2>
+<ol>
+  <li>Defina o nome de host do servidor em <b>Configurações → Servidor de correio</b> (o nome a que os programas de correio se ligam, por ex. <code>mail.example.com</code>).</li>
+  <li>Crie um <b>plano</b> com os limites que vende (domínios, caixas de correio, armazenamento, envio por hora).</li>
+  <li>Crie um <b>cliente</b> com esse plano e dê-lhe um acesso ao painel.</li>
+  <li>Adicione o <b>domínio</b> do cliente, coloque os registos DNS mostrados na página do domínio no fornecedor de DNS do domínio e verifique o domínio.</li>
+  <li>Crie <b>caixas de correio</b>. O utilizador de correio inicia sessão em <code>/mail</code>, configura o segundo fator e cria palavras-passe de aplicação para os seus programas.</li>
+</ol>

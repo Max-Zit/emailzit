@@ -1,0 +1,34 @@
+<h1>Webmail ve posta kullanıcılarının sayfaları</h1>
+<p>Her posta kullanıcısının <code>https://&lt;mail host&gt;:8444/mail</code> adresinde kendi sayfaları vardır (bağımsız bir sunucuda <code>https://&lt;mail host&gt;/</code> da oraya yönlendirir). Bu sayfalar panellerden ayrıdır: bir posta kullanıcısı diğer posta kutularını, müşterinin ayarlarını veya sunucuyu asla görmez.</p>
+<h2>Oturum açma</h2>
+<ul>
+  <li>Adres ve posta kutusunun parolası, ve her zaman ikinci bir adım: ilk oturum açmada kullanıcı bir kimlik doğrulama uygulamasıyla (Google Authenticator, Microsoft Authenticator, Aegis …) bir QR kodu tarar ve kurtarma kodlarını saklar.</li>
+  <li>Telefonunu ve kurtarma kodlarını kaybeden kullanıcı sağlayıcıya başvurur: personel ve müşteri, posta kutusu sayfasında <b>iki adımlı girişi sıfırlayabilir</b>; kullanıcı bir sonraki oturum açmada onu yeniden ayarlar.</li>
+  <li>Sayfaların dili kullanıcının seçimini (sağ üst) izler ve hatırlanır.</li>
+</ul>
+<h2>Web posta</h2>
+<ul>
+  <li>Klasörler solda (telefonda üstte): Gelen kutusu, Taslaklar, Gönderilenler, Arşiv, Junk, Çöp kutusu ve kullanıcının kendi klasörleri, okunmamış ileti sayısıyla birlikte.</li>
+  <li>Liste gönderen, konu ve tarihi gösterir; okunmamış iletiler kalındır. İletileri seçerek okundu veya okunmadı olarak işaretleyin, Junk'a taşıyın (bir göndereni kalıcı olarak dışarıda tutmak için engellenen gönderenlere ekleyin) veya silin (Çöp kutusuna; Çöp kutusunda silmek onları kaldırır). <b>Taşı</b>, seçilen iletileri (veya açık olanı) başka bir klasöre koyar.</li>
+  <li><b>Ara</b>, açık klasördeki iletilerin herhangi bir yerinde (başlıklar ve metin) sözcükleri bulur.</li>
+  <li>HTML ile yazılmış iletiler korumalı bir çerçevede gösterilir: betikler, formlar ve uzak görüntüler asla yüklenmez, bu nedenle bir iletiyi açmak gönderene hiçbir şey bildiremez. Ekler indirilir, asla tarayıcıda açılmaz.</li>
+  <li><b>Yaz</b>, <b>Yanıtla</b>, <b>Tümünü yanıtla</b> ve <b>İlet</b>, bir posta programı gibi sunucu üzerinden gönderir (posta kutusunun gönderim sınırları ve DKIM imzasıyla); bir kopya Gönderilenler'e gider. Sunucunun ileti boyutuna kadar ekler eklenebilir. Yazarken adres alanları kişileri önerir; imza zaten metnin altındadır.</li>
+</ul>
+<h2>Kişiler ve imza</h2>
+<ul>
+  <li><b>Kişiler</b>: web postanın adres defteri. Web postadan posta gönderilen adresler kendiliğinden eklenir (iletide yazılan adla birlikte); kullanıcı girdi ekleyebilir, yeniden adlandırabilir (aynı adresi yeni bir adla kaydederek) ve kaldırabilir.</li>
+  <li><b>İmza</b>: web postanın her yeni iletinin, yanıtın ve iletmenin altına koyduğu metin. Posta programlarının kendi imza ayarı vardır.</li>
+  <li>Posta kutusu kotasının %80'ine ve %95'ine ulaştığında, sunucudan bir uyarı Gelen kutusuna gelir.</li>
+</ul>
+<h2>Posta kutum</h2>
+<ul>
+  <li><b>Kullanım</b>: kotanın ne kadarının kullanıldığı.</li>
+  <li><b>Parola</b>: kullanıcı web parolasını burada değiştirir (en az 12 karakter).</li>
+  <li><b>Uygulama parolaları</b>: program veya cihaz başına bir tane, oluşturulduğunda bir kez gösterilir; kaybolan bir cihaz, onun uygulama parolasını silmek demektir. Sayfa ayrıca posta programları için ayarları gösterir ve iPhone, iPad ve Mac için bir Apple profili (<code>.mobileconfig</code>) sunar.</li>
+</ul>
+<h2>Otomatik yanıt ve filtreler</h2>
+<ul>
+  <li><b>Otomatik yanıt</b>: açık olduğu sürece gönderenlere gönderilen bir metin (ve isteğe bağlı konu), isteğe bağlı olarak yalnızca iki tarih arasında; aynı gönderen onu ancak seçilen gün sayısından sonra yeniden alır. Posta listeleri, otomatik iletiler ve spam asla otomatik yanıt almaz.</li>
+  <li><b>Filtreler</b> gelen postayı sıralar: gönderen, alıcılar veya konu bir metin içerdiğinde iletiyi bir klasöre taşır, okundu olarak işaretler veya siler. İlk eşleşen filtre karar verir.</li>
+  <li><b>Spam</b>: ne kadar spam'in Junk'a gideceği (veya tüm hesabın seviyesi) ve kullanıcının kendi izin verilen gönderenleri (asla Junk) ile engellenen gönderenleri (her zaman Junk).</li>
+</ul>

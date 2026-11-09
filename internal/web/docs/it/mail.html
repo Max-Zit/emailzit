@@ -1,0 +1,33 @@
+<h1>Domini, caselle e alias</h1>
+<h2>Domini</h2>
+<p>Su un server condiviso un nuovo dominio di un cliente riceve posta solo dopo essere stato <b>verificato</b>: la pagina del dominio mostra un record TXT (<code>_emailzit.example.com</code>) da inserire presso il provider DNS del dominio; poi <b>Verifica ora</b>. Il personale può segnare a mano un dominio come verificato quando sa che appartiene al cliente; su un server dedicato i domini non richiedono verifica (Impostazioni → Server di posta).</p>
+<p>La pagina del dominio elenca i <b>Record DNS</b> di cui il dominio ha bisogno: MX (posta verso questo server), SPF, DMARC e i record che permettono ai programmi di posta di trovare le loro impostazioni (autoconfig, autodiscover, SRV). I record obbligatori sono contrassegnati.</p>
+<p><b>Rapporti DMARC</b>: il record DMARC suggerito invia i rapporti giornalieri dei destinatari a <code>dmarc-reports@&lt;domain&gt;</code>. EmailZit riserva a sé quell'indirizzo (nessuna casella o alias può usarlo), legge i rapporti e mostra nella pagina del dominio, per gli ultimi 30 giorni, quali server hanno inviato posta con il dominio come mittente e quanta di essa ha superato DMARC. I vostri server dovrebbero superarlo; la posta che non lo supera da indirizzi sconosciuti di solito è falsificata. Quando tutti i vostri mittenti lo superano, la policy può passare da <code>p=none</code> a <code>quarantine</code> o <code>reject</code>. I rapporti vengono conservati per 180 giorni.</p>
+<p>Il <b>catch-all</b> (posta per indirizzi sconosciuti) è disattivato per impostazione predefinita: gli indirizzi sconosciuti vengono rifiutati durante il dialogo SMTP, il che tiene lontani spam e backscatter. Attivatelo solo quando serve davvero.</p>
+<h2>Caselle</h2>
+<ul>
+  <li>Una casella ha una dimensione (quota) entro il pacchetto; l'utilizzo viene aggiornato ogni dieci minuti. Quando una casella raggiunge l'80 % e poi il 95 % della sua quota, il server mette un avviso nella sua Inbox (nella lingua della casella); dopo che scende sotto il 70 % può essere avvisata di nuovo.</li>
+  <li>La sua <b>password</b> serve solo per la webmail e le pagine personali dell'utente, sempre con accesso a due fattori.</li>
+  <li>I programmi di posta usano <b>password per app</b> che l'utente di posta crea su <code>/mail</code> — una per programma o dispositivo. Un telefono perso significa revocare una password per app, non cambiare tutto.</li>
+  <li>Una casella <b>disattivata</b> continua a ricevere posta, ma nessuno può accedere. Il personale può anche <b>bloccare l'invio</b> (per esempio dopo un abuso) e impostare altri limiti di invio per una singola casella.</li>
+  <li>Eliminando una casella, la sua posta viene spostata in una cartella cestino sul server per 7 giorni, poi sparisce.</li>
+</ul>
+<h2>Alias e inoltri</h2>
+<ul>
+  <li>Un <b>alias</b> (ad es. <code>info@</code>) riceve posta e la consegna a uno o più indirizzi: caselle dello stesso cliente o indirizzi esterni.</li>
+  <li>Un <b>inoltro</b> è un alias sull'indirizzo di una casella. Per conservare una copia nella casella, indicate la casella stessa tra le destinazioni.</li>
+  <li><b>Invia come</b>: le caselle a cui un alias consegna possono anche inviare con l'alias come mittente.</li>
+</ul>
+<h2>Protezione</h2>
+<ul>
+  <li>Nessuno può usare il server per inoltrare posta ad altri server senza accedere (nessun open relay).</li>
+  <li>La posta dall'esterno che afferma di provenire da un dominio di questo server viene rifiutata; gli utenti che hanno effettuato l'accesso possono inviare solo dai propri indirizzi e dai loro alias "invia come".</li>
+  <li>I programmi di posta devono usare TLS; l'accesso in chiaro viene rifiutato.</li>
+  <li>Programmi, script, collegamenti, immagini disco e file Office con macro vengono rifiutati come allegati (anche dentro gli archivi), a meno che l'amministratore non li abbia consentiti; condividete tali file tramite link.</li>
+  <li>I messaggi con link di phishing noti, o il cui mittente nel nome si spaccia per qualcuno del vostro dominio, ricevono <code>[Phishing?]</code> davanti all'oggetto.</li>
+  <li>Una casella che invia spam (3 messaggi rifiutati come spam o virus in un'ora) non può più inviare finché il provider non lo consente di nuovo; riceve un avviso nella sua Inbox. Cambiatene la password: di solito qualcun altro la conosce.</li>
+</ul>
+<h2>Impostazioni antispam</h2>
+<p>Rspamd assegna a ogni messaggio in arrivo un punteggio; sopra 15 viene rifiutato, e la posta sopra il livello scelto finisce nella cartella Junk della casella. I livelli sono <b>Rigoroso</b> (punteggio 4 e oltre), <b>Normale</b> (6, il predefinito), <b>Blando</b> (10) e <b>Mai</b> (lo spam resta nella Inbox, contrassegnato con un'intestazione <code>X-Spam</code>). Il personale imposta il livello di un cliente nella pagina del cliente; vale per tutte le caselle del cliente che non ne hanno uno proprio. Nella pagina della casella (personale e cliente) e nella pagina <i>Risposta automatica e filtri</i> dell'utente di posta una casella riceve il proprio livello e gli elenchi di <b>mittenti consentiti</b> (mai Junk) e <b>mittenti bloccati</b> (sempre Junk): indirizzi o interi domini, fino a 200 ciascuno, confrontati con l'indirizzo From. Le regole vengono applicate prima dei filtri dell'utente e della risposta automatica, quindi lo spam non riceve mai una risposta automatica. L'helper di posta le scrive come script Sieve nella home di posta di ciascuna casella (<code>.emailzit/spam.sieve</code>) quando cambiano e le controlla tutte ogni 10 minuti.</p>
+<h2>Spostare la posta da un altro server</h2>
+<p>Nella pagina della casella, <b>Porta qui la posta da un altro server</b> copia ogni cartella della vecchia casella tramite IMAP (porta 993, o 143 con STARTTLS) con i flag di lettura e le date; Sent, Trash, Junk e Drafts finiscono nelle cartelle corrispondenti qui. I messaggi già presenti vengono saltati, quindi eseguitelo una volta prima e una volta dopo aver spostato il record MX, per recuperare ciò che è arrivato in ritardo. La vecchia password resta conservata cifrata solo fino alla fine dell'importazione. Sui server di hosting le importazioni arrivano solo da server su internet; un server aziendale può consentire le reti private in Impostazioni → Server di posta.</p>

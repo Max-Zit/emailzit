@@ -1,0 +1,34 @@
+<h1>Webmail e as páginas dos utilizadores de correio</h1>
+<p>Cada utilizador de correio tem as suas próprias páginas em <code>https://&lt;mail host&gt;:8444/mail</code> (num servidor autónomo, <code>https://&lt;mail host&gt;/</code> também leva até lá). Estão separadas dos painéis: um utilizador de correio nunca vê outras caixas de correio, as configurações do cliente ou o servidor.</p>
+<h2>Iniciar sessão</h2>
+<ul>
+  <li>O endereço e a palavra-passe da caixa de correio, e sempre um segundo fator: no primeiro início de sessão, o utilizador lê um código QR com uma app de autenticação (Google Authenticator, Microsoft Authenticator, Aegis …) e guarda os códigos de recuperação.</li>
+  <li>Um utilizador que perdeu o telemóvel e os códigos de recuperação pede ajuda ao fornecedor: o pessoal e o cliente podem <b>repor o segundo fator</b> na página da caixa de correio; o utilizador volta a configurá-lo no próximo início de sessão.</li>
+  <li>O idioma das páginas segue a escolha do utilizador (canto superior direito) e é memorizado.</li>
+</ul>
+<h2>Webmail</h2>
+<ul>
+  <li>Pastas à esquerda (num telemóvel, em cima): Inbox, Drafts, Sent, Archive, Junk, Trash e as pastas próprias do utilizador, com o número de mensagens não lidas.</li>
+  <li>A lista mostra remetente, assunto e data; as mensagens não lidas estão a negrito. Selecione mensagens para as marcar como lidas ou não lidas, movê-las para Junk (para afastar um remetente de vez, adicione-o aos remetentes bloqueados) ou apagá-las (para Trash; apagar em Trash elimina-as). <b>Mover</b> coloca as mensagens selecionadas (ou a que está aberta) noutra pasta.</li>
+  <li><b>Pesquisar</b> encontra as palavras em qualquer parte das mensagens da pasta aberta (cabeçalhos e texto).</li>
+  <li>As mensagens escritas em HTML são mostradas numa moldura protegida: scripts, formulários e imagens remotas nunca são carregados, por isso abrir uma mensagem não pode revelar nada ao remetente. Os anexos são transferidos, nunca abertos no browser.</li>
+  <li><b>Escrever</b>, <b>Responder</b>, <b>Responder a todos</b> e <b>Reencaminhar</b> enviam através do servidor tal como um programa de correio (com os limites de envio e a assinatura DKIM da caixa de correio); uma cópia vai para Sent. Podem ser adicionados anexos até ao tamanho máximo de mensagem do servidor. Ao escrever, os campos de endereço sugerem os contactos; a assinatura já está por baixo do texto.</li>
+</ul>
+<h2>Contactos e assinatura</h2>
+<ul>
+  <li><b>Contactos</b>: o livro de endereços do webmail. Os endereços para os quais se envia correio a partir do webmail são adicionados automaticamente (com o nome escrito na mensagem); o utilizador pode adicionar, mudar o nome (guardando o mesmo endereço com um novo nome) e remover entradas.</li>
+  <li><b>Assinatura</b>: um texto que o webmail coloca por baixo de cada nova mensagem, resposta e reencaminhamento. Os programas de correio têm a sua própria configuração de assinatura.</li>
+  <li>Quando a caixa de correio atinge 80 % e 95 % da sua quota, chega à Inbox um aviso do servidor.</li>
+</ul>
+<h2>A minha caixa</h2>
+<ul>
+  <li><b>Utilização</b>: quanto da quota está a ser usado.</li>
+  <li><b>Senha</b>: aqui o utilizador muda a palavra-passe web (pelo menos 12 caracteres).</li>
+  <li><b>Palavras-passe de aplicação</b>: uma por programa ou dispositivo, mostrada uma única vez ao ser criada; um dispositivo perdido significa apagar a sua palavra-passe de aplicação. A página mostra também as configurações para programas de correio e oferece um perfil Apple (<code>.mobileconfig</code>) para iPhone, iPad e Mac.</li>
+</ul>
+<h2>Resposta automática e filtros</h2>
+<ul>
+  <li><b>Resposta automática</b>: um texto (e um assunto opcional) enviado aos remetentes enquanto está ativa, opcionalmente só entre duas datas; o mesmo remetente só a volta a receber depois do número de dias escolhido. Listas de correio, mensagens automáticas e spam nunca recebem uma resposta automática.</li>
+  <li><b>Filtros</b> organizam o correio recebido: quando o remetente, os destinatários ou o assunto contêm um texto, movem a mensagem para uma pasta, marcam-na como lida ou apagam-na. Decide o primeiro filtro que corresponder.</li>
+  <li><b>Spam</b>: quanto spam vai para Junk (ou o nível da conta inteira), e os remetentes permitidos (nunca Junk) e os remetentes bloqueados (sempre Junk) do próprio utilizador.</li>
+</ul>

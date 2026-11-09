@@ -1,0 +1,16 @@
+<h1>Nastavení poštovních programů</h1>
+<h2>Krok 1: heslo aplikace</h2>
+<ol>
+  <li>Otevřete <code>https://&lt;server&gt;:8444/mail</code> a přihlaste se svou adresou a heslem.</li>
+  <li>Poprvé nastavte dvoufázové přihlášení: naskenujte QR kód ověřovací aplikací a uschovejte si záložní kódy.</li>
+  <li>V části <b>Hesla aplikací</b> pojmenujte program nebo zařízení (například „Outlook na notebooku“) a vytvořte heslo. Zadejte ho do programu hned: zobrazí se jen jednou.</li>
+</ol>
+<h2>Krok 2: program</h2>
+<p>Většina programů (Outlook, Thunderbird, poštovní aplikace pro iOS a Android) najde nastavení sama, když zadáte jen adresu a heslo aplikace. Jinak použijte:</p>
+<table>
+  <tr><th>Uživatelské jméno</th><td>celá e-mailová adresa</td></tr>
+  <tr><th>Příchozí (IMAP)</th><td>název hostitele serveru, port 993, SSL/TLS</td></tr>
+  <tr><th>Příchozí (POP3)</th><td>název hostitele serveru, port 995, SSL/TLS</td></tr>
+  <tr><th>Odchozí (SMTP)</th><td>název hostitele serveru, port 465 SSL/TLS nebo 587 STARTTLS, vyžadováno přihlášení</td></tr>
+</table>
+<p>Stránka schránky v panelech zobrazuje tyto hodnoty se skutečným názvem hostitele.</p>

@@ -1,0 +1,30 @@
+<h1>Premiers pas</h1>
+<p>EmailZit est un hébergement de messagerie pour de nombreux domaines et clients sur votre propre serveur : un <b>panneau d'administration</b> pour le personnel du serveur, un <b>panneau client</b> où chaque client gère ses propres domaines et boîtes aux lettres, et des <b>pages pour les utilisateurs de messagerie</b> (webmail, mot de passe personnel, mots de passe d'application, réponse automatique, filtres).</p>
+<h2>Comment il est construit</h2>
+<ul>
+  <li><b>Serveur EmailZit</b> — les panneaux et l'API REST, exécutés sous un utilisateur non privilégié.</li>
+  <li><b>Postfix</b> reçoit et envoie le courrier (SMTP sur le port 25, soumission pour les logiciels de messagerie sur 465 et 587, toujours chiffrée).</li>
+  <li><b>Dovecot</b> stocke le courrier et fournit IMAP (993) et POP3 (995).</li>
+  <li><b>PostgreSQL</b> contient tout ce que les panneaux modifient ; Postfix et Dovecot le lisent directement, de sorte qu'une nouvelle boîte aux lettres fonctionne immédiatement sans rien redémarrer.</li>
+  <li>Un petit <b>assistant root</b> effectue les quelques opérations qui nécessitent root (répertoires de courrier, certificats, mises à jour) ; chaque requête est vérifiée et inscrite dans le journal d’audit.</li>
+</ul>
+<h2>Installation</h2>
+<ul>
+  <li><b>Appliance</b> — une machine virtuelle prête à l'emploi (OVA pour VMware ESXi et Workstation, qcow2 pour Proxmox VE et KVM, VHDX pour Hyper-V génération 1) ou l'ISO d'installation pour une nouvelle VM ou un serveur physique (il efface le premier disque). Donnez-lui au moins 2 CPU, 2 Go de mémoire et un disque pour le courrier (le système de fichiers racine s'agrandit de lui-même lorsque le disque virtuel est agrandi). Après le premier démarrage, l'écran affiche l'adresse du panneau et le jeton de configuration ; la connexion à l'écran en tant que <code>ezadmin</code> (premier mot de passe <code>emailzit</code>, il doit être changé) ouvre le menu de configuration : réseau (utilisez une adresse fixe pour un serveur de messagerie), nom du serveur, fuseau horaire, adresse du panneau et jeton de configuration, mot de passe d'un compte du personnel, état des services, redémarrage.</li>
+  <li><b>Paquet Debian 13</b> — <code>sudo sh install.sh</code> depuis la version publiée, ou le <code>.deb</code> avec <code>apt install</code> : il installe Postfix, Dovecot, Rspamd, Valkey et PostgreSQL depuis Debian et configure tout.</li>
+  <li>Ports : 25 (courrier provenant d'autres serveurs), 465 et 587 (envoi depuis les logiciels de messagerie), 993 (IMAP), 995 (POP3), 8444 (panneaux et webmail), ainsi que 443 et 80 pour la configuration automatique des logiciels de messagerie (autoconfig pour Thunderbird, Autodiscover pour Outlook, la politique MTA-STS ; tout le reste y mène au webmail). EmailZit n'utilise 443 et 80 que lorsqu'aucun serveur web n'est installé et que HostZit n'est pas relié ; sinon, c'est le serveur web de HostZit qui répond pour ces noms (<code>--public-web off</code> le désactive). Le serveur a besoin d'un nom DNS inverse (PTR) qui correspond à son nom d'hôte de messagerie, et le port 25 sortant doit être ouvert.</li>
+</ul>
+<h2>Qui peut faire quoi</h2>
+<ul>
+  <li>Les <b>administrateurs</b> gèrent le serveur, les comptes du personnel, les forfaits et tous les clients. Les <b>opérateurs</b> gèrent les clients, les domaines et les boîtes aux lettres ; les <b>lecteurs</b> ne font que consulter.</li>
+  <li>Les <b>clients</b> voient et modifient uniquement leurs propres domaines, boîtes aux lettres, alias et transferts, dans les limites de leur forfait.</li>
+  <li>Les <b>utilisateurs de messagerie</b> se connectent avec leur adresse, leur mot de passe et toujours un second facteur (une application d'authentification). Les logiciels de messagerie (Outlook, Thunderbird, téléphones) n'utilisent jamais ce mot de passe : chaque logiciel reçoit son propre <b>mot de passe d'application</b>.</li>
+</ul>
+<h2>Premières étapes</h2>
+<ol>
+  <li>Définissez le nom d'hôte du serveur sous <b>Paramètres → Serveur de messagerie</b> (le nom auquel les logiciels de messagerie se connectent, p. ex. <code>mail.example.com</code>).</li>
+  <li>Créez un <b>forfait</b> avec les limites que vous vendez (domaines, boîtes aux lettres, stockage, envoi par heure).</li>
+  <li>Créez un <b>client</b> avec ce forfait et donnez-lui un identifiant pour le panneau.</li>
+  <li>Ajoutez le <b>domaine</b> du client, placez les enregistrements DNS affichés sur la page du domaine chez le fournisseur DNS du domaine, puis vérifiez le domaine.</li>
+  <li>Créez des <b>boîtes aux lettres</b>. L'utilisateur de messagerie se connecte sur <code>/mail</code>, configure le second facteur et crée des mots de passe d'application pour ses logiciels.</li>
+</ol>

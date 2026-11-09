@@ -1,0 +1,16 @@
+<h1>Configurer les logiciels de messagerie</h1>
+<h2>Étape 1 : un mot de passe d'application</h2>
+<ol>
+  <li>Ouvrez <code>https://&lt;server&gt;:8444/mail</code> et connectez-vous avec votre adresse et votre mot de passe.</li>
+  <li>La première fois, configurez la connexion à deux facteurs : scannez le code QR avec une application d'authentification et conservez les codes de récupération.</li>
+  <li>Sous <b>Mots de passe d'application</b>, donnez un nom au logiciel ou à l'appareil (par exemple « Outlook sur le portable ») et créez le mot de passe. Saisissez-le immédiatement dans le logiciel : il n'est affiché qu'une seule fois.</li>
+</ol>
+<h2>Étape 2 : le logiciel</h2>
+<p>La plupart des logiciels (Outlook, Thunderbird, les applications de messagerie iOS et Android) trouvent les paramètres d'eux-mêmes lorsque vous saisissez uniquement l'adresse et le mot de passe d'application. Sinon, utilisez :</p>
+<table>
+  <tr><th>Nom d'utilisateur</th><td>l'adresse e-mail complète</td></tr>
+  <tr><th>Entrant (IMAP)</th><td>le nom d'hôte du serveur, port 993, SSL/TLS</td></tr>
+  <tr><th>Entrant (POP3)</th><td>le nom d'hôte du serveur, port 995, SSL/TLS</td></tr>
+  <tr><th>Sortant (SMTP)</th><td>le nom d'hôte du serveur, port 465 SSL/TLS ou 587 STARTTLS, authentification requise</td></tr>
+</table>
+<p>La page de la boîte aux lettres dans les panneaux affiche ces valeurs avec le vrai nom d'hôte.</p>

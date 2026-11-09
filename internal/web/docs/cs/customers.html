@@ -1,0 +1,21 @@
+<h1>Zákazníci a balíčky</h1>
+<h2>Balíčky</h2>
+<p>Balíček obsahuje limity, které zákazník dostane: kolik domén, schránek a aliasů, kolik úložiště smějí všechny schránky dohromady použít, velikost nové schránky a největší schránky a <b>limity odesílání</b>. Fakturační systémy odkazují na balíček jeho krátkým názvem (například <code>business-10</code>).</p>
+<ul>
+  <li><b>Zpráv za hodinu / za den (na schránku)</b> a <b>za hodinu pro celého zákazníka</b> chrání pověst adresy serveru: schránka, jejíž heslo bylo ukradeno, nemůže odeslat tisíce spamových zpráv. Zprávy nad limit čekají ve frontě.</li>
+  <li><b>Příjemců na zprávu</b> zabraňuje tomu, aby jedna zpráva šla na tisíce adres.</li>
+  <li>Převedení zákazníka na menší balíček nic nesmaže; nad nové limity jen nelze přidat nic nového.</li>
+</ul>
+<h2>Zákazníci</h2>
+<p>Zákazník vlastní domény a schránky. Pošta každého zákazníka je uložena pod jeho <b>vlastním systémovým uživatelem</b>, takže ani chyba v poštovním softwaru nemůže jednomu zákazníkovi umožnit číst poštu jiného zákazníka. Zákazník nikdy nemůže směrovat poštu do schránek jiného zákazníka, odesílat jako jeho adresy ani vidět jeho domény.</p>
+<ul>
+  <li><b>Přihlášení do panelu</b>: zákazník se přihlašuje do zákaznického panelu na stejné adrese jako administrátorský panel. Každé přihlášení musí při prvním přihlášení nastavit dvoufázové přihlášení.</li>
+  <li><b>ID ve fakturaci</b>: číslo zákazníka ve vašem fakturačním systému; REST API podle něj zákazníky vyhledává.</li>
+  <li><b>Odchozí adresa</b> (když má server další odchozí adresy, viz Personál, nastavení a aktualizace): pošta zákazníka odchází z jeho vlastní IP adresy a vlastního názvu hostitele, takže jeho pověst odesílatele je jen jeho. Poté zveřejněte záznam SPF zobrazený u každé domény zákazníka.</li>
+</ul>
+<h2>Pozastavení a ukončení</h2>
+<ul>
+  <li><b>Pozastaveno</b>: pošta pro domény zákazníka se stále přijímá (nic se neztratí), ale nikdo ze zákazníka se nemůže přihlásit, používat poštovní programy ani odesílat. Relace okamžitě končí.</li>
+  <li><b>Ukončeno</b>: pošta pro domény zákazníka se odmítá. Data zůstávají, dokud nejsou smazána.</li>
+  <li><b>Aktivovat</b> vrátí pozastaveného nebo ukončeného zákazníka zpět.</li>
+</ul>

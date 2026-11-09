@@ -1,0 +1,21 @@
+<h1>Klienci i pakiety</h1>
+<h2>Pakiety</h2>
+<p>Pakiet zawiera limity, które dostaje klient: ile domen, skrzynek i aliasów, ile miejsca mogą łącznie zajmować wszystkie skrzynki, rozmiar nowej skrzynki i największej skrzynki oraz <b>limity wysyłania</b>. Systemy rozliczeniowe odwołują się do pakietu przez jego krótką nazwę (na przykład <code>business-10</code>).</p>
+<ul>
+  <li><b>Wiadomości na godzinę / dziennie (na skrzynkę)</b> i <b>na godzinę dla całego klienta</b> chronią reputację adresu serwera: skrzynka, której hasło zostało skradzione, nie może wysłać tysięcy wiadomości ze spamem. Wiadomości ponad limit czekają w kolejce.</li>
+  <li><b>Odbiorców na wiadomość</b> nie pozwala, by jedna wiadomość trafiła do tysięcy adresów.</li>
+  <li>Przeniesienie klienta do mniejszego pakietu niczego nie usuwa; ponad nowe limity nie można dodać niczego nowego.</li>
+</ul>
+<h2>Klienci</h2>
+<p>Klient jest właścicielem domen i skrzynek. Poczta każdego klienta jest przechowywana pod jego <b>własnym użytkownikiem systemowym</b>, więc nawet błąd w oprogramowaniu poczty nie pozwoli jednemu klientowi czytać poczty innego klienta. Klient nigdy nie może kierować poczty do skrzynek innego klienta, wysyłać jako jego adresy ani widzieć jego domen.</p>
+<ul>
+  <li><b>Loginy do panelu</b>: klient loguje się do panelu klienta pod tym samym adresem co panel administracyjny. Każdy login musi przy pierwszym logowaniu skonfigurować logowanie dwuskładnikowe.</li>
+  <li><b>ID w rozliczeniach</b>: numer klienta w twoim systemie rozliczeniowym; REST API wyszukuje po nim klientów.</li>
+  <li><b>Adres wychodzący</b> (gdy serwer ma dodatkowe adresy wychodzące, zobacz Personel, ustawienia i aktualizacje): poczta klienta wychodzi z jego własnego adresu IP i nazwy hosta, więc jego reputacja wysyłania należy tylko do niego. Następnie opublikuj rekord SPF pokazany przy każdej domenie klienta.</li>
+</ul>
+<h2>Zawieszanie i zakończenie</h2>
+<ul>
+  <li><b>Zawieszony</b>: poczta dla domen klienta jest nadal odbierana (nic nie ginie), ale nikt z klienta nie może się zalogować, używać programów pocztowych ani wysyłać. Sesje kończą się od razu.</li>
+  <li><b>Zakończony</b>: poczta dla domen klienta jest odrzucana. Dane pozostają, dopóki nie zostaną usunięte.</li>
+  <li><b>Aktywuj</b> przywraca zawieszonego lub zakończonego klienta.</li>
+</ul>

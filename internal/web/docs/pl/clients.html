@@ -1,0 +1,16 @@
+<h1>Konfiguracja programów pocztowych</h1>
+<h2>Krok 1: hasło aplikacji</h2>
+<ol>
+  <li>Otwórz <code>https://&lt;server&gt;:8444/mail</code> i zaloguj się swoim adresem i hasłem.</li>
+  <li>Za pierwszym razem skonfiguruj logowanie dwuskładnikowe: zeskanuj kod QR aplikacją uwierzytelniającą i zachowaj kody odzyskiwania.</li>
+  <li>W <b>Hasła aplikacji</b> nadaj programowi lub urządzeniu nazwę (na przykład „Outlook na laptopie”) i utwórz hasło. Od razu wpisz je w programie: jest pokazywane tylko raz.</li>
+</ol>
+<h2>Krok 2: program</h2>
+<p>Większość programów (Outlook, Thunderbird, aplikacje pocztowe iOS i Androida) sama znajduje ustawienia, gdy podasz tylko adres i hasło aplikacji. W przeciwnym razie użyj:</p>
+<table>
+  <tr><th>Nazwa użytkownika</th><td>pełny adres e-mail</td></tr>
+  <tr><th>Przychodząca (IMAP)</th><td>nazwa hosta serwera, port 993, SSL/TLS</td></tr>
+  <tr><th>Przychodząca (POP3)</th><td>nazwa hosta serwera, port 995, SSL/TLS</td></tr>
+  <tr><th>Wychodząca (SMTP)</th><td>nazwa hosta serwera, port 465 SSL/TLS lub 587 STARTTLS, wymagane logowanie</td></tr>
+</table>
+<p>Strona skrzynki w panelach pokazuje te wartości z prawdziwą nazwą hosta.</p>

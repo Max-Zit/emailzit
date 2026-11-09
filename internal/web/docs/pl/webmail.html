@@ -1,0 +1,34 @@
+<h1>Webmail i strony użytkowników poczty</h1>
+<p>Każdy użytkownik poczty ma własne strony pod <code>https://&lt;mail host&gt;:8444/mail</code> (na samodzielnym serwerze prowadzi tam też <code>https://&lt;mail host&gt;/</code>). Są oddzielone od paneli: użytkownik poczty nigdy nie widzi innych skrzynek, ustawień klienta ani serwera.</p>
+<h2>Logowanie</h2>
+<ul>
+  <li>Adres i hasło skrzynki, a zawsze także drugi składnik: przy pierwszym logowaniu użytkownik skanuje kod QR aplikacją uwierzytelniającą (Google Authenticator, Microsoft Authenticator, Aegis …) i zachowuje kody odzyskiwania.</li>
+  <li>Użytkownik, który zgubił telefon i kody odzyskiwania, zwraca się do dostawcy: personel i klient mogą na stronie skrzynki <b>zresetować drugi składnik</b>; użytkownik konfiguruje go ponownie przy następnym logowaniu.</li>
+  <li>Język stron odpowiada wyborowi użytkownika (w prawym górnym rogu) i jest zapamiętywany.</li>
+</ul>
+<h2>Webmail</h2>
+<ul>
+  <li>Foldery po lewej (na telefonie u góry): Inbox, Drafts, Sent, Archive, Junk, Trash i własne foldery użytkownika, z liczbą nieprzeczytanych wiadomości.</li>
+  <li>Lista pokazuje nadawcę, temat i datę; nieprzeczytane wiadomości są pogrubione. Zaznacz wiadomości, aby oznaczyć je jako przeczytane lub nieprzeczytane, przenieść do Junk (aby na dobre zatrzymać nadawcę, dodaj go do zablokowanych nadawców) lub usunąć (do Trash; usunięcie w Trash kasuje je). <b>Przenieś</b> umieszcza zaznaczone wiadomości (lub otwartą) w innym folderze.</li>
+  <li><b>Szukaj</b> znajduje słowa w dowolnym miejscu wiadomości otwartego folderu (nagłówki i tekst).</li>
+  <li>Wiadomości napisane w HTML są pokazywane w chronionej ramce: skrypty, formularze i zdalne obrazy nigdy nie są ładowane, więc otwarcie wiadomości niczego nie zdradzi nadawcy. Załączniki są pobierane, nigdy nie otwierane w przeglądarce.</li>
+  <li><b>Napisz</b>, <b>Odpowiedz</b>, <b>Odpowiedz wszystkim</b> i <b>Przekaż</b> wysyłają przez serwer tak jak program pocztowy (z limitami wysyłania i podpisem DKIM skrzynki); kopia trafia do Sent. Można dodać załączniki do maksymalnego rozmiaru wiadomości serwera. Podczas pisania pola adresów podpowiadają kontakty; podpis jest już pod tekstem.</li>
+</ul>
+<h2>Kontakty i podpis</h2>
+<ul>
+  <li><b>Kontakty</b>: książka adresowa webmaila. Adresy, na które wysyłana jest poczta z webmaila, dodają się same (z nazwą wpisaną w wiadomości); użytkownik może dodawać, zmieniać nazwy (zapisując ten sam adres z nową nazwą) i usuwać wpisy.</li>
+  <li><b>Podpis</b>: tekst, który webmail umieszcza pod każdą nową wiadomością, odpowiedzią i przekazaniem. Programy pocztowe mają własne ustawienie podpisu.</li>
+  <li>Gdy skrzynka osiągnie 80 % i 95 % swojego limitu, do Inbox przychodzi ostrzeżenie od serwera.</li>
+</ul>
+<h2>Moja skrzynka</h2>
+<ul>
+  <li><b>Wykorzystanie</b>: jaka część limitu jest zajęta.</li>
+  <li><b>Hasło</b>: tutaj użytkownik zmienia hasło do stron WWW (co najmniej 12 znaków).</li>
+  <li><b>Hasła aplikacji</b>: jedno na program lub urządzenie, pokazywane raz przy tworzeniu; zgubione urządzenie oznacza usunięcie jego hasła aplikacji. Strona pokazuje też ustawienia dla programów pocztowych i oferuje profil Apple (<code>.mobileconfig</code>) dla iPhone'a, iPada i Maca.</li>
+</ul>
+<h2>Automatyczna odpowiedź i filtry</h2>
+<ul>
+  <li><b>Automatyczna odpowiedź</b>: tekst (i opcjonalny temat) wysyłany nadawcom, gdy jest włączona, opcjonalnie tylko między dwiema datami; ten sam nadawca dostaje ją ponownie dopiero po wybranej liczbie dni. Listy mailingowe, wiadomości automatyczne i spam nigdy nie dostają automatycznej odpowiedzi.</li>
+  <li><b>Filtry</b> sortują przychodzącą pocztę: gdy nadawca, odbiorcy lub temat zawierają tekst, przenoszą wiadomość do folderu, oznaczają ją jako przeczytaną lub ją usuwają. Decyduje pierwszy pasujący filtr.</li>
+  <li><b>Spam</b>: ile spamu trafia do Junk (lub poziom całego konta) oraz własni dozwoleni nadawcy (nigdy Junk) i zablokowani nadawcy (zawsze Junk) użytkownika.</li>
+</ul>

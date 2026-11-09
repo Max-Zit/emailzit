@@ -1,0 +1,21 @@
+<h1>Clientes e planos</h1>
+<h2>Planos</h2>
+<p>Um plano contém os limites que um cliente recebe: quantos domínios, caixas de correio e aliases, quanto armazenamento todas as caixas de correio podem usar em conjunto, o tamanho de uma nova caixa de correio e o da maior, e os <b>limites de envio</b>. Os sistemas de faturação referem-se a um plano pelo seu nome curto (por exemplo <code>business-10</code>).</p>
+<ul>
+  <li><b>Mensagens por hora / por dia (por caixa)</b> e <b>por hora para o cliente inteiro</b> protegem a reputação do endereço do servidor: uma caixa de correio cuja palavra-passe foi roubada não consegue enviar milhares de mensagens de spam. As mensagens acima do limite esperam na fila.</li>
+  <li><b>Destinatários por mensagem</b> impede que uma mensagem vá para milhares de endereços.</li>
+  <li>Mudar um cliente para um plano mais pequeno não apaga nada; não é possível adicionar nada de novo acima dos novos limites.</li>
+</ul>
+<h2>Clientes</h2>
+<p>Um cliente é dono de domínios e caixas de correio. O correio de cada cliente é guardado sob o seu <b>próprio utilizador de sistema</b>, por isso nem uma falha no software de correio permite que um cliente leia o correio de outro cliente. Um cliente nunca pode encaminhar correio para as caixas de correio de outro cliente, enviar como os endereços dele nem ver os domínios dele.</p>
+<ul>
+  <li><b>Acessos ao painel</b>: o cliente inicia sessão no painel do cliente no mesmo endereço do painel de administração. Cada acesso tem de configurar o início de sessão em dois passos no primeiro início de sessão.</li>
+  <li><b>ID de faturação</b>: o número do cliente no seu sistema de faturação; a API REST encontra os clientes por ele.</li>
+  <li><b>Endereço de saída</b> (quando o servidor tem endereços de saída adicionais, consulte Pessoal, configurações e atualizações): o correio do cliente sai do seu próprio endereço IP e nome de host, por isso a sua reputação de envio é só sua. Publique depois o registo SPF mostrado em cada um dos domínios do cliente.</li>
+</ul>
+<h2>Suspender e terminar</h2>
+<ul>
+  <li><b>Suspenso</b>: o correio para os domínios do cliente continua a ser recebido (nada se perde), mas ninguém do cliente consegue iniciar sessão, usar programas de correio ou enviar. As sessões terminam de imediato.</li>
+  <li><b>Terminado</b>: o correio para os domínios do cliente é recusado. Os dados ficam até serem apagados.</li>
+  <li><b>Ativar</b> reativa um cliente suspenso ou terminado.</li>
+</ul>

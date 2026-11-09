@@ -1,0 +1,33 @@
+<h1>Domeny, skrzynki i aliasy</h1>
+<h2>Domeny</h2>
+<p>Na serwerze współdzielonym nowa domena klienta odbiera pocztę dopiero po <b>weryfikacji</b>: strona domeny pokazuje rekord TXT (<code>_emailzit.example.com</code>), który należy wpisać u dostawcy DNS domeny; potem <b>Sprawdź teraz</b>. Personel może ręcznie oznaczyć domenę jako zweryfikowaną, gdy wie, że należy do klienta; na serwerze dedykowanym domeny nie wymagają weryfikacji (Ustawienia → Serwer poczty).</p>
+<p>Strona domeny wymienia <b>Rekordy DNS</b>, których domena potrzebuje: MX (poczta do tego serwera), SPF, DMARC oraz rekordy, dzięki którym programy pocztowe znajdują swoje ustawienia (autoconfig, autodiscover, SRV). Wymagane rekordy są oznaczone.</p>
+<p><b>Raporty DMARC</b>: proponowany rekord DMARC wysyła dzienne raporty odbiorców na <code>dmarc-reports@&lt;domain&gt;</code>. EmailZit sam przejmuje ten adres (żadna skrzynka ani alias nie może go używać), czyta raporty i pokazuje na stronie domeny, za ostatnie 30 dni, które serwery wysyłały pocztę z domeną jako nadawcą i jaka jej część przeszła DMARC. Twoje własne serwery powinny przechodzić; poczta, która nie przechodzi, z nieznanych adresów jest zwykle podrobiona. Gdy wszyscy twoi nadawcy przechodzą, politykę można zmienić z <code>p=none</code> na <code>quarantine</code> lub <code>reject</code>. Raporty są przechowywane przez 180 dni.</p>
+<p><b>Catch-all</b> (poczta dla nieznanych adresów) jest domyślnie wyłączony: nieznane adresy są odrzucane podczas dialogu SMTP, co trzyma z dala spam i backscatter. Włączaj go tylko wtedy, gdy naprawdę jest potrzebny.</p>
+<h2>Skrzynki</h2>
+<ul>
+  <li>Skrzynka ma rozmiar (limit miejsca) w ramach pakietu; zajętość jest aktualizowana co dziesięć minut. Gdy skrzynka osiągnie 80 % i ponownie 95 % swojego limitu, serwer umieszcza ostrzeżenie w jej Inbox (w języku skrzynki); gdy zajętość spadnie poniżej 70 %, skrzynka może zostać ostrzeżona ponownie.</li>
+  <li>Jej <b>hasło</b> służy tylko do webmaila i własnych stron użytkownika, zawsze z logowaniem dwuskładnikowym.</li>
+  <li>Programy pocztowe używają <b>haseł aplikacji</b>, które użytkownik poczty tworzy na <code>/mail</code> — jedno na program lub urządzenie. Zgubiony telefon oznacza unieważnienie jednego hasła aplikacji, a nie zmianę wszystkiego.</li>
+  <li><b>Wyłączona</b> skrzynka nadal odbiera pocztę, ale nikt nie może się zalogować. Personel może też <b>zablokować wysyłanie</b> (na przykład po nadużyciu) i ustawić inne limity wysyłania dla jednej skrzynki.</li>
+  <li>Usunięcie skrzynki przenosi jej pocztę do folderu kosza na serwerze na 7 dni, potem poczta znika.</li>
+</ul>
+<h2>Aliasy i przekierowania</h2>
+<ul>
+  <li><b>Alias</b> (np. <code>info@</code>) odbiera pocztę i doręcza ją na jeden lub więcej adresów: skrzynki tego samego klienta lub adresy zewnętrzne.</li>
+  <li><b>Przekierowanie</b> to alias na adresie skrzynki. Aby zachować kopię w skrzynce, podaj samą skrzynkę wśród miejsc docelowych.</li>
+  <li><b>Wysyłaj jako</b>: skrzynki, do których alias doręcza, mogą też wysyłać z aliasem jako nadawcą.</li>
+</ul>
+<h2>Ochrona</h2>
+<ul>
+  <li>Nikt nie może bez zalogowania używać serwera do przekazywania poczty do innych serwerów (brak open relay).</li>
+  <li>Poczta z zewnątrz, która podaje się za pochodzącą z domeny tego serwera, jest odrzucana; zalogowani użytkownicy mogą wysyłać tylko ze swoich własnych adresów i swoich aliasów „wysyłaj jako”.</li>
+  <li>Programy pocztowe muszą używać TLS; logowanie otwartym tekstem jest odrzucane.</li>
+  <li>Programy, skrypty, skróty, obrazy dysków i pliki Office z makrami są odrzucane jako załączniki (także wewnątrz archiwów), chyba że administrator na nie zezwolił; takie pliki udostępniaj przez link.</li>
+  <li>Wiadomości ze znanymi linkami phishingowymi lub takie, których nadawca w nazwie podszywa się pod kogoś z twojej domeny, dostają <code>[Phishing?]</code> przed tematem.</li>
+  <li>Skrzynka, która wysyła spam (3 wiadomości odrzucone jako spam lub wirus w ciągu godziny), nie może już wysyłać, dopóki dostawca znów na to nie pozwoli; dostaje powiadomienie w swojej Inbox. Zmień jej hasło: zwykle zna je ktoś inny.</li>
+</ul>
+<h2>Ustawienia spamu</h2>
+<p>Rspamd nadaje każdej przychodzącej wiadomości punktację; powyżej 15 wiadomość jest odrzucana, a poczta powyżej wybranego poziomu trafia do folderu Junk skrzynki. Poziomy to <b>Ściśle</b> (punktacja 4 i więcej), <b>Normalnie</b> (6, domyślnie), <b>Łagodnie</b> (10) i <b>Nigdy</b> (spam zostaje w Inbox, oznaczony nagłówkiem <code>X-Spam</code>). Personel ustawia poziom klienta na stronie klienta; obowiązuje on dla wszystkich skrzynek klienta, które nie mają własnego. Na stronie skrzynki (personel i klient) oraz na stronie <i>Automatyczna odpowiedź i filtry</i> użytkownika poczty skrzynka dostaje własny poziom i listy <b>dozwolonych nadawców</b> (nigdy Junk) i <b>zablokowanych nadawców</b> (zawsze Junk): adresy lub całe domeny, do 200 na każdej liście, porównywane z adresem From. Reguły działają przed własnymi filtrami użytkownika i automatyczną odpowiedzią, więc spam nigdy nie dostaje automatycznej odpowiedzi. Pomocnik poczty zapisuje je jako skrypt Sieve w katalogu domowym poczty każdej skrzynki (<code>.emailzit/spam.sieve</code>), gdy się zmieniają, i co 10 minut sprawdza je wszystkie.</p>
+<h2>Przenoszenie poczty z innego serwera</h2>
+<p>Na stronie skrzynki <b>Przenieś pocztę z innego serwera</b> kopiuje każdy folder starej skrzynki przez IMAP (port 993 lub 143 ze STARTTLS) wraz z flagami przeczytania i datami; Sent, Trash, Junk i Drafts trafiają do odpowiednich folderów tutaj. Wiadomości, które już tu są, są pomijane, więc uruchom to raz przed i raz po przeniesieniu rekordu MX, aby zabrać to, co przyszło później. Stare hasło jest przechowywane w postaci zaszyfrowanej tylko do końca importu. Na serwerach hostingowych importy przychodzą tylko z serwerów w internecie; serwer firmowy może zezwolić na sieci prywatne w Ustawienia → Serwer poczty.</p>

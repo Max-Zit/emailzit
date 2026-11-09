@@ -1,0 +1,33 @@
+<h1>Domény, schránky a aliasy</h1>
+<h2>Domény</h2>
+<p>Na sdíleném serveru přijímá nová doména zákazníka poštu teprve poté, co je <b>ověřena</b>: stránka domény zobrazí záznam TXT (<code>_emailzit.example.com</code>), který je třeba vložit u poskytovatele DNS domény; poté <b>Zkontrolovat nyní</b>. Personál může doménu označit jako ověřenou ručně, když ví, že patří zákazníkovi; na dedikovaném serveru domény ověření nepotřebují (Nastavení → Poštovní server).</p>
+<p>Stránka domény uvádí <b>záznamy DNS</b>, které doména potřebuje: MX (pošta na tento server), SPF, DMARC a záznamy, podle kterých poštovní programy najdou svá nastavení (autoconfig, autodiscover, SRV). Povinné záznamy jsou označeny.</p>
+<p><b>Hlášení DMARC</b>: navržený záznam DMARC posílá denní hlášení příjemců na <code>dmarc-reports@&lt;domain&gt;</code>. EmailZit si tuto adresu bere sám (žádná schránka ani alias ji nemůže použít), čte hlášení a na stránce domény zobrazuje za posledních 30 dní, které servery odeslaly poštu s doménou jako odesílatelem a kolik z ní prošlo kontrolou DMARC. Vaše vlastní servery by měly projít; pošta z neznámých adres, která neprojde, je obvykle podvržená. Jakmile všichni vaši odesílatelé projdou, může zásada přejít z <code>p=none</code> na <code>quarantine</code> nebo <code>reject</code>. Hlášení se uchovávají 180 dní.</p>
+<p><b>Catch-all</b> (pošta pro neznámé adresy) je ve výchozím stavu vypnutý: neznámé adresy se odmítají již během dialogu SMTP, což drží stranou spam a backscatter. Zapněte ho, jen když je to opravdu nutné.</p>
+<h2>Schránky</h2>
+<ul>
+  <li>Schránka má velikost (kvótu) v rámci balíčku; využití se aktualizuje každých deset minut. Když schránka dosáhne 80 % a znovu 95 % své kvóty, server vloží do její doručené pošty upozornění (v jazyce schránky); poté, co klesne pod 70 %, může být upozorněna znovu.</li>
+  <li>Její <b>heslo</b> slouží jen pro webmail a vlastní stránky uživatele, vždy s dvoufázovým přihlášením.</li>
+  <li>Poštovní programy používají <b>hesla aplikací</b>, která uživatel pošty vytváří na <code>/mail</code> — jedno pro každý program nebo zařízení. Ztracený telefon znamená zrušit jedno heslo aplikace, ne měnit všechno.</li>
+  <li><b>Vypnutá</b> schránka dál přijímá poštu, ale nikdo se do ní nemůže přihlásit. Personál může také <b>zablokovat odesílání</b> (například po zneužití) a nastavit pro jednu schránku jiné limity odesílání.</li>
+  <li>Smazání schránky přesune její poštu na 7 dní do složky koše na serveru, poté je pryč.</li>
+</ul>
+<h2>Aliasy a přeposílání</h2>
+<ul>
+  <li><b>Alias</b> (např. <code>info@</code>) přijímá poštu a doručuje ji na jednu nebo více adres: schránky téhož zákazníka nebo vnější adresy.</li>
+  <li><b>Přeposílání</b> je alias na adrese schránky. Chcete-li ponechat kopii ve schránce, uveďte mezi cíli i samotnou schránku.</li>
+  <li><b>Odesílat jako</b>: schránky, do kterých alias doručuje, smějí také odesílat s aliasem jako odesílatelem.</li>
+</ul>
+<h2>Ochrana</h2>
+<ul>
+  <li>Nikdo nemůže server bez přihlášení použít k předávání pošty na jiné servery (žádný otevřený relay).</li>
+  <li>Pošta zvenčí, která tvrdí, že pochází z domény tohoto serveru, se odmítá; přihlášení uživatelé mohou odesílat jen ze svých vlastních adres a svých aliasů pro odesílání jako.</li>
+  <li>Poštovní programy musí používat TLS; přihlášení v prostém textu se odmítá.</li>
+  <li>Programy, skripty, zástupci, obrazy disků a soubory Office s makry se jako přílohy odmítají (i uvnitř archivů), pokud je administrátor nepovolil; takové soubory sdílejte odkazem.</li>
+  <li>Zprávy se známými phishingovými odkazy nebo zprávy, jejichž odesílatel se ve jménu vydává za někoho z vaší domény, dostanou před předmět <code>[Phishing?]</code>.</li>
+  <li>Schránka, která odesílá spam (3 zprávy odmítnuté jako spam nebo virus během hodiny), už nemůže odesílat, dokud to poskytovatel znovu nepovolí; dostane upozornění do doručené pošty. Změňte její heslo: obvykle ho zná někdo jiný.</li>
+</ul>
+<h2>Nastavení spamu</h2>
+<p>Rspamd přidělí každé příchozí zprávě skóre; nad 15 se zpráva odmítne a pošta nad zvolenou úrovní jde do složky Junk schránky. Úrovně jsou <b>Přísně</b> (skóre 4 a více), <b>Normálně</b> (6, výchozí), <b>Mírně</b> (10) a <b>Nikdy</b> (spam zůstane v doručené poště, označený hlavičkou <code>X-Spam</code>). Personál nastavuje úroveň zákazníka na stránce zákazníka; platí pro všechny schránky zákazníka, které nemají vlastní. Na stránce schránky (personál i zákazník) a na stránce <i>Automatická odpověď a filtry</i> uživatele pošty dostane schránka vlastní úroveň a seznamy <b>povolených odesílatelů</b> (nikdy Junk) a <b>blokovaných odesílatelů</b> (vždy Junk): adresy nebo celé domény, každého až 200, porovnávané s adresou From. Pravidla se uplatní před vlastními filtry uživatele a automatickou odpovědí, takže spam nikdy nedostane automatickou odpověď. Poštovní pomocník je při každé změně zapíše jako skript Sieve do poštovního adresáře každé schránky (<code>.emailzit/spam.sieve</code>) a každých 10 minut je všechny kontroluje.</p>
+<h2>Přenesení pošty z jiného serveru</h2>
+<p>Na stránce schránky zkopíruje <b>Přenést poštu z jiného serveru</b> každou složku staré schránky přes IMAP (port 993, nebo 143 se STARTTLS) včetně příznaků přečtení a dat; Odeslané, Koš, Junk a Koncepty skončí v odpovídajících složkách zde. Zprávy, které tu již jsou, se přeskočí, takže to spusťte jednou před a jednou po přesunutí záznamu MX, abyste zachytili, co přišlo později. Staré heslo se uchovává šifrované jen do konce importu. Na hostingových serverech přicházejí importy jen ze serverů na internetu; firemní server může povolit privátní sítě v Nastavení → Poštovní server.</p>

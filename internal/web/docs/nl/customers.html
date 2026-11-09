@@ -1,0 +1,21 @@
+<h1>Klanten en pakketten</h1>
+<h2>Pakketten</h2>
+<p>Een pakket bevat de limieten die een klant krijgt: hoeveel domeinen, mailboxen en aliassen, hoeveel opslag alle mailboxen samen mogen gebruiken, de grootte van een nieuwe mailbox en van de grootste, en de <b>verzendlimieten</b>. Factureringssystemen verwijzen naar een pakket met zijn korte naam (bijvoorbeeld <code>business-10</code>).</p>
+<ul>
+  <li><b>Berichten per uur / per dag (per mailbox)</b> en <b>per uur voor de hele klant</b> beschermen de reputatie van het adres van de server: een mailbox waarvan het wachtwoord is gestolen, kan geen duizenden spamberichten versturen. Berichten boven de limiet wachten in de wachtrij.</li>
+  <li><b>Ontvangers per bericht</b> voorkomt dat één bericht naar duizenden adressen gaat.</li>
+  <li>Een klant overzetten naar een kleiner pakket verwijdert niets; boven de nieuwe limieten kan niets nieuws worden toegevoegd.</li>
+</ul>
+<h2>Klanten</h2>
+<p>Een klant bezit domeinen en mailboxen. De mail van elke klant wordt opgeslagen onder een <b>eigen systeemgebruiker</b>, zodat zelfs een fout in de mailsoftware niet kan toelaten dat de ene klant de mail van een andere klant leest. Een klant kan nooit mail naar de mailboxen van een andere klant leiden, versturen als diens adressen of diens domeinen zien.</p>
+<ul>
+  <li><b>Paneellogins</b>: de klant meldt zich aan bij het klantpaneel op hetzelfde adres als het beheerpaneel. Elke login moet bij de eerste aanmelding aanmelden in twee stappen instellen.</li>
+  <li><b>Facturerings-ID</b>: het nummer van de klant in uw factureringssysteem; de REST-API vindt klanten daarmee.</li>
+  <li><b>Uitgaand adres</b> (wanneer de server extra uitgaande adressen heeft, zie Personeel, instellingen en updates): de mail van de klant vertrekt vanaf een eigen IP-adres en hostnaam, zodat de verzendreputatie van de klant alleen van hemzelf is. Publiceer daarna het SPF-record dat op elk domein van de klant wordt getoond.</li>
+</ul>
+<h2>Opschorten en beëindigen</h2>
+<ul>
+  <li><b>Opgeschort</b>: mail voor de domeinen van de klant wordt nog steeds ontvangen (er gaat niets verloren), maar niemand van de klant kan zich aanmelden, mailprogramma's gebruiken of verzenden. Sessies eindigen meteen.</li>
+  <li><b>Beëindigd</b>: mail voor de domeinen van de klant wordt geweigerd. De gegevens blijven bewaard tot ze worden verwijderd.</li>
+  <li><b>Activeren</b> brengt een opgeschorte of beëindigde klant terug.</li>
+</ul>

@@ -1,0 +1,16 @@
+<h1>Posta programlarını ayarlama</h1>
+<h2>Adım 1: bir uygulama parolası</h2>
+<ol>
+  <li><code>https://&lt;server&gt;:8444/mail</code> adresini açın ve adresiniz ve parolanızla oturum açın.</li>
+  <li>İlk seferde iki adımlı girişi ayarlayın: QR kodunu bir kimlik doğrulama uygulamasıyla tarayın ve kurtarma kodlarını saklayın.</li>
+  <li><b>Uygulama parolaları</b> altında programa veya cihaza bir ad verin (örneğin "Dizüstü bilgisayardaki Outlook") ve parolayı oluşturun. Parolayı hemen programa girin: yalnızca bir kez gösterilir.</li>
+</ol>
+<h2>Adım 2: program</h2>
+<p>Çoğu program (Outlook, Thunderbird, iOS ve Android posta uygulamaları), yalnızca adresi ve uygulama parolasını girdiğinizde ayarları kendiliğinden bulur. Aksi halde şunları kullanın:</p>
+<table>
+  <tr><th>Kullanıcı adı</th><td>tam e-posta adresi</td></tr>
+  <tr><th>Gelen (IMAP)</th><td>sunucunun ana bilgisayar adı, bağlantı noktası 993, SSL/TLS</td></tr>
+  <tr><th>Gelen (POP3)</th><td>sunucunun ana bilgisayar adı, bağlantı noktası 995, SSL/TLS</td></tr>
+  <tr><th>Giden (SMTP)</th><td>sunucunun ana bilgisayar adı, bağlantı noktası 465 SSL/TLS veya 587 STARTTLS, oturum açma gerekli</td></tr>
+</table>
+<p>Panellerdeki posta kutusu sayfası bu değerleri gerçek ana bilgisayar adıyla gösterir.</p>

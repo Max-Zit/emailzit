@@ -1,0 +1,30 @@
+<h1>Primeros pasos</h1>
+<p>EmailZit es un alojamiento de correo para muchos dominios y clientes en su propio servidor: un <b>panel de administración</b> para el personal del servidor, un <b>panel de cliente</b> donde cada cliente gestiona sus propios dominios y buzones, y <b>páginas para los usuarios de correo</b> (webmail, contraseña propia, contraseñas de aplicación, respuesta automática, filtros).</p>
+<h2>Cómo está construido</h2>
+<ul>
+  <li><b>Servidor EmailZit</b>: los paneles y la API REST, ejecutándose como un usuario sin privilegios.</li>
+  <li><b>Postfix</b> recibe y envía el correo (SMTP en el puerto 25, envío para programas de correo en 465 y 587, siempre cifrado).</li>
+  <li><b>Dovecot</b> almacena el correo y ofrece IMAP (993) y POP3 (995).</li>
+  <li><b>PostgreSQL</b> guarda todo lo que cambian los paneles; Postfix y Dovecot lo leen directamente, de modo que un buzón nuevo funciona al instante sin reiniciar nada.</li>
+  <li>Un pequeño <b>ayudante root</b> hace las pocas cosas que requieren root (directorios de correo, certificados, actualizaciones); cada solicitud se comprueba y se escribe en el registro de auditoría.</li>
+</ul>
+<h2>Instalación</h2>
+<ul>
+  <li><b>Appliance</b>: una máquina virtual lista (OVA para VMware ESXi y Workstation, qcow2 para Proxmox VE y KVM, VHDX para Hyper-V generación 1) o la ISO de instalación para una VM nueva o un servidor físico (borra el primer disco). Asígnele al menos 2 CPU, 2 GB de memoria y un disco para el correo (el sistema de archivos raíz crece por sí solo cuando se amplía el disco virtual). Tras el primer arranque, la pantalla muestra la dirección del panel y el token de configuración; al iniciar sesión en la pantalla como <code>ezadmin</code> (primera contraseña <code>emailzit</code>, debe cambiarse) se abre el menú de configuración: red (use una dirección fija para un servidor de correo), nombre del servidor, zona horaria, dirección del panel y token de configuración, contraseña de una cuenta del personal, estado de los servicios, reinicio.</li>
+  <li><b>Paquete de Debian 13</b>: <code>sudo sh install.sh</code> desde la versión publicada, o el <code>.deb</code> con <code>apt install</code>: instala Postfix, Dovecot, Rspamd, Valkey y PostgreSQL desde Debian y lo configura todo.</li>
+  <li>Puertos: 25 (correo de otros servidores), 465 y 587 (envío desde programas de correo), 993 (IMAP), 995 (POP3), 8444 (paneles y webmail), y 443 y 80 para la configuración automática de los programas de correo (autoconfig para Thunderbird, Autodiscover para Outlook, la política MTA-STS; todo lo demás allí lleva al webmail). EmailZit usa 443 y 80 solo cuando no hay ningún servidor web instalado y HostZit no está vinculado; en ese caso responde el servidor web de HostZit para estos nombres (<code>--public-web off</code> lo desactiva). El servidor necesita un nombre de DNS inverso (PTR) que coincida con su nombre de host de correo, y el puerto 25 saliente debe estar abierto.</li>
+</ul>
+<h2>Quién puede hacer qué</h2>
+<ul>
+  <li>Los <b>administradores</b> gestionan el servidor, las cuentas del personal, los planes y todos los clientes. Los <b>operadores</b> gestionan clientes, dominios y buzones; los <b>observadores</b> solo miran.</li>
+  <li>Los <b>clientes</b> ven y cambian solo sus propios dominios, buzones, alias y reenvíos, dentro de los límites de su plan.</li>
+  <li>Los <b>usuarios de correo</b> inician sesión con su dirección, su contraseña y siempre un segundo factor (una aplicación de autenticación). Los programas de correo (Outlook, Thunderbird, teléfonos) nunca usan esta contraseña: cada programa recibe su propia <b>contraseña de aplicación</b>.</li>
+</ul>
+<h2>Primeras tareas</h2>
+<ol>
+  <li>Configure el nombre de host del servidor en <b>Configuración → Servidor de correo</b> (el nombre al que se conectan los programas de correo, p. ej. <code>mail.example.com</code>).</li>
+  <li>Cree un <b>plan</b> con los límites que vende (dominios, buzones, almacenamiento, envíos por hora).</li>
+  <li>Cree un <b>cliente</b> con ese plan y dele un acceso al panel.</li>
+  <li>Añada el <b>dominio</b> del cliente, ponga los registros DNS que se muestran en la página del dominio en el proveedor DNS del dominio y verifique el dominio.</li>
+  <li>Cree <b>buzones</b>. El usuario de correo inicia sesión en <code>/mail</code>, configura el segundo factor y crea contraseñas de aplicación para sus programas.</li>
+</ol>

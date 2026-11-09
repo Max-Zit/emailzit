@@ -1,0 +1,30 @@
+<h1>Primi passi</h1>
+<p>EmailZit è un hosting di posta per molti domini e clienti sul vostro server: un <b>pannello di amministrazione</b> per il personale del server, un <b>pannello clienti</b> in cui ogni cliente gestisce i propri domini e le proprie caselle, e le <b>pagine degli utenti di posta</b> (webmail, password personale, password per app, risposta automatica, filtri).</p>
+<h2>Come è costruito</h2>
+<ul>
+  <li><b>Server EmailZit</b> — i pannelli e la REST API, eseguiti come utente senza privilegi.</li>
+  <li><b>Postfix</b> riceve e invia la posta (SMTP sulla porta 25, invio dai programmi di posta su 465 e 587, sempre cifrato).</li>
+  <li><b>Dovecot</b> conserva la posta e fornisce IMAP (993) e POP3 (995).</li>
+  <li><b>PostgreSQL</b> contiene tutto ciò che i pannelli modificano; Postfix e Dovecot lo leggono direttamente, quindi una nuova casella funziona subito senza riavviare nulla.</li>
+  <li>Un piccolo <b>helper root</b> svolge le poche operazioni che richiedono root (directory di posta, certificati, aggiornamenti); ogni richiesta viene controllata e scritta nel registro di controllo.</li>
+</ul>
+<h2>Installazione</h2>
+<ul>
+  <li><b>Appliance</b> — una macchina virtuale pronta (OVA per VMware ESXi e Workstation, qcow2 per Proxmox VE e KVM, VHDX per Hyper-V generazione 1) oppure l'ISO di installazione per una nuova VM o un server fisico (cancella il primo disco). Assegnatele almeno 2 CPU, 2 GB di memoria e un disco per la posta (il file system root cresce da solo quando il disco virtuale viene ingrandito). Dopo il primo avvio lo schermo mostra l'indirizzo del pannello e il token di configurazione; accedendo sullo schermo come <code>ezadmin</code> (prima password <code>emailzit</code>, va cambiata) si apre il menu di configurazione: rete (per un server di posta usate un indirizzo fisso), nome del server, fuso orario, indirizzo del pannello e token di configurazione, password di un account del personale, stato dei servizi, riavvio.</li>
+  <li><b>Pacchetto Debian 13</b> — <code>sudo sh install.sh</code> dalla release, oppure il <code>.deb</code> con <code>apt install</code>: installa Postfix, Dovecot, Rspamd, Valkey e PostgreSQL da Debian e configura tutto.</li>
+  <li>Porte: 25 (posta da altri server), 465 e 587 (invio dai programmi di posta), 993 (IMAP), 995 (POP3), 8444 (pannelli e webmail), e 443 e 80 per la configurazione automatica dei programmi di posta (autoconfig per Thunderbird, Autodiscover per Outlook, la policy MTA-STS; tutto il resto lì porta alla webmail). EmailZit usa 443 e 80 solo quando non è installato alcun server web e HostZit non è collegato; altrimenti per questi nomi risponde il server web di HostZit (<code>--public-web off</code> lo disattiva). Il server ha bisogno di un nome DNS inverso (PTR) che corrisponda al suo nome host di posta, e la porta 25 in uscita deve essere aperta.</li>
+</ul>
+<h2>Chi può fare cosa</h2>
+<ul>
+  <li>Gli <b>Amministratori</b> gestiscono il server, gli account del personale, i pacchetti e tutti i clienti. Gli <b>Operatori</b> gestiscono clienti, domini e caselle; gli <b>osservatori</b> possono solo guardare.</li>
+  <li>I <b>Clienti</b> vedono e modificano solo i propri domini, caselle, alias e inoltri, entro i limiti del loro pacchetto.</li>
+  <li>Gli <b>Utenti di posta</b> accedono con il loro indirizzo, la loro password e sempre un secondo fattore (un'app di autenticazione). I programmi di posta (Outlook, Thunderbird, telefoni) non usano mai questa password: ogni programma riceve la propria <b>password per app</b>.</li>
+</ul>
+<h2>Primi passi</h2>
+<ol>
+  <li>Impostate il nome host del server in <b>Impostazioni → Server di posta</b> (il nome a cui si collegano i programmi di posta, ad es. <code>mail.example.com</code>).</li>
+  <li>Create un <b>pacchetto</b> con i limiti che vendete (domini, caselle, spazio, invio all'ora).</li>
+  <li>Create un <b>cliente</b> con quel pacchetto e dategli un accesso al pannello.</li>
+  <li>Aggiungete il <b>dominio</b> del cliente, inserite i record DNS mostrati nella pagina del dominio presso il provider DNS del dominio e verificate il dominio.</li>
+  <li>Create le <b>caselle</b>. L'utente di posta accede su <code>/mail</code>, configura il secondo fattore e crea le password per app per i suoi programmi.</li>
+</ol>

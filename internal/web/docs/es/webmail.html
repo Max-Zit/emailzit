@@ -1,0 +1,34 @@
+<h1>Webmail y las páginas de los usuarios de correo</h1>
+<p>Cada usuario de correo tiene sus propias páginas en <code>https://&lt;mail host&gt;:8444/mail</code> (en un servidor independiente, <code>https://&lt;mail host&gt;/</code> también lleva allí). Están separadas de los paneles: un usuario de correo nunca ve otros buzones, la configuración del cliente ni el servidor.</p>
+<h2>Inicio de sesión</h2>
+<ul>
+  <li>La dirección y la contraseña del buzón, y siempre un segundo factor: en el primer inicio de sesión el usuario escanea un código QR con una aplicación de autenticación (Google Authenticator, Microsoft Authenticator, Aegis …) y guarda los códigos de recuperación.</li>
+  <li>Un usuario que ha perdido el teléfono y los códigos de recuperación se dirige al proveedor: el personal y el cliente pueden <b>restablecer el inicio de sesión en dos pasos</b> en la página del buzón; el usuario lo configura de nuevo en el siguiente inicio de sesión.</li>
+  <li>El idioma de las páginas sigue la elección del usuario (arriba a la derecha) y se recuerda.</li>
+</ul>
+<h2>Webmail</h2>
+<ul>
+  <li>Carpetas a la izquierda (en un teléfono, arriba): Bandeja de entrada, Borradores, Enviados, Archivo, Junk, Papelera y las carpetas propias del usuario, con el número de mensajes no leídos.</li>
+  <li>La lista muestra remitente, asunto y fecha; los mensajes no leídos aparecen en negrita. Seleccione mensajes para marcarlos como leídos o no leídos, moverlos a Junk (para alejar a un remitente para siempre, añádalo a los remitentes bloqueados) o eliminarlos (a la Papelera; eliminar en la Papelera los borra). <b>Mover</b> pone los mensajes seleccionados (o el abierto) en otra carpeta.</li>
+  <li><b>Buscar</b> encuentra las palabras en cualquier parte de los mensajes de la carpeta abierta (cabeceras y texto).</li>
+  <li>Los mensajes escritos en HTML se muestran en un marco protegido: nunca se cargan scripts, formularios ni imágenes remotas, de modo que abrir un mensaje no puede revelar nada al remitente. Los adjuntos se descargan, nunca se abren en el navegador.</li>
+  <li><b>Escribir</b>, <b>Responder</b>, <b>Responder a todos</b> y <b>Reenviar</b> envían a través del servidor como lo hace un programa de correo (con los límites de envío y la firma DKIM del buzón); una copia va a Enviados. Se pueden añadir adjuntos hasta el tamaño de mensaje del servidor. Al escribir, los campos de dirección sugieren los contactos; la firma ya está debajo del texto.</li>
+</ul>
+<h2>Contactos y firma</h2>
+<ul>
+  <li><b>Contactos</b>: la libreta de direcciones del webmail. Las direcciones a las que se envía correo desde el webmail se añaden solas (con el nombre escrito en el mensaje); el usuario puede añadir, renombrar (guardar la misma dirección con un nombre nuevo) y quitar entradas.</li>
+  <li><b>Firma</b>: un texto que el webmail pone debajo de cada mensaje nuevo, respuesta y reenvío. Los programas de correo tienen su propio ajuste de firma.</li>
+  <li>Cuando el buzón alcanza el 80 % y el 95 % de su cuota, llega a la bandeja de entrada un aviso del servidor.</li>
+</ul>
+<h2>Mi buzón</h2>
+<ul>
+  <li><b>Uso</b>: cuánto de la cuota está ocupado.</li>
+  <li><b>Contraseña</b>: aquí el usuario cambia la contraseña web (al menos 12 caracteres).</li>
+  <li><b>Contraseñas de aplicación</b>: una por programa o dispositivo, se muestra una sola vez al crearla; perder un dispositivo significa eliminar su contraseña de aplicación. La página también muestra la configuración para los programas de correo y ofrece un perfil de Apple (<code>.mobileconfig</code>) para iPhone, iPad y Mac.</li>
+</ul>
+<h2>Respuesta automática y filtros</h2>
+<ul>
+  <li><b>Respuesta automática</b>: un texto (y un asunto opcional) que se envía a los remitentes mientras está activada, opcionalmente solo entre dos fechas; el mismo remitente la vuelve a recibir solo después del número de días elegido. Las listas de correo, los mensajes automáticos y el spam nunca reciben una respuesta automática.</li>
+  <li>Los <b>Filtros</b> ordenan el correo entrante: cuando el remitente, los destinatarios o el asunto contienen un texto, mueven el mensaje a una carpeta, lo marcan como leído o lo eliminan. Decide el primer filtro que coincide.</li>
+  <li><b>Spam</b>: cuánto spam va a Junk (o el nivel de toda la cuenta), y los remitentes permitidos (nunca Junk) y bloqueados (siempre Junk) propios del usuario.</li>
+</ul>

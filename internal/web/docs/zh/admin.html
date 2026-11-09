@@ -1,0 +1,50 @@
+<h1>员工、设置和更新</h1>
+<h2>员工账户</h2>
+<ul>
+  <li><b>管理员</b>可以执行所有操作，包括管理员工账户和服务器设置。</li>
+  <li><b>操作员</b>管理套餐、客户、域名和邮箱。</li>
+  <li><b>查看者</b>只能查看。</li>
+</ul>
+<p>每个账户都使用密码和身份验证器应用登录。<b>审计日志</b>记录每一项更改；每条记录都通过哈希与上一条记录相链接，因此之后对日志的任何修改都会被发现。</p>
+<h2>邮件服务器设置</h2>
+<ul>
+  <li><b>主机名</b>：服务器的完整名称（例如 <code>mail.example.com</code>）。它必须解析到服务器的公网地址，而该地址也应反向解析回这个名称（在您的托管服务商处设置 PTR 记录）；否则其他服务器会将您的邮件视为垃圾邮件。<b>主机名和 PTR 记录</b>下的<b>检查</b>会针对服务器用于发信的每个地址（IPv4 和 IPv6）显示主机名是否指向该地址，以及其 PTR 记录是否指回主机名。</li>
+  <li><b>仅通过 IPv4 向其他服务器发送邮件</b>：适用于具有 IPv6、但服务商无法为 IPv6 地址设置 PTR 记录的服务器（Gmail 和 Outlook 会拒收此类邮件）。通过 IPv6 接收邮件仍然正常工作。</li>
+  <li><b>最大邮件</b>：收发邮件的最大大小。</li>
+  <li><b>病毒扫描</b>：ClamAV 检查每封邮件，被感染的邮件会被拒收（"Virus found"）。开启后会自动安装 ClamAV（约占 1 GB 内存）；病毒签名下载完成后（几分钟后）开始扫描。关闭后 ClamAV 会再次停止。启用 <b>Sanesecurity 的免费签名</b>后，ClamAV 还能识别当前的垃圾邮件、网络钓鱼、诈骗和含恶意链接的邮件以及危险的宏：邮件助手每六小时从 Sanesecurity 的镜像下载这些签名，并且只有在文件的 GPG 签名通过 Sanesecurity 密钥验证后才会安装。其垃圾邮件签名只会给垃圾邮件分数加 7 分（邮件进入 Junk）；其他所有签名都按病毒处理。这些签名可免费使用；Sanesecurity 请求企业进行捐赠。</li>
+  <li><b>危险附件</b>（默认开启）：程序、脚本、快捷方式、磁盘映像和带宏的 Office 文件（<code>.exe</code>、<code>.js</code>、<code>.vbs</code>、<code>.bat</code>、<code>.lnk</code>、<code>.iso</code>、<code>.docm</code>、<code>.xlsm</code> 等）在收发两个方向上都会被拒绝，ZIP 和其他压缩包内的也一样；系统会告知发件人通过链接共享此类文件。</li>
+  <li><b>管理员通知</b>：最多五个地址。它们会在周一上午收到<b>每周报告</b>（已接收、已发送、已延迟、已退回和被拒收的邮件，发送最多的邮箱，自动封锁，服务器地址在黑名单中的状态）；当服务器的某个地址被列入或移出 DNS 黑名单时（每六小时检查一次）会收到通知；当某个邮箱因发送垃圾邮件而被封锁时也会收到通知。通知来自主机名的 <code>postmaster@</code>。</li>
+  <li><b>出站地址列表</b>：服务器用于外发邮件的额外 IP 地址，每行一个，并附带各自的主机名（<code>203.0.113.5 mail2.example.com</code>）。在客户页面上为客户分配其中一个（<b>出站地址</b>）：此后该客户的邮件从该地址发出，并以该主机名进行问候，因此一个发送垃圾邮件的客户不会损害其他客户的信誉。该地址必须已在服务器上配置（否则邮件从主地址发出），其主机名必须指向该地址，其 PTR 记录必须指明该主机名。此后为客户每个域名建议的 SPF 记录会包含该地址（<code>v=spf1 mx ip4:203.0.113.5 ~all</code>）；如果区域由 HostZit 托管，则会自动更新。不与智能主机同时使用。</li>
+  <li><b>智能主机</b>：仅在服务商封锁端口 25 或要求所有邮件都经过其自己的服务器时使用——此后每封外发邮件都发往该服务器（默认使用端口 587 和 STARTTLS，465 则从一开始就使用 TLS）。设置用户名后，登录始终通过 TLS 进行；密码在面板中密封存储，并以仅 root 可读的文件形式提供给 Postfix。</li>
+  <li><b>域名验证</b>和<b>专用服务器</b>：参见“域名、邮箱和别名”。</li>
+</ul>
+<h2>服务器的构成</h2>
+<p>面板以无特权用户 <code>emailzit</code> 身份运行。一个小型<b>邮件助手</b>以 root 身份运行，只执行一组固定的任务：根据服务器设置写入 Postfix 和 Dovecot 配置（使用前会进行检查，出现任何错误都会恢复旧文件）、为新客户创建邮件目录、将已删除邮箱的邮件移到回收站。Postfix 和 Dovecot 通过只读视图直接从 PostgreSQL 读取域名、邮箱和应用密码，因此客户输入的内容永远不会进入配置文件。</p>
+<h2>网络与登录</h2>
+<p>面板监听端口 8444（HostZit 使用 8443）。允许的网络、会话时长以及登录失败后对地址的封锁都在“设置”中。如果您把自己锁在了外面：在服务器上以用户 <code>emailzit</code> 身份运行 <code>emailzit-server --reset-allowlist</code>、<code>--unblock-ip ADDRESS</code> 或 <code>--reset-password USERNAME</code>（新密码从标准输入读取，下次登录时必须更改）；虚拟设备的设置菜单也可以完成同样的操作。</p>
+<p><b>设置 → 更新与服务器</b>还会显示操作系统信息：待安装的 Debian 更新（每天自动检查两次）、自动安全更新是否开启，以及安装所有更新和重启整个服务器的按钮。在虚拟设备上，还可以在此开启或关闭 SSH 服务器，并将其移到其他端口（SSH 服务器不接受的端口不会带来任何更改）；如果开启了四眼审批，这些操作和重启也需要经过审批。</p>
+<h2>邮件登录和发送的保护</h2>
+<ul>
+  <li><b>密码猜测</b>：邮件程序每次登录（IMAP、POP3 和 SMTP 提交）之前，Dovecot 都会询问 EmailZit。15 分钟内登录失败 10 次的地址会被拒绝，并在防火墙中封锁一小时（端口 110、143、465、587、993、995、4190 和 8444；端口 25 对其他邮件服务器保持开放）。从许多地址受到攻击的账户会被放慢速度，但绝不会被锁定，因此攻击者无法把用户锁在外面。</li>
+  <li>每个邮箱和每个客户的<b>发送限制</b>来自套餐。每个收件人都计数。超出限制的邮件会收到临时错误，邮件程序稍后会重试。远远超出限制仍不断尝试的邮箱（一小时内 30 次被拒尝试）会被<b>自动阻止发送</b>；封锁会记录在审计日志中，员工可在邮箱页面上解除。</li>
+  <li><b>垃圾邮件过滤器</b>：Rspamd 检查每封收到的邮件；明显的垃圾邮件会被拒收，可能的垃圾邮件进入 Junk 文件夹（可能性阈值按客户和按邮箱设置，参见<i>域名、邮箱和别名 → 垃圾邮件设置</i>）。已登录用户的邮件使用域名的 <b>DKIM</b> 密钥签名。</li>
+  <li><b>已登录用户发送的垃圾邮件</b>（邮件程序、网页邮箱、网站）在 10 分时即被拒收，并且从不标记或延迟。外发邮件<b>一小时内 3 次</b>因垃圾邮件或病毒被拒的邮箱会被自动阻止发送：几乎总是其他人知道了它的密码。管理员会收到通知（设置 → 邮件服务器 → 管理员通知），邮箱会在收件箱中收到使用其语言的通知，封锁会记录在审计日志中；请设置新密码，并在邮箱页面上解除封锁。</li>
+  <li><b>网络钓鱼</b>：包含 PhishTank 已知钓鱼链接的邮件，以及显示名称中写有此服务器某个域名、但地址却是外部地址的邮件（<code>"Boss acme.com" &lt;someone@freemail.example&gt;</code>），主题前会加上 <code>[Phishing?]</code>，因此警告在任何邮件程序中都能看到。</li>
+  <li><b>端口 25</b>：首先由 postscreen 响应。在问候之前就开始发送数据的服务器（常见的垃圾邮件机器人）或位于 DNS 黑名单中的服务器（仅 Spamhaus ZEN 就足够；SpamCop 和 PSBL 权重较低；DNSWL 会降低分数）会在到达 Postfix 之前被拒之门外。每个地址最多同时 20 个连接、每分钟 60 个连接、每分钟 100 封邮件和 300 个收件人。</li>
+  <li><b>本地 DNS 解析器</b>：服务器上运行 Unbound（端口 5335），Rspamd 向其查询，因为 DNS 黑名单会拒绝通过大型公共解析器发出的查询。如果没有其他 DNS 服务器使用端口 53（HostZit 的 PowerDNS 会使用），Unbound 也会在该端口响应，整个服务器都通过它解析；此时 Postfix 获得经过 DNSSEC 验证的应答，并且只使用收件方 <b>DANE</b>（TLSA）记录中指定的证书通过 TLS 发送。服务器自己的 <code>/etc/resolv.conf</code> 保存在 <code>/var/lib/emailzit/</code> 中，当 Unbound 停止响应或安装了 HostZit 时会自动恢复。</li>
+  <li><b>外发邮件的 MTA-STS</b>：对于以 <i>enforce</i> 模式发布 MTA-STS 策略的域名（Gmail、Outlook 和许多其他域名），邮件只会通过 TLS、使用有效证书发送到策略中列出的服务器。EmailZit 会查询这些策略并在其有效期内保留；如果该域名可以使用 DANE，则改用 DANE。不与智能主机同时使用。</li>
+</ul>
+<h2>四眼审批</h2>
+<p>在<b>设置 → 登录与安全</b>中，管理员可以开启<b>四眼审批</b>（至少需要两位活跃的管理员）。开启后，员工的高风险更改不会立即执行，而是在<b>审批</b>中等待，直到另一位管理员批准：终止或暂停客户、删除域名或邮箱、重置第二因素、创建或更改员工账户及其密码、删除 API 令牌和备份，以及网络、企业登录和安全设置（包括关闭四眼审批）。任何人都不能批准自己的请求（但可以撤回）；获批的更改以批准管理员的身份执行一次，两人的名字都会记录在审计日志中；请求在 24 小时后过期。等待中请求的表单值会加密存储。客户更改自己的域名和邮箱以及 REST API 不受影响。</p>
+<h2>员工企业登录</h2>
+<p>在<b>设置 → 企业登录</b>中，可以让员工通过公司的身份提供方（OpenID Connect：Microsoft Entra ID、Google Workspace、Keycloak、Authentik …）登录：在提供方处将 EmailZit 注册为 Web 应用程序，并使用页面上显示的重定向地址，然后输入颁发者（issuer）、客户端 ID 和客户端密钥。提供方证明电子邮件地址；用户名与该地址完全相同的员工账户必须已经存在（不会创建账户；客户和邮件用户始终使用自己的密码）。网页登录始终需要第二因素：除非开启了<i>信任提供方的第二因素</i>，并且身份令牌表明提供方已要求第二因素（<code>amr</code> 包含 <code>mfa</code>、<code>otp</code>、<code>hwk</code> …），否则 EmailZit 会要求输入自己的验证码。在 EmailZit 中停用员工账户会立即将此人拒之门外，无论提供方如何判断。</p>
+<h2>用于计费的 REST API</h2>
+<p>在<b>设置 → REST API</b>中，管理员为计费系统（例如 MaxZit 门户）和 HostZit 创建令牌。令牌只具有授予它的权限（<code>customers:read</code>、<code>customers:write</code>、<code>usage:read</code>、<code>sso:create</code>），可以限制为特定地址，并且会过期。页面列出了所有调用；客户通过其 UUID 或 <code>ext:&lt;billing ID&gt;</code> 指定；创建类调用接受 <code>Idempotency-Key</code>，因此重复调用不会创建第二个客户。<code>POST /api/v1/customers/{id}/sso</code> 返回一个一次性链接（60 秒），用于让客户登录客户面板。每次调用都会以 <code>api:&lt;token name&gt;</code> 记录在审计日志中。</p>
+<h2>面板备份</h2>
+<p>设置 → 面板备份每天（以及按需）写入一个加密文件，其中包含数据库、服务器的密钥和面板证书，保留最新的若干份，并可将其复制到 SFTP 文件夹。邮件本身（<code>/var/vmail</code>）使用 BackupZit 备份。恢复方法：停止 <code>emailzit-server</code>，以用户 <code>emailzit</code> 身份运行 <code>emailzit-server -restore FILE -restore-passphrase-file FILE</code>，然后重新启动服务；邮件配置和 DKIM 密钥会在启动时重新写入。</p>
+<h2>导出、BackupZit 和 WatchZit</h2>
+<p>客户页面上的<b>导出</b>（或 <code>POST /api/v1/customers/{id}/export</code>）会将客户的所有邮件以及包含设置（域名、邮箱、别名、自动回复和过滤器、垃圾邮件设置）的 <code>manifest.json</code> 打包到 <code>/var/lib/emailzit/exports/&lt;customer&gt;/&lt;time&gt;.tar.gz</code>；密码、应用密码、第二因素和 DKIM 密钥不包含在内。导出在后台运行（API 以作业作为响应：<code>GET /api/v1/jobs/{id}</code>）；每个客户保留最新的三份导出，可以从页面或通过 <code>GET /api/v1/customers/{id}/exports/{name}</code> 下载。BackupZit 可以将该文件夹与面板备份一起备份，或备份整个 <code>/var/vmail</code>。<b>WatchZit</b> 通过 <code>GET /api/v1/server/status</code>（具有 <code>customers:read</code> 的令牌）检查服务器：Postfix、Dovecot、Rspamd、Valkey 和网站邮件套接字的状态，队列中和已延迟的邮件，邮件存储的可用磁盘空间，以及证书到期前的天数；当某项服务未处于活动状态时，<code>ok</code> 为 false。</p>
+<p>客户页面上的<b>导入</b>（或以 <code>.tar.gz</code> 作为请求体的 <code>POST /api/v1/customers/{id}/import?format=emailzit|cpanel</code>）接受 EmailZit 导出或 cPanel 账户备份（<code>cpmove-USER.tar.gz</code>；HostZit 也通过这种方式传递其 cPanel 导入中的邮件部分）。缺少的域名（该域名不得属于其他客户）、邮箱和转发会在套餐限制内创建（放不下的配额会改为套餐默认值），然后由 root 助手复制 Maildir：只复制到该客户的邮箱中，从不覆盖文件，从不跟随链接，不包括 Dovecot 索引和旧的配额文件（两者都会重建）。cPanel 密码不会被沿用：每个邮箱都会获得一个随机密码，因此请为每个用户设置密码（之后邮件程序使用应用密码）。从 cPanel 导入的是域名邮箱的邮件、其配额和转发；主账户自己的邮箱、到程序的管道（pipe）和全收会作为备注列出。从 EmailZit 导出中还会带入垃圾邮件设置以及已保存的自动回复和过滤器（用户保存一次后即开始生效）。结果和备注会显示在客户页面上以及作业中（<code>GET /api/v1/jobs/{id}</code>，字段 <code>report</code>）。</p>
+<h2>与 HostZit 配合使用</h2>
+<p>当 HostZit 托管同一批客户的网站和 DNS 时，请在<b>设置 → HostZit</b>中将两者关联：HostZit 管理面板的地址，以及具有 <code>dns:mail</code> 权限的 HostZit API 令牌。此后 EmailZit 会自动将每个域名的邮件记录（MX、SPF、DKIM、DMARC、MTA-STS、autoconfig）写入 HostZit 的 DNS，并在主机名或 DKIM 密钥变化时保持最新；区域由 HostZit 为同一客户托管的域名无需 TXT 验证。如果客户在 HostZit 中已经有同名的自有记录，这些记录会被保留，域名页面也会说明这一点。侧边栏会出现一个切换到 HostZit 的开关。在同时运行两个产品的服务器上，由 HostZit 的 Web 服务器在端口 80 和 443 上响应；EmailZit 为每个域名的 <code>autoconfig.</code>、<code>autodiscover.</code> 和 <code>mta-sts.</code> 写入自己的部分（<code>/etc/nginx/zit.d/emailzit/</code>），其中只包含邮件程序和 MTA-STS 使用的路径；面板永远无法从那里访问。</p>
+<p><b>来自网站的邮件。</b>HostZit 需要一个具有 <code>customers:write</code> 的 EmailZit API 令牌，以便将每个客户的主机账户的 Linux 用户 ID 告知 EmailZit（<code>PUT /api/v1/customers/{id}/web-uids</code>）。这些账户上 PHP 的 <code>mail()</code> 会运行 <code>/usr/sbin/emailzit-sendmail</code>，由它通过 <code>/run/emailzit/submit.sock</code> 将邮件交给 EmailZit。EmailZit 根据进程的用户 ID 识别账户，只接受活跃客户的已注册账户发来的邮件，只允许网站以客户自己已验证域名的地址发送（缺少 Date 和 Message-ID 时会自动添加），在套餐限制下像邮箱一样对每个主机账户计数（每小时、每天、每封邮件的收件人数，以及与邮箱合计的客户限制），然后将邮件交给 Postfix，由其进行 DKIM 签名；投递日志中显示为 <code>web-&lt;user ID&gt;</code>。超出限制仍不断尝试的主机账户（被入侵后发送垃圾邮件的网站）会被自动封锁；客户页面会列出这些账户及其计数，并可解除或设置封锁。服务器上的程序无法使用 Postfix 自己的 <code>sendmail</code>（只有 root 可以），并且端口 25 不信任任何本地程序。</p>

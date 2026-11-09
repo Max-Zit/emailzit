@@ -1,0 +1,30 @@
+<h1>Aan de slag</h1>
+<p>EmailZit is mailhosting voor veel domeinen en klanten op uw eigen server: een <b>beheerpaneel</b> voor het personeel van de server, een <b>klantpaneel</b> waarin elke klant zijn eigen domeinen en mailboxen beheert, en <b>pagina's voor mailgebruikers</b> (webmail, eigen wachtwoord, app-wachtwoorden, automatisch antwoord, filters).</p>
+<h2>Hoe het is opgebouwd</h2>
+<ul>
+  <li><b>EmailZit-server</b> — de panelen en de REST-API, draaiend als gebruiker zonder rechten.</li>
+  <li><b>Postfix</b> ontvangt en verstuurt mail (SMTP op poort 25, verzending voor mailprogramma's op 465 en 587, altijd versleuteld).</li>
+  <li><b>Dovecot</b> slaat de mail op en levert IMAP (993) en POP3 (995).</li>
+  <li><b>PostgreSQL</b> bevat alles wat de panelen wijzigen; Postfix en Dovecot lezen het rechtstreeks, zodat een nieuwe mailbox meteen werkt zonder iets te herstarten.</li>
+  <li>Een kleine <b>root-helper</b> doet de paar dingen die root nodig hebben (maildirectory's, certificaten, updates); elk verzoek wordt gecontroleerd en in het auditlogboek geschreven.</li>
+</ul>
+<h2>Installeren</h2>
+<ul>
+  <li><b>Appliance</b> — een kant-en-klare virtuele machine (OVA voor VMware ESXi en Workstation, qcow2 voor Proxmox VE en KVM, VHDX voor Hyper-V generatie 1) of de installatie-ISO voor een nieuwe VM of een fysieke server (die wist de eerste schijf). Geef hem minstens 2 CPU's, 2 GB geheugen en een schijf voor de mail (het root-bestandssysteem groeit vanzelf mee wanneer de virtuele schijf wordt vergroot). Na de eerste start toont het scherm het paneeladres en het installatietoken; aanmelden op het scherm als <code>ezadmin</code> (eerste wachtwoord <code>emailzit</code>, dat moet worden gewijzigd) opent het installatiemenu: netwerk (gebruik voor een mailserver een vast adres), servernaam, tijdzone, paneeladres en installatietoken, wachtwoord van een personeelsaccount, status van de services, herstart.</li>
+  <li><b>Debian 13-pakket</b> — <code>sudo sh install.sh</code> uit de release, of de <code>.deb</code> met <code>apt install</code>: het installeert Postfix, Dovecot, Rspamd, Valkey en PostgreSQL uit Debian en richt alles in.</li>
+  <li>Poorten: 25 (mail van andere servers), 465 en 587 (verzenden vanuit mailprogramma's), 993 (IMAP), 995 (POP3), 8444 (panelen en webmail), en 443 en 80 voor de automatische configuratie van mailprogramma's (autoconfig voor Thunderbird, Autodiscover voor Outlook, het MTA-STS-beleid; al het andere leidt daar naar webmail). EmailZit gebruikt 443 en 80 alleen wanneer er geen webserver is geïnstalleerd en HostZit niet is gekoppeld; anders antwoordt de webserver van HostZit voor deze namen (<code>--public-web off</code> schakelt dit uit). De server heeft een reverse-DNS-naam (PTR) nodig die overeenkomt met zijn mailhostnaam, en uitgaande poort 25 moet open zijn.</li>
+</ul>
+<h2>Wie mag wat</h2>
+<ul>
+  <li><b>Beheerders</b> beheren de server, personeelsaccounts, pakketten en alle klanten. <b>Operators</b> beheren klanten, domeinen en mailboxen; <b>kijkers</b> kijken alleen.</li>
+  <li><b>Klanten</b> zien en wijzigen alleen hun eigen domeinen, mailboxen, aliassen en doorsturingen, binnen de limieten van hun pakket.</li>
+  <li><b>Mailgebruikers</b> melden zich aan met hun adres, hun wachtwoord en altijd een tweede factor (een authenticator-app). Mailprogramma's (Outlook, Thunderbird, telefoons) gebruiken dit wachtwoord nooit: elk programma krijgt een eigen <b>app-wachtwoord</b>.</li>
+</ul>
+<h2>Eerste stappen</h2>
+<ol>
+  <li>Stel de hostnaam van de server in onder <b>Instellingen → Mailserver</b> (de naam waarmee mailprogramma's verbinding maken, bijv. <code>mail.example.com</code>).</li>
+  <li>Maak een <b>pakket</b> met de limieten die u verkoopt (domeinen, mailboxen, opslag, verzending per uur).</li>
+  <li>Maak een <b>klant</b> met dat pakket en geef de klant een paneellogin.</li>
+  <li>Voeg het <b>domein</b> van de klant toe, zet de DNS-records die op de domeinpagina staan bij de DNS-provider van het domein en bevestig het domein.</li>
+  <li>Maak <b>mailboxen</b>. De mailgebruiker meldt zich aan op <code>/mail</code>, stelt de tweede factor in en maakt app-wachtwoorden voor zijn programma's.</li>
+</ol>

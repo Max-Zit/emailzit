@@ -27,7 +27,7 @@
 - **Server from the panel:** operating system updates, reboot and SSH port; upload of the server's certificate; encrypted backups of the panel, also to SFTP.
 - **Security:** isolation between customers, brute-force protection, two-factor sign-in, company sign-in (OIDC) for staff, four-eyes approval for risky changes, hash-chained audit log, signed updates; TLS for mail programs offers post-quantum key exchange first and signs with SHA-2 only.
 - **Works with the other MaxZit products:** [HostZit](https://github.com/Max-Zit/hostzit) writes the DNS records and sends the websites' mail through EmailZit; a status API (`GET /api/v1/server/status`) that [WatchZit](https://github.com/Max-Zit/watchzit) can watch with a JSON/HTTP check; REST API for billing systems.
-- **Self-hosted:** Debian 13 package or appliance image (ISO, OVA, qcow2, VHDX), 14 languages, user guide in English and Serbian.
+- **Self-hosted:** Debian 13 package or appliance image (ISO, OVA, qcow2, VHDX), 14 languages, user guide in all 14 languages.
 
 ## Install
 

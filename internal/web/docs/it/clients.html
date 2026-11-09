@@ -1,0 +1,16 @@
+<h1>Configurare i programmi di posta</h1>
+<h2>Passo 1: una password per app</h2>
+<ol>
+  <li>Aprite <code>https://&lt;server&gt;:8444/mail</code> e accedete con il vostro indirizzo e la vostra password.</li>
+  <li>La prima volta configurate l'accesso a due fattori: scansionate il codice QR con un'app di autenticazione e conservate i codici di recupero.</li>
+  <li>In <b>Password per app</b> date un nome al programma o al dispositivo (per esempio "Outlook sul portatile") e create la password. Inseritela subito nel programma: viene mostrata una sola volta.</li>
+</ol>
+<h2>Passo 2: il programma</h2>
+<p>La maggior parte dei programmi (Outlook, Thunderbird, le app di posta di iOS e Android) trova da sola le impostazioni quando inserite solo l'indirizzo e la password per app. Altrimenti usate:</p>
+<table>
+  <tr><th>Nome utente</th><td>l'indirizzo e-mail completo</td></tr>
+  <tr><th>In arrivo (IMAP)</th><td>il nome host del server, porta 993, SSL/TLS</td></tr>
+  <tr><th>In arrivo (POP3)</th><td>il nome host del server, porta 995, SSL/TLS</td></tr>
+  <tr><th>In uscita (SMTP)</th><td>il nome host del server, porta 465 SSL/TLS o 587 STARTTLS, accesso obbligatorio</td></tr>
+</table>
+<p>La pagina della casella nei pannelli mostra questi valori con il nome host reale.</p>

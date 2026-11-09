@@ -1,0 +1,16 @@
+<h1>Configurar programas de correo</h1>
+<h2>Paso 1: una contraseña de aplicación</h2>
+<ol>
+  <li>Abra <code>https://&lt;server&gt;:8444/mail</code> e inicie sesión con su dirección y su contraseña.</li>
+  <li>La primera vez, configure el inicio de sesión en dos pasos: escanee el código QR con una aplicación de autenticación y guarde los códigos de recuperación.</li>
+  <li>En <b>Contraseñas de aplicación</b>, dé un nombre al programa o dispositivo (por ejemplo «Outlook en el portátil») y cree la contraseña. Introdúzcala en el programa enseguida: solo se muestra una vez.</li>
+</ol>
+<h2>Paso 2: el programa</h2>
+<p>La mayoría de los programas (Outlook, Thunderbird, las aplicaciones de correo de iOS y Android) encuentran la configuración por sí solos cuando introduce solo la dirección y la contraseña de aplicación. De lo contrario, use:</p>
+<table>
+  <tr><th>Nombre de usuario</th><td>la dirección de correo electrónico completa</td></tr>
+  <tr><th>Entrante (IMAP)</th><td>el nombre de host del servidor, puerto 993, SSL/TLS</td></tr>
+  <tr><th>Entrante (POP3)</th><td>el nombre de host del servidor, puerto 995, SSL/TLS</td></tr>
+  <tr><th>Saliente (SMTP)</th><td>el nombre de host del servidor, puerto 465 SSL/TLS o 587 STARTTLS, se requiere inicio de sesión</td></tr>
+</table>
+<p>La página del buzón en los paneles muestra estos valores con el nombre de host real.</p>

@@ -1,0 +1,33 @@
+<h1>Domains, Postfächer und Aliase</h1>
+<h2>Domains</h2>
+<p>Auf einem gemeinsam genutzten Server empfängt eine neue Domain eines Kunden erst Mail, nachdem sie <b>bestätigt</b> wurde: Die Domain-Seite zeigt einen TXT-Eintrag (<code>_emailzit.example.com</code>), den Sie beim DNS-Anbieter der Domain eintragen; danach <b>Jetzt prüfen</b>. Das Personal kann eine Domain von Hand als bestätigt markieren, wenn es weiß, dass sie dem Kunden gehört; auf einem dedizierten Server brauchen Domains keine Bestätigung (Einstellungen → Mailserver).</p>
+<p>Die Domain-Seite listet die <b>DNS-Einträge</b> auf, die die Domain braucht: MX (Mail an diesen Server), SPF, DMARC und die Einträge, mit denen Mailprogramme ihre Einstellungen finden (Autoconfig, Autodiscover, SRV). Erforderliche Einträge sind markiert.</p>
+<p><b>DMARC-Berichte</b>: Der vorgeschlagene DMARC-Eintrag schickt die täglichen Berichte der Empfänger an <code>dmarc-reports@&lt;domain&gt;</code>. EmailZit übernimmt diese Adresse selbst (kein Postfach und kein Alias kann sie verwenden), liest die Berichte und zeigt auf der Domain-Seite für die letzten 30 Tage, welche Server Mail mit der Domain als Absender gesendet haben und wie viel davon DMARC bestanden hat. Ihre eigenen Server sollten bestehen; Mail von unbekannten Adressen, die nicht besteht, ist meist gefälscht. Sobald alle Ihre Absender bestehen, kann die Richtlinie von <code>p=none</code> auf <code>quarantine</code> oder <code>reject</code> wechseln. Berichte werden 180 Tage aufbewahrt.</p>
+<p><b>Catch-all</b> (Mail an unbekannte Adressen) ist standardmäßig aus: Unbekannte Adressen werden schon während des SMTP-Dialogs abgewiesen, was Spam und Backscatter fernhält. Schalten Sie es nur ein, wenn es wirklich nötig ist.</p>
+<h2>Postfächer</h2>
+<ul>
+  <li>Ein Postfach hat eine Größe (Quota) innerhalb des Pakets; die Belegung wird alle zehn Minuten aktualisiert. Wenn ein Postfach 80 % und erneut 95 % seiner Quota erreicht, legt der Server eine Warnung in seinen Posteingang (in der Sprache des Postfachs); nachdem es unter 70 % gefallen ist, kann es erneut gewarnt werden.</li>
+  <li>Sein <b>Passwort</b> gilt nur für Webmail und die eigenen Seiten des Benutzers, immer mit Zwei-Faktor-Anmeldung.</li>
+  <li>Mailprogramme verwenden <b>App-Passwörter</b>, die der Mail-Benutzer unter <code>/mail</code> erstellt — eines pro Programm oder Gerät. Ein verlorenes Telefon bedeutet, ein App-Passwort zu widerrufen, nicht alles zu ändern.</li>
+  <li>Ein <b>deaktiviertes</b> Postfach empfängt weiterhin Mail, aber niemand kann sich anmelden. Das Personal kann auch <b>das Senden sperren</b> (zum Beispiel nach Missbrauch) und für ein einzelnes Postfach andere Sendegrenzen festlegen.</li>
+  <li>Beim Löschen eines Postfachs wird seine Mail für 7 Tage in einen Papierkorb-Ordner auf dem Server verschoben, danach ist sie weg.</li>
+</ul>
+<h2>Aliase und Weiterleitungen</h2>
+<ul>
+  <li>Ein <b>Alias</b> (z. B. <code>info@</code>) empfängt Mail und stellt sie an eine oder mehrere Adressen zu: Postfächer desselben Kunden oder externe Adressen.</li>
+  <li>Eine <b>Weiterleitung</b> ist ein Alias auf der Adresse eines Postfachs. Um eine Kopie im Postfach zu behalten, führen Sie das Postfach selbst unter den Zielen auf.</li>
+  <li><b>Senden als</b>: Die Postfächer, an die ein Alias zustellt, dürfen auch mit dem Alias als Absender senden.</li>
+</ul>
+<h2>Schutz</h2>
+<ul>
+  <li>Niemand kann den Server ohne Anmeldung verwenden, um Mail an andere Server weiterzuleiten (kein offenes Relay).</li>
+  <li>Mail von außen, die vorgibt, von einer Domain dieses Servers zu kommen, wird abgewiesen; angemeldete Benutzer können nur von ihren eigenen Adressen und ihren Senden-als-Aliasen senden.</li>
+  <li>Mailprogramme müssen TLS verwenden; eine Anmeldung im Klartext wird abgewiesen.</li>
+  <li>Programme, Skripte, Verknüpfungen, Disk-Images und Office-Dateien mit Makros werden als Anhänge abgewiesen (auch in Archiven), sofern der Administrator sie nicht erlaubt hat; teilen Sie solche Dateien per Link.</li>
+  <li>Nachrichten mit bekannten Phishing-Links oder deren Absender sich im Namen als jemand aus Ihrer Domain ausgibt, bekommen <code>[Phishing?]</code> vor den Betreff.</li>
+  <li>Ein Postfach, das Spam sendet (3 Nachrichten innerhalb einer Stunde als Spam oder Virus abgewiesen), kann nicht mehr senden, bis der Anbieter es wieder erlaubt; es bekommt eine Benachrichtigung in seinen Posteingang. Ändern Sie sein Passwort: Meist kennt es jemand anderes.</li>
+</ul>
+<h2>Spam-Einstellungen</h2>
+<p>Rspamd gibt jeder eingehenden Nachricht eine Bewertung; über 15 wird sie abgewiesen, und Mail über der gewählten Stufe kommt in den Junk-Ordner des Postfachs. Die Stufen sind <b>Streng</b> (Bewertung 4 und mehr), <b>Normal</b> (6, der Standard), <b>Locker</b> (10) und <b>Nie</b> (Spam bleibt im Posteingang, markiert mit einem <code>X-Spam</code>-Header). Das Personal legt die Stufe eines Kunden auf der Kundenseite fest; sie gilt für alle Postfächer des Kunden, die keine eigene haben. Auf der Postfach-Seite (Personal und Kunde) und auf der Seite <i>Automatische Antwort und Filter</i> des Mail-Benutzers bekommt ein Postfach seine eigene Stufe und Listen <b>erlaubter Absender</b> (nie Junk) und <b>gesperrter Absender</b> (immer Junk): Adressen oder ganze Domains, jeweils bis zu 200, verglichen mit der From-Adresse. Die Regeln laufen vor den eigenen Filtern des Benutzers und der automatischen Antwort, sodass Spam nie eine automatische Antwort bekommt. Der Mail-Helfer schreibt sie bei jeder Änderung als Sieve-Skript in jedes Mail-Verzeichnis (<code>.emailzit/spam.sieve</code>) und prüft alle alle 10 Minuten.</p>
+<h2>Mail von einem anderen Server übernehmen</h2>
+<p>Auf der Postfach-Seite kopiert <b>Mail von einem anderen Server holen</b> jeden Ordner des alten Postfachs über IMAP (Port 993 oder 143 mit STARTTLS) mit Gelesen-Markierungen und Datum; Gesendet, Papierkorb, Junk und Entwürfe landen in den entsprechenden Ordnern hier. Nachrichten, die schon hier sind, werden übersprungen; führen Sie es also einmal vor und einmal nach dem Umstellen des MX-Eintrags aus, um mitzunehmen, was spät angekommen ist. Das alte Passwort wird nur bis zum Ende des Imports verschlüsselt aufbewahrt. Auf Hosting-Servern kommen Importe nur von Servern im Internet; ein Firmenserver kann private Netze unter Einstellungen → Mailserver erlauben.</p>

@@ -1,0 +1,33 @@
+<h1>Domeinen, mailboxen en aliassen</h1>
+<h2>Domeinen</h2>
+<p>Op een gedeelde server ontvangt een nieuw domein van een klant pas mail nadat het is <b>bevestigd</b>: de domeinpagina toont een TXT-record (<code>_emailzit.example.com</code>) dat u bij de DNS-provider van het domein zet; daarna <b>Nu controleren</b>. Personeel kan een domein met de hand als bevestigd markeren wanneer het weet dat het domein bij de klant hoort; op een dedicated server hoeven domeinen niet bevestigd te worden (Instellingen → Mailserver).</p>
+<p>De domeinpagina toont de <b>DNS-records</b> die het domein nodig heeft: MX (mail naar deze server), SPF, DMARC en de records waarmee mailprogramma's hun instellingen vinden (autoconfig, autodiscover, SRV). Verplichte records zijn gemarkeerd.</p>
+<p><b>DMARC-rapporten</b>: het voorgestelde DMARC-record stuurt de dagelijkse rapporten van de ontvangers naar <code>dmarc-reports@&lt;domain&gt;</code>. EmailZit neemt dat adres zelf in gebruik (geen mailbox of alias kan het gebruiken), leest de rapporten en toont op de domeinpagina, voor de laatste 30 dagen, welke servers mail met het domein als afzender hebben verstuurd en hoeveel daarvan DMARC heeft doorstaan. Uw eigen servers zouden moeten slagen; mail die faalt vanaf onbekende adressen is meestal vervalst. Zodra al uw afzenders slagen, kan het beleid van <code>p=none</code> naar <code>quarantine</code> of <code>reject</code>. Rapporten worden 180 dagen bewaard.</p>
+<p><b>Catch-all</b> (mail voor onbekende adressen) staat standaard uit: onbekende adressen worden tijdens de SMTP-dialoog geweigerd, wat spam en backscatter buiten houdt. Zet hem alleen aan als het echt nodig is.</p>
+<h2>Mailboxen</h2>
+<ul>
+  <li>Een mailbox heeft een grootte (quotum) binnen het pakket; het gebruik wordt elke tien minuten bijgewerkt. Wanneer een mailbox 80 % en opnieuw 95 % van zijn quotum bereikt, zet de server een waarschuwing in zijn Inbox (in de taal van de mailbox); nadat het gebruik onder 70 % is gezakt, kan er opnieuw worden gewaarschuwd.</li>
+  <li>Het <b>wachtwoord</b> is alleen voor webmail en de eigen pagina's van de gebruiker, altijd met aanmelden in twee stappen.</li>
+  <li>Mailprogramma's gebruiken <b>app-wachtwoorden</b> die de mailgebruiker op <code>/mail</code> aanmaakt — één per programma of apparaat. Een verloren telefoon betekent één app-wachtwoord intrekken, niet alles wijzigen.</li>
+  <li>Een <b>uitgeschakelde</b> mailbox blijft mail ontvangen, maar niemand kan zich aanmelden. Personeel kan ook <b>verzenden blokkeren</b> (bijvoorbeeld na misbruik) en voor één mailbox andere verzendlimieten instellen.</li>
+  <li>Bij het verwijderen van een mailbox gaat de mail voor 7 dagen naar een prullenbakmap op de server; daarna is hij weg.</li>
+</ul>
+<h2>Aliassen en doorsturingen</h2>
+<ul>
+  <li>Een <b>alias</b> (bijv. <code>info@</code>) ontvangt mail en levert die af bij een of meer adressen: mailboxen van dezelfde klant of externe adressen.</li>
+  <li>Een <b>doorsturing</b> is een alias op het adres van een mailbox. Om een kopie in de mailbox te houden, zet u de mailbox zelf tussen de bestemmingen.</li>
+  <li><b>Verzenden als</b>: de mailboxen waar een alias naar aflevert, mogen ook verzenden met de alias als afzender.</li>
+</ul>
+<h2>Bescherming</h2>
+<ul>
+  <li>Niemand kan de server gebruiken om zonder aanmelding mail door te geven aan andere servers (geen open relay).</li>
+  <li>Mail van buiten die beweert van een domein van deze server te komen, wordt geweigerd; aangemelde gebruikers kunnen alleen verzenden vanaf hun eigen adressen en hun verzenden-als-aliassen.</li>
+  <li>Mailprogramma's moeten TLS gebruiken; aanmelden in platte tekst wordt geweigerd.</li>
+  <li>Programma's, scripts, snelkoppelingen, schijfkopieën en Office-bestanden met macro's worden als bijlage geweigerd (ook in archieven), tenzij de beheerder ze heeft toegestaan; deel zulke bestanden via een link.</li>
+  <li>Berichten met bekende phishinglinks, of waarvan de afzender zich in de naam voordoet als iemand van uw domein, krijgen <code>[Phishing?]</code> voor het onderwerp.</li>
+  <li>Een mailbox die spam verstuurt (3 berichten binnen een uur geweigerd als spam of virus) kan niet meer verzenden totdat de provider het weer toestaat; hij krijgt een melding in zijn Inbox. Wijzig het wachtwoord: meestal kent iemand anders het.</li>
+</ul>
+<h2>Spaminstellingen</h2>
+<p>Rspamd geeft elk inkomend bericht een score; boven 15 wordt het geweigerd, en mail boven het gekozen niveau gaat naar de Junk-map van de mailbox. De niveaus zijn <b>Streng</b> (score 4 en hoger), <b>Normaal</b> (6, de standaard), <b>Ruim</b> (10) en <b>Nooit</b> (spam blijft in de Inbox, gemarkeerd met een <code>X-Spam</code>-header). Personeel stelt het niveau van een klant in op de klantpagina; het geldt voor alle mailboxen van de klant die geen eigen niveau hebben. Op de mailboxpagina (personeel en de klant) en op de pagina <i>Automatisch antwoord en filters</i> van de mailgebruiker krijgt een mailbox een eigen niveau en lijsten van <b>toegestane afzenders</b> (nooit Junk) en <b>geblokkeerde afzenders</b> (altijd Junk): adressen of hele domeinen, tot 200 per lijst, vergeleken met het From-adres. De regels lopen vóór de eigen filters van de gebruiker en het automatisch antwoord, zodat spam nooit een automatisch antwoord krijgt. De mailhelper schrijft ze als Sieve-script in elke mailhome (<code>.emailzit/spam.sieve</code>) wanneer ze veranderen en controleert ze allemaal elke 10 minuten.</p>
+<h2>Mail van een andere server overzetten</h2>
+<p>Op de mailboxpagina kopieert <b>Mail van een andere server overhalen</b> elke map van de oude mailbox via IMAP (poort 993, of 143 met STARTTLS), met leesmarkeringen en datums; Sent, Trash, Junk en Drafts komen in de overeenkomende mappen hier terecht. Berichten die er al zijn, worden overgeslagen, dus voer het één keer uit vóór en één keer nadat u het MX-record verplaatst, om op te halen wat laat binnenkwam. Het oude wachtwoord wordt alleen versleuteld bewaard tot de import klaar is. Op hostingservers komen imports alleen van servers op internet; een bedrijfsserver kan privénetwerken toestaan onder Instellingen → Mailserver.</p>

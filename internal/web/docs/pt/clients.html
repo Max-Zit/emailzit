@@ -1,0 +1,16 @@
+<h1>Configurar programas de correio</h1>
+<h2>Passo 1: uma palavra-passe de aplicação</h2>
+<ol>
+  <li>Abra <code>https://&lt;server&gt;:8444/mail</code> e inicie sessão com o seu endereço e a sua palavra-passe.</li>
+  <li>Na primeira vez, configure o início de sessão em dois passos: leia o código QR com uma app de autenticação e guarde os códigos de recuperação.</li>
+  <li>Em <b>Palavras-passe de aplicação</b>, dê um nome ao programa ou dispositivo (por exemplo "Outlook no portátil") e crie a palavra-passe. Introduza-a logo no programa: só é mostrada uma vez.</li>
+</ol>
+<h2>Passo 2: o programa</h2>
+<p>A maioria dos programas (Outlook, Thunderbird, apps de correio de iOS e Android) encontra as configurações sozinha quando introduz apenas o endereço e a palavra-passe de aplicação. Caso contrário, use:</p>
+<table>
+  <tr><th>Nome de utilizador</th><td>o endereço de e-mail completo</td></tr>
+  <tr><th>Entrada (IMAP)</th><td>o nome de host do servidor, porta 993, SSL/TLS</td></tr>
+  <tr><th>Entrada (POP3)</th><td>o nome de host do servidor, porta 995, SSL/TLS</td></tr>
+  <tr><th>Saída (SMTP)</th><td>o nome de host do servidor, porta 465 SSL/TLS ou 587 STARTTLS, início de sessão obrigatório</td></tr>
+</table>
+<p>A página da caixa de correio nos painéis mostra estes valores com o nome de host real.</p>

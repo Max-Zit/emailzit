@@ -1,0 +1,30 @@
+<h1>Başlarken</h1>
+<p>EmailZit, kendi sunucunuzda birçok alan adı ve müşteri için posta barındırmadır: sunucu personeli için bir <b>yönetim paneli</b>, her müşterinin kendi alan adlarını ve posta kutularını yönettiği bir <b>müşteri paneli</b> ve <b>posta kullanıcıları için sayfalar</b> (web posta, kendi parolası, uygulama parolaları, otomatik yanıt, filtreler).</p>
+<h2>Nasıl kurulmuştur</h2>
+<ul>
+  <li><b>EmailZit sunucusu</b> — paneller ve REST API; ayrıcalıksız bir kullanıcı olarak çalışır.</li>
+  <li><b>Postfix</b> postayı alır ve gönderir (25 numaralı bağlantı noktasında SMTP, posta programlarından gönderim için 465 ve 587; her zaman şifreli).</li>
+  <li><b>Dovecot</b> postayı saklar ve IMAP (993) ile POP3 (995) hizmeti verir.</li>
+  <li><b>PostgreSQL</b> panellerin değiştirdiği her şeyi tutar; Postfix ve Dovecot doğrudan buradan okur, bu nedenle yeni bir posta kutusu hiçbir şeyi yeniden başlatmadan hemen çalışır.</li>
+  <li>Küçük bir <b>root yardımcısı</b>, root yetkisi gerektiren birkaç işi yapar (posta dizinleri, sertifikalar, güncellemeler); her istek denetlenir ve denetim günlüğüne yazılır.</li>
+</ul>
+<h2>Kurulum</h2>
+<ul>
+  <li><b>Appliance</b> — hazır bir sanal makine (VMware ESXi ve Workstation için OVA, Proxmox VE ve KVM için qcow2, Hyper-V 1. nesil için VHDX) veya yeni bir sanal makine ya da fiziksel sunucu için kurulum ISO'su (ilk diski siler). En az 2 CPU, 2 GB bellek ve posta için bir disk verin (sanal disk büyütüldüğünde kök dosya sistemi kendiliğinden büyür). İlk açılıştan sonra ekranda panel adresi ve kurulum belirteci görünür; ekranda <code>ezadmin</code> olarak oturum açmak (ilk parola <code>emailzit</code>, değiştirilmesi gerekir) kurulum menüsünü açar: ağ (posta sunucusu için sabit bir adres kullanın), sunucu adı, saat dilimi, panel adresi ve kurulum belirteci, bir personel hesabının parolası, hizmetlerin durumu, yeniden başlatma.</li>
+  <li><b>Debian 13 paketi</b> — sürümdeki <code>sudo sh install.sh</code> veya <code>apt install</code> ile <code>.deb</code>: Postfix, Dovecot, Rspamd, Valkey ve PostgreSQL'i Debian'dan kurar ve her şeyi yapılandırır.</li>
+  <li>Bağlantı noktaları: 25 (diğer sunuculardan gelen posta), 465 ve 587 (posta programlarından gönderim), 993 (IMAP), 995 (POP3), 8444 (paneller ve web posta) ile posta programlarının otomatik kurulumu için 443 ve 80 (Thunderbird için autoconfig, Outlook için Autodiscover, MTA-STS kuralı; oradaki diğer her şey web postaya yönlendirir). EmailZit 443 ve 80'i yalnızca kurulu bir web sunucusu yoksa ve HostZit bağlı değilse kullanır; aksi halde bu adlara HostZit'in web sunucusu yanıt verir (<code>--public-web off</code> bunu kapatır). Sunucunun, posta ana bilgisayar adıyla eşleşen bir ters DNS (PTR) adına ihtiyacı vardır ve giden 25 numaralı bağlantı noktası açık olmalıdır.</li>
+</ul>
+<h2>Kim ne yapabilir</h2>
+<ul>
+  <li><b>Yöneticiler</b> sunucuyu, personel hesaplarını, paketleri ve tüm müşterileri yönetir. <b>Operatörler</b> müşterileri, alan adlarını ve posta kutularını yönetir; <b>izleyiciler</b> yalnızca bakar.</li>
+  <li><b>Müşteriler</b>, paketlerinin sınırları içinde yalnızca kendi alan adlarını, posta kutularını, takma adlarını ve yönlendirmelerini görür ve değiştirir.</li>
+  <li><b>Posta kullanıcıları</b> adresleri, parolaları ve her zaman ikinci bir adımla (bir kimlik doğrulama uygulaması) oturum açar. Posta programları (Outlook, Thunderbird, telefonlar) bu parolayı asla kullanmaz: her program kendi <b>uygulama parolasını</b> alır.</li>
+</ul>
+<h2>İlk adımlar</h2>
+<ol>
+  <li>Sunucunun ana bilgisayar adını <b>Ayarlar → Posta sunucusu</b> altında ayarlayın (posta programlarının bağlandığı ad, örn. <code>mail.example.com</code>).</li>
+  <li>Sattığınız sınırlarla (alan adları, posta kutuları, depolama, saatlik gönderim) bir <b>paket</b> oluşturun.</li>
+  <li>Bu paketle bir <b>müşteri</b> oluşturun ve müşteriye bir panel girişi verin.</li>
+  <li>Müşterinin <b>alan adını</b> ekleyin, alan adı sayfasında gösterilen DNS kayıtlarını alan adının DNS sağlayıcısına girin ve alan adını doğrulayın.</li>
+  <li><b>Posta kutuları</b> oluşturun. Posta kullanıcısı <code>/mail</code> adresinde oturum açar, ikinci adımı ayarlar ve programları için uygulama parolaları oluşturur.</li>
+</ol>

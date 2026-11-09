@@ -1,0 +1,34 @@
+<h1>Webmail en de pagina's van mailgebruikers</h1>
+<p>Elke mailgebruiker heeft eigen pagina's op <code>https://&lt;mail host&gt;:8444/mail</code> (op een losse server leidt ook <code>https://&lt;mail host&gt;/</code> daarheen). Ze staan los van de panelen: een mailgebruiker ziet nooit andere mailboxen, de instellingen van de klant of de server.</p>
+<h2>Aanmelden</h2>
+<ul>
+  <li>Het adres en het wachtwoord van de mailbox, en altijd een tweede factor: bij de eerste aanmelding scant de gebruiker een QR-code met een authenticator-app (Google Authenticator, Microsoft Authenticator, Aegis …) en bewaart de herstelcodes.</li>
+  <li>Een gebruiker die de telefoon en de herstelcodes kwijt is, vraagt het de provider: personeel en de klant kunnen op de mailboxpagina <b>de tweede factor resetten</b>; de gebruiker stelt hem bij de volgende aanmelding opnieuw in.</li>
+  <li>De taal van de pagina's volgt de keuze van de gebruiker (rechtsboven) en wordt onthouden.</li>
+</ul>
+<h2>Webmail</h2>
+<ul>
+  <li>Mappen links (op een telefoon bovenaan): Inbox, Drafts, Sent, Archive, Junk, Trash en de eigen mappen van de gebruiker, met het aantal ongelezen berichten.</li>
+  <li>De lijst toont afzender, onderwerp en datum; ongelezen berichten zijn vet. Selecteer berichten om ze als gelezen of ongelezen te markeren, naar Junk te verplaatsen (om een afzender voorgoed buiten te houden, voegt u hem toe aan de geblokkeerde afzenders) of te verwijderen (naar Trash; verwijderen in Trash wist ze). <b>Verplaatsen</b> zet de geselecteerde berichten (of het geopende) in een andere map.</li>
+  <li><b>Zoeken</b> vindt de woorden overal in de berichten van de geopende map (headers en tekst).</li>
+  <li>Berichten die in HTML zijn geschreven, worden in een beschermd frame getoond: scripts, formulieren en externe afbeeldingen worden nooit geladen, zodat het openen van een bericht de afzender niets kan verraden. Bijlagen worden gedownload, nooit in de browser geopend.</li>
+  <li><b>Schrijven</b>, <b>Beantwoorden</b>, <b>Allen beantwoorden</b> en <b>Doorsturen</b> versturen via de server zoals een mailprogramma dat doet (met de verzendlimieten en de DKIM-handtekening van de mailbox); een kopie gaat naar Sent. Bijlagen tot de maximale berichtgrootte van de server kunnen worden toegevoegd. Tijdens het schrijven stellen de adresvelden contacten voor; de handtekening staat al onder de tekst.</li>
+</ul>
+<h2>Contacten en handtekening</h2>
+<ul>
+  <li><b>Contacten</b>: het adresboek van webmail. Adressen waarnaar vanuit webmail mail wordt verstuurd, worden vanzelf toegevoegd (met de naam die in het bericht staat); de gebruiker kan items toevoegen, hernoemen (hetzelfde adres met een nieuwe naam opslaan) en verwijderen.</li>
+  <li><b>Handtekening</b>: een tekst die webmail onder elk nieuw bericht, elk antwoord en elke doorsturing zet. Mailprogramma's hebben hun eigen instelling voor de handtekening.</li>
+  <li>Wanneer de mailbox 80 % en 95 % van zijn quotum bereikt, komt er een waarschuwing van de server in de Inbox.</li>
+</ul>
+<h2>Mijn mailbox</h2>
+<ul>
+  <li><b>Gebruik</b>: hoeveel van het quotum in gebruik is.</li>
+  <li><b>Wachtwoord</b>: hier wijzigt de gebruiker het webwachtwoord (minstens 12 tekens).</li>
+  <li><b>App-wachtwoorden</b>: één per programma of apparaat, eenmalig getoond bij het aanmaken; een verloren apparaat betekent zijn app-wachtwoord verwijderen. De pagina toont ook de instellingen voor mailprogramma's en biedt een Apple-profiel (<code>.mobileconfig</code>) voor iPhone, iPad en Mac.</li>
+</ul>
+<h2>Automatisch antwoord en filters</h2>
+<ul>
+  <li><b>Automatisch antwoord</b>: een tekst (en een optioneel onderwerp) die naar afzenders wordt gestuurd zolang het aan staat, optioneel alleen tussen twee datums; dezelfde afzender krijgt het pas opnieuw na het gekozen aantal dagen. Mailinglijsten, automatische berichten en spam krijgen nooit een automatisch antwoord.</li>
+  <li><b>Filters</b> sorteren inkomende mail: wanneer de afzender, de ontvangers of het onderwerp een tekst bevatten, verplaatsen ze het bericht naar een map, markeren het als gelezen of verwijderen het. Het eerste passende filter beslist.</li>
+  <li><b>Spam</b>: hoeveel spam naar Junk gaat (of het niveau van het hele account), en de eigen toegestane afzenders (nooit Junk) en geblokkeerde afzenders (altijd Junk) van de gebruiker.</li>
+</ul>

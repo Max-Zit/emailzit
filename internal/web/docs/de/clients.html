@@ -1,0 +1,16 @@
+<h1>Mailprogramme einrichten</h1>
+<h2>Schritt 1: ein App-Passwort</h2>
+<ol>
+  <li>Öffnen Sie <code>https://&lt;server&gt;:8444/mail</code> und melden Sie sich mit Ihrer Adresse und Ihrem Passwort an.</li>
+  <li>Richten Sie beim ersten Mal die Zwei-Faktor-Anmeldung ein: Scannen Sie den QR-Code mit einer Authenticator-App und bewahren Sie die Wiederherstellungscodes auf.</li>
+  <li>Geben Sie unter <b>App-Passwörter</b> dem Programm oder Gerät einen Namen (zum Beispiel „Outlook auf dem Laptop“) und erstellen Sie das Passwort. Tragen Sie es sofort im Programm ein: Es wird nur einmal angezeigt.</li>
+</ol>
+<h2>Schritt 2: das Programm</h2>
+<p>Die meisten Programme (Outlook, Thunderbird, die Mail-Apps von iOS und Android) finden die Einstellungen selbst, wenn Sie nur die Adresse und das App-Passwort eingeben. Andernfalls verwenden Sie:</p>
+<table>
+  <tr><th>Benutzername</th><td>die vollständige E-Mail-Adresse</td></tr>
+  <tr><th>Eingehend (IMAP)</th><td>der Hostname des Servers, Port 993, SSL/TLS</td></tr>
+  <tr><th>Eingehend (POP3)</th><td>der Hostname des Servers, Port 995, SSL/TLS</td></tr>
+  <tr><th>Ausgehend (SMTP)</th><td>der Hostname des Servers, Port 465 SSL/TLS oder 587 STARTTLS, Anmeldung erforderlich</td></tr>
+</table>
+<p>Die Postfach-Seite in den Panels zeigt diese Werte mit dem tatsächlichen Hostnamen.</p>

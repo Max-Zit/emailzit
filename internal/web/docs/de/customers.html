@@ -1,0 +1,21 @@
+<h1>Kunden und Pakete</h1>
+<h2>Pakete</h2>
+<p>Ein Paket enthält die Grenzen, die ein Kunde bekommt: wie viele Domains, Postfächer und Aliase, wie viel Speicher alle Postfächer zusammen belegen dürfen, die Größe eines neuen Postfachs und des größten, und die <b>Sendegrenzen</b>. Abrechnungssysteme verweisen auf ein Paket über seinen Kurznamen (zum Beispiel <code>business-10</code>).</p>
+<ul>
+  <li><b>Nachrichten pro Stunde / pro Tag (pro Postfach)</b> und <b>pro Stunde für den ganzen Kunden</b> schützen den Ruf der Adresse des Servers: Ein Postfach, dessen Passwort gestohlen wurde, kann keine Tausende Spam-Nachrichten senden. Nachrichten über der Grenze warten in der Warteschlange.</li>
+  <li><b>Empfänger pro Nachricht</b> verhindert, dass eine Nachricht an Tausende Adressen geht.</li>
+  <li>Wenn ein Kunde auf ein kleineres Paket wechselt, wird nichts gelöscht; oberhalb der neuen Grenzen kann nur nichts Neues hinzugefügt werden.</li>
+</ul>
+<h2>Kunden</h2>
+<p>Einem Kunden gehören Domains und Postfächer. Die Mail jedes Kunden wird unter seinem <b>eigenen Systembenutzer</b> gespeichert, sodass selbst ein Fehler in der Mailsoftware einen Kunden nicht die Mail eines anderen Kunden lesen lässt. Ein Kunde kann nie Mail in die Postfächer eines anderen Kunden leiten, als dessen Adressen senden oder dessen Domains sehen.</p>
+<ul>
+  <li><b>Panel-Anmeldungen</b>: Der Kunde meldet sich im Kunden-Panel unter derselben Adresse wie das Admin-Panel an. Jede Anmeldung muss bei der ersten Anmeldung die Zwei-Faktor-Anmeldung einrichten.</li>
+  <li><b>Abrechnungs-ID</b>: die Nummer des Kunden in Ihrem Abrechnungssystem; die REST-API findet Kunden darüber.</li>
+  <li><b>Ausgehende Adresse</b> (wenn der Server zusätzliche ausgehende Adressen hat, siehe Personal, Einstellungen und Updates): Die Mail des Kunden verlässt den Server von seiner eigenen IP-Adresse und seinem eigenen Hostnamen, sodass sein Absenderruf sein eigener ist. Veröffentlichen Sie danach den SPF-Eintrag, der bei jeder Domain des Kunden angezeigt wird.</li>
+</ul>
+<h2>Sperren und kündigen</h2>
+<ul>
+  <li><b>Gesperrt</b>: Mail für die Domains des Kunden wird weiterhin empfangen (nichts geht verloren), aber niemand des Kunden kann sich anmelden, Mailprogramme verwenden oder senden. Sitzungen enden sofort.</li>
+  <li><b>Gekündigt</b>: Mail für die Domains des Kunden wird abgewiesen. Die Daten bleiben, bis sie gelöscht werden.</li>
+  <li><b>Aktivieren</b> holt einen gesperrten oder gekündigten Kunden zurück.</li>
+</ul>

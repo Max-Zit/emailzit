@@ -1,0 +1,30 @@
+<h1>Začínáme</h1>
+<p>EmailZit je hosting pošty pro mnoho domén a zákazníků na vašem vlastním serveru: <b>administrátorský panel</b> pro personál serveru, <b>zákaznický panel</b>, ve kterém každý zákazník spravuje své vlastní domény a schránky, a <b>stránky pro uživatele pošty</b> (webmail, vlastní heslo, hesla aplikací, automatická odpověď, filtry).</p>
+<h2>Jak je sestaven</h2>
+<ul>
+  <li><b>Server EmailZit</b> — panely a REST API, běžící pod neprivilegovaným uživatelem.</li>
+  <li><b>Postfix</b> přijímá a odesílá poštu (SMTP na portu 25, odesílání pro poštovní programy na 465 a 587, vždy šifrované).</li>
+  <li><b>Dovecot</b> ukládá poštu a poskytuje IMAP (993) a POP3 (995).</li>
+  <li><b>PostgreSQL</b> uchovává vše, co panely mění; Postfix a Dovecot z ní čtou přímo, takže nová schránka funguje okamžitě, aniž by bylo nutné cokoli restartovat.</li>
+  <li>Malý <b>root pomocník</b> dělá těch několik věcí, které vyžadují root (poštovní adresáře, certifikáty, aktualizace); každý požadavek je zkontrolován a zapsán do protokolu auditu.</li>
+</ul>
+<h2>Instalace</h2>
+<ul>
+  <li><b>Appliance</b> — hotový virtuální stroj (OVA pro VMware ESXi a Workstation, qcow2 pro Proxmox VE a KVM, VHDX pro Hyper-V generace 1) nebo instalační ISO pro nový VM nebo fyzický server (smaže první disk). Přidělte mu alespoň 2 CPU, 2 GB paměti a disk pro poštu (kořenový souborový systém se sám zvětší, když se zvětší virtuální disk). Po prvním spuštění zobrazí obrazovka adresu panelu a token pro nastavení; přihlášení na obrazovce jako <code>ezadmin</code> (první heslo <code>emailzit</code>, musí se změnit) otevře nabídku nastavení: síť (pro poštovní server použijte pevnou adresu), název serveru, časové pásmo, adresa panelu a token pro nastavení, heslo účtu personálu, stav služeb, restart.</li>
+  <li><b>Balíček pro Debian 13</b> — <code>sudo sh install.sh</code> z vydání, nebo <code>.deb</code> pomocí <code>apt install</code>: nainstaluje Postfix, Dovecot, Rspamd, Valkey a PostgreSQL z Debianu a vše nastaví.</li>
+  <li>Porty: 25 (pošta z jiných serverů), 465 a 587 (odesílání z poštovních programů), 993 (IMAP), 995 (POP3), 8444 (panely a webmail) a 443 a 80 pro automatické nastavení poštovních programů (autoconfig pro Thunderbird, Autodiscover pro Outlook, zásada MTA-STS; vše ostatní tam vede na webmail). EmailZit používá 443 a 80 jen tehdy, když není nainstalován žádný webový server a HostZit není propojen; jinak pro tato jména odpovídá webový server HostZit (<code>--public-web off</code> to vypne). Server potřebuje reverzní DNS název (PTR), který odpovídá jeho poštovnímu názvu hostitele, a odchozí port 25 musí být otevřený.</li>
+</ul>
+<h2>Kdo smí co</h2>
+<ul>
+  <li><b>Správci</b> spravují server, účty personálu, balíčky a všechny zákazníky. <b>Operátoři</b> spravují zákazníky, domény a schránky; <b>pozorovatelé</b> se jen dívají.</li>
+  <li><b>Zákazníci</b> vidí a mění jen své vlastní domény, schránky, aliasy a přeposílání, v rámci limitů svého balíčku.</li>
+  <li><b>Uživatelé pošty</b> se přihlašují svou adresou, svým heslem a vždy druhým faktorem (ověřovací aplikací). Poštovní programy (Outlook, Thunderbird, telefony) toto heslo nikdy nepoužívají: každý program dostane své vlastní <b>heslo aplikace</b>.</li>
+</ul>
+<h2>První kroky</h2>
+<ol>
+  <li>Nastavte název hostitele serveru v <b>Nastavení → Poštovní server</b> (název, ke kterému se poštovní programy připojují, např. <code>mail.example.com</code>).</li>
+  <li>Vytvořte <b>balíček</b> s limity, které prodáváte (domény, schránky, úložiště, odesílání za hodinu).</li>
+  <li>Vytvořte <b>zákazníka</b> s tímto balíčkem a dejte zákazníkovi přihlášení do panelu.</li>
+  <li>Přidejte <b>doménu</b> zákazníka, vložte záznamy DNS zobrazené na stránce domény u poskytovatele DNS domény a doménu ověřte.</li>
+  <li>Vytvořte <b>schránky</b>. Uživatel pošty se přihlásí na <code>/mail</code>, nastaví druhý faktor a vytvoří hesla aplikací pro své programy.</li>
+</ol>

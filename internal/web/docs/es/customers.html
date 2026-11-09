@@ -1,0 +1,21 @@
+<h1>Clientes y planes</h1>
+<h2>Planes</h2>
+<p>Un plan contiene los límites que recibe un cliente: cuántos dominios, buzones y alias, cuánto almacenamiento pueden usar todos los buzones juntos, el tamaño de un buzón nuevo y el del más grande, y los <b>límites de envío</b>. Los sistemas de facturación se refieren a un plan por su nombre corto (por ejemplo <code>business-10</code>).</p>
+<ul>
+  <li><b>Mensajes por hora / por día (por buzón)</b> y <b>por hora para todo el cliente</b> protegen la reputación de la dirección del servidor: un buzón cuya contraseña fue robada no puede enviar miles de mensajes de spam. Los mensajes por encima del límite esperan en la cola.</li>
+  <li><b>Destinatarios por mensaje</b> impide que un mensaje vaya a miles de direcciones.</li>
+  <li>Cambiar a un cliente a un plan más pequeño no borra nada; simplemente no se puede añadir nada nuevo por encima de los nuevos límites.</li>
+</ul>
+<h2>Clientes</h2>
+<p>Un cliente es dueño de dominios y buzones. El correo de cada cliente se almacena bajo su <b>propio usuario del sistema</b>, de modo que ni siquiera un fallo en el software de correo puede permitir que un cliente lea el correo de otro cliente. Un cliente nunca puede dirigir correo a los buzones de otro cliente, enviar como sus direcciones ni ver sus dominios.</p>
+<ul>
+  <li><b>Accesos al panel</b>: el cliente inicia sesión en el panel de cliente en la misma dirección que el panel de administración. Cada acceso debe configurar el inicio de sesión en dos pasos en el primer inicio de sesión.</li>
+  <li><b>ID de facturación</b>: el número del cliente en su sistema de facturación; la API REST encuentra a los clientes por él.</li>
+  <li><b>Dirección de salida</b> (cuando el servidor tiene direcciones de salida adicionales, consulte Personal, configuración y actualizaciones): el correo del cliente sale desde su propia dirección IP y su propio nombre de host, de modo que su reputación de envío es solo suya. Después, publique el registro SPF que se muestra en cada uno de los dominios del cliente.</li>
+</ul>
+<h2>Suspender y dar de baja</h2>
+<ul>
+  <li><b>Suspendido</b>: el correo para los dominios del cliente se sigue recibiendo (no se pierde nada), pero nadie del cliente puede iniciar sesión, usar programas de correo ni enviar. Las sesiones terminan al instante.</li>
+  <li><b>De baja</b>: el correo para los dominios del cliente se rechaza. Los datos se conservan hasta que se eliminan.</li>
+  <li><b>Activar</b> recupera a un cliente suspendido o dado de baja.</li>
+</ul>

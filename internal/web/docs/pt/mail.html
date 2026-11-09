@@ -1,0 +1,33 @@
+<h1>Domínios, caixas de correio e aliases</h1>
+<h2>Domínios</h2>
+<p>Num servidor partilhado, um novo domínio de um cliente só recebe correio depois de ser <b>verificado</b>: a página do domínio mostra um registo TXT (<code>_emailzit.example.com</code>) a colocar no fornecedor de DNS do domínio; depois, <b>Verificar agora</b>. O pessoal pode marcar um domínio como verificado manualmente quando sabe que pertence ao cliente; num servidor dedicado os domínios não precisam de verificação (Configurações → Servidor de correio).</p>
+<p>A página do domínio lista os <b>Registos DNS</b> de que o domínio precisa: MX (correio para este servidor), SPF, DMARC e os registos que permitem aos programas de correio encontrar as suas configurações (autoconfig, autodiscover, SRV). Os registos obrigatórios estão marcados.</p>
+<p><b>Relatórios DMARC</b>: o registo DMARC sugerido envia os relatórios diários dos destinatários para <code>dmarc-reports@&lt;domain&gt;</code>. O EmailZit fica com esse endereço para si (nenhuma caixa de correio ou alias o pode usar), lê os relatórios e mostra na página do domínio, para os últimos 30 dias, que servidores enviaram correio com o domínio como remetente e quanto dele passou no DMARC. Os seus próprios servidores devem passar; o correio que falha vindo de endereços desconhecidos é normalmente falsificado. Quando todos os seus remetentes passarem, a política pode passar de <code>p=none</code> para <code>quarantine</code> ou <code>reject</code>. Os relatórios são guardados durante 180 dias.</p>
+<p>O <b>catch-all</b> (correio para endereços desconhecidos) está desativado por predefinição: os endereços desconhecidos são recusados durante o diálogo SMTP, o que mantém afastados o spam e o backscatter. Ative-o só quando for realmente necessário.</p>
+<h2>Caixas de correio</h2>
+<ul>
+  <li>Uma caixa de correio tem um tamanho (quota) dentro do plano; a utilização é atualizada a cada dez minutos. Quando uma caixa de correio atinge 80 % e novamente 95 % da sua quota, o servidor coloca um aviso na sua Inbox (no idioma da caixa); depois de descer abaixo de 70 %, pode voltar a ser avisada.</li>
+  <li>A sua <b>palavra-passe</b> serve apenas para o webmail e as páginas próprias do utilizador, sempre com início de sessão em dois passos.</li>
+  <li>Os programas de correio usam <b>palavras-passe de aplicação</b> que o utilizador de correio cria em <code>/mail</code> — uma por programa ou dispositivo. Um telemóvel perdido significa revogar uma palavra-passe de aplicação, não mudar tudo.</li>
+  <li>Uma caixa de correio <b>desativada</b> continua a receber correio, mas ninguém consegue iniciar sessão. O pessoal também pode <b>bloquear o envio</b> (por exemplo após abuso) e definir outros limites de envio para uma caixa de correio.</li>
+  <li>Apagar uma caixa de correio move o seu correio para uma pasta de lixo no servidor durante 7 dias; depois desaparece.</li>
+</ul>
+<h2>Aliases e reencaminhamentos</h2>
+<ul>
+  <li>Um <b>alias</b> (por ex. <code>info@</code>) recebe correio e entrega-o a um ou mais endereços: caixas de correio do mesmo cliente ou endereços externos.</li>
+  <li>Um <b>reencaminhamento</b> é um alias no endereço de uma caixa de correio. Para manter uma cópia na caixa de correio, indique a própria caixa entre os destinos.</li>
+  <li><b>Enviar como</b>: as caixas de correio às quais um alias entrega também podem enviar com o alias como remetente.</li>
+</ul>
+<h2>Proteção</h2>
+<ul>
+  <li>Ninguém pode usar o servidor para retransmitir correio para outros servidores sem iniciar sessão (sem open relay).</li>
+  <li>O correio de fora que afirma vir de um domínio deste servidor é recusado; os utilizadores com sessão iniciada só podem enviar a partir dos seus próprios endereços e dos seus aliases "enviar como".</li>
+  <li>Os programas de correio têm de usar TLS; o início de sessão em texto simples é recusado.</li>
+  <li>Programas, scripts, atalhos, imagens de disco e ficheiros Office com macros são recusados como anexos (também dentro de arquivos), a menos que o administrador os tenha permitido; partilhe esses ficheiros por ligação.</li>
+  <li>As mensagens com ligações de phishing conhecidas, ou cujo remetente se faz passar no nome por alguém do seu domínio, recebem <code>[Phishing?]</code> antes do assunto.</li>
+  <li>Uma caixa de correio que envia spam (3 mensagens recusadas como spam ou vírus no espaço de uma hora) deixa de poder enviar até o fornecedor o voltar a permitir; recebe um aviso na sua Inbox. Mude a palavra-passe: normalmente outra pessoa conhece-a.</li>
+</ul>
+<h2>Configurações de spam</h2>
+<p>O Rspamd dá a cada mensagem recebida uma pontuação; acima de 15 é recusada, e o correio acima do nível escolhido vai para a pasta Junk da caixa de correio. Os níveis são <b>Rigoroso</b> (pontuação 4 ou mais), <b>Normal</b> (6, a predefinição), <b>Brando</b> (10) e <b>Nunca</b> (o spam fica na Inbox, marcado com um cabeçalho <code>X-Spam</code>). O pessoal define o nível de um cliente na página do cliente; aplica-se a todas as caixas de correio do cliente que não tenham um nível próprio. Na página da caixa de correio (pessoal e cliente) e na página <i>Resposta automática e filtros</i> do utilizador de correio, uma caixa de correio recebe o seu próprio nível e listas de <b>remetentes permitidos</b> (nunca Junk) e <b>remetentes bloqueados</b> (sempre Junk): endereços ou domínios inteiros, até 200 em cada lista, comparados com o endereço From. As regras correm antes dos filtros próprios do utilizador e da resposta automática, por isso o spam nunca recebe uma resposta automática. O assistente de correio escreve-as como script Sieve na pasta de correio de cada caixa (<code>.emailzit/spam.sieve</code>) quando mudam e verifica-as todas a cada 10 minutos.</p>
+<h2>Mover correio de outro servidor</h2>
+<p>Na página da caixa de correio, <b>Trazer correio de outro servidor</b> copia todas as pastas da caixa de correio antiga por IMAP (porta 993, ou 143 com STARTTLS) com as marcas de leitura e as datas; Sent, Trash, Junk e Drafts vão para as pastas correspondentes aqui. As mensagens que já cá estão são ignoradas, por isso execute-o uma vez antes e uma vez depois de mudar o registo MX, para apanhar o que chegou mais tarde. A palavra-passe antiga só fica guardada cifrada até a importação terminar. Em servidores de alojamento, as importações só vêm de servidores na internet; um servidor de empresa pode permitir redes privadas em Configurações → Servidor de correio.</p>

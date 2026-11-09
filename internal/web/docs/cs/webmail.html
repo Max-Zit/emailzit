@@ -1,0 +1,34 @@
+<h1>Webmail a stránky uživatelů pošty</h1>
+<p>Každý uživatel pošty má své vlastní stránky na <code>https://&lt;mail host&gt;:8444/mail</code> (na samostatném serveru tam vede i <code>https://&lt;mail host&gt;/</code>). Jsou oddělené od panelů: uživatel pošty nikdy nevidí jiné schránky, nastavení zákazníka ani server.</p>
+<h2>Přihlášení</h2>
+<ul>
+  <li>Adresa a heslo schránky a vždy druhý faktor: při prvním přihlášení uživatel naskenuje QR kód ověřovací aplikací (Google Authenticator, Microsoft Authenticator, Aegis …) a uschová si záložní kódy.</li>
+  <li>Uživatel, který ztratil telefon i záložní kódy, se obrátí na poskytovatele: personál a zákazník mohou na stránce schránky <b>resetovat dvoufázové přihlášení</b>; uživatel ho při dalším přihlášení nastaví znovu.</li>
+  <li>Jazyk stránek se řídí volbou uživatele (vpravo nahoře) a zapamatuje se.</li>
+</ul>
+<h2>Webmail</h2>
+<ul>
+  <li>Složky vlevo (na telefonu nahoře): Doručená pošta, Koncepty, Odeslané, Archiv, Junk, Koš a vlastní složky uživatele, s počtem nepřečtených zpráv.</li>
+  <li>Seznam zobrazuje odesílatele, předmět a datum; nepřečtené zprávy jsou tučně. Vyberte zprávy a označte je jako přečtené nebo nepřečtené, přesuňte je do Junk (chcete-li odesílatele trvale odfiltrovat, přidejte ho mezi blokované odesílatele) nebo je smažte (do Koše; smazání v Koši je odstraní). <b>Přesunout</b> vloží vybrané zprávy (nebo otevřenou zprávu) do jiné složky.</li>
+  <li><b>Hledat</b> najde slova kdekoli ve zprávách otevřené složky (hlavičky i text).</li>
+  <li>Zprávy napsané v HTML se zobrazují v chráněném rámci: skripty, formuláře a vzdálené obrázky se nikdy nenačítají, takže otevření zprávy nemůže odesílateli nic prozradit. Přílohy se stahují, nikdy se neotevírají v prohlížeči.</li>
+  <li><b>Napsat</b>, <b>Odpovědět</b>, <b>Odpovědět všem</b> a <b>Přeposlat</b> odesílají přes server stejně jako poštovní program (s limity odesílání a podpisem DKIM schránky); kopie jde do Odeslaných. Lze přidat přílohy až do velikosti zprávy povolené serverem. Při psaní nabízejí pole adres kontakty; podpis už je pod textem.</li>
+</ul>
+<h2>Kontakty a podpis</h2>
+<ul>
+  <li><b>Kontakty</b>: adresář webmailu. Adresy, na které se z webmailu odesílá pošta, se přidávají samy (se jménem napsaným ve zprávě); uživatel může položky přidávat, přejmenovávat (uložit stejnou adresu s novým jménem) a odebírat.</li>
+  <li><b>Podpis</b>: text, který webmail vkládá pod každou novou zprávu, odpověď a přeposlání. Poštovní programy mají vlastní nastavení podpisu.</li>
+  <li>Když schránka dosáhne 80 % a 95 % své kvóty, přijde do doručené pošty upozornění ze serveru.</li>
+</ul>
+<h2>Moje schránka</h2>
+<ul>
+  <li><b>Využití</b>: kolik z kvóty je použito.</li>
+  <li><b>Heslo</b>: zde uživatel mění webové heslo (alespoň 12 znaků).</li>
+  <li><b>Hesla aplikací</b>: jedno pro každý program nebo zařízení, zobrazí se jednou při vytvoření; ztracené zařízení znamená smazat jeho heslo aplikace. Stránka také zobrazuje nastavení pro poštovní programy a nabízí profil Apple (<code>.mobileconfig</code>) pro iPhone, iPad a Mac.</li>
+</ul>
+<h2>Automatická odpověď a filtry</h2>
+<ul>
+  <li><b>Automatická odpověď</b>: text (a volitelně předmět) zasílaný odesílatelům, dokud je zapnutá, volitelně jen mezi dvěma daty; tentýž odesílatel ji dostane znovu až po zvoleném počtu dní. Poštovní konference, automatické zprávy a spam nikdy automatickou odpověď nedostanou.</li>
+  <li><b>Filtry</b> třídí příchozí poštu: když odesílatel, příjemci nebo předmět obsahují určitý text, přesunou zprávu do složky, označí ji jako přečtenou nebo ji smažou. Rozhoduje první odpovídající filtr.</li>
+  <li><b>Spam</b>: kolik spamu jde do Junk (nebo úroveň celého účtu) a vlastní povolení odesílatelé (nikdy Junk) a blokovaní odesílatelé (vždy Junk) uživatele.</li>
+</ul>

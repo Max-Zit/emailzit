@@ -1,0 +1,34 @@
+<h1>Webmail und die Seiten der Mail-Benutzer</h1>
+<p>Jeder Mail-Benutzer hat seine eigenen Seiten unter <code>https://&lt;mail host&gt;:8444/mail</code> (auf einem eigenständigen Server führt auch <code>https://&lt;mail host&gt;/</code> dorthin). Sie sind von den Panels getrennt: Ein Mail-Benutzer sieht nie andere Postfächer, die Einstellungen des Kunden oder den Server.</p>
+<h2>Anmeldung</h2>
+<ul>
+  <li>Die Adresse und das Passwort des Postfachs und immer ein zweiter Faktor: Bei der ersten Anmeldung scannt der Benutzer einen QR-Code mit einer Authenticator-App (Google Authenticator, Microsoft Authenticator, Aegis …) und bewahrt die Wiederherstellungscodes auf.</li>
+  <li>Ein Benutzer, der das Telefon und die Wiederherstellungscodes verloren hat, wendet sich an den Anbieter: Das Personal und der Kunde können auf der Postfach-Seite <b>die Zwei-Faktor-Anmeldung zurücksetzen</b>; der Benutzer richtet sie bei der nächsten Anmeldung neu ein.</li>
+  <li>Die Sprache der Seiten folgt der Wahl des Benutzers (oben rechts) und wird gespeichert.</li>
+</ul>
+<h2>Webmail</h2>
+<ul>
+  <li>Ordner links (auf einem Telefon oben): Posteingang, Entwürfe, Gesendet, Archiv, Junk, Papierkorb und die eigenen Ordner des Benutzers, mit der Anzahl ungelesener Nachrichten.</li>
+  <li>Die Liste zeigt Absender, Betreff und Datum; ungelesene Nachrichten sind fett. Wählen Sie Nachrichten aus, um sie als gelesen oder ungelesen zu markieren, nach Junk zu verschieben (um einen Absender dauerhaft fernzuhalten, fügen Sie ihn zu den gesperrten Absendern hinzu) oder zu löschen (in den Papierkorb; Löschen im Papierkorb entfernt sie). <b>Verschieben</b> legt die ausgewählten Nachrichten (oder die geöffnete) in einen anderen Ordner.</li>
+  <li><b>Suchen</b> findet die Wörter überall in den Nachrichten des geöffneten Ordners (Header und Text).</li>
+  <li>In HTML geschriebene Nachrichten werden in einem geschützten Rahmen angezeigt: Skripte, Formulare und externe Bilder werden nie geladen, sodass das Öffnen einer Nachricht dem Absender nichts verraten kann. Anhänge werden heruntergeladen, nie im Browser geöffnet.</li>
+  <li><b>Schreiben</b>, <b>Antworten</b>, <b>Allen antworten</b> und <b>Weiterleiten</b> senden über den Server wie ein Mailprogramm (mit den Sendegrenzen und der DKIM-Signatur des Postfachs); eine Kopie geht nach Gesendet. Anhänge bis zur Nachrichtengröße des Servers können hinzugefügt werden. Beim Schreiben schlagen die Adressfelder die Kontakte vor; die Signatur steht bereits unter dem Text.</li>
+</ul>
+<h2>Kontakte und Signatur</h2>
+<ul>
+  <li><b>Kontakte</b>: das Adressbuch von Webmail. Adressen, an die aus Webmail Mail gesendet wird, werden von selbst hinzugefügt (mit dem in der Nachricht geschriebenen Namen); der Benutzer kann Einträge hinzufügen, umbenennen (dieselbe Adresse mit einem neuen Namen speichern) und entfernen.</li>
+  <li><b>Signatur</b>: ein Text, den Webmail unter jede neue Nachricht, Antwort und Weiterleitung setzt. Mailprogramme haben ihre eigene Signatur-Einstellung.</li>
+  <li>Wenn das Postfach 80 % und 95 % seiner Quota erreicht, kommt eine Warnung vom Server im Posteingang an.</li>
+</ul>
+<h2>Mein Postfach</h2>
+<ul>
+  <li><b>Belegung</b>: wie viel der Quota verwendet wird.</li>
+  <li><b>Passwort</b>: Der Benutzer ändert hier das Web-Passwort (mindestens 12 Zeichen).</li>
+  <li><b>App-Passwörter</b>: eines pro Programm oder Gerät, beim Erstellen einmal angezeigt; ein verlorenes Gerät bedeutet, sein App-Passwort zu löschen. Die Seite zeigt auch die Einstellungen für Mailprogramme und bietet ein Apple-Profil (<code>.mobileconfig</code>) für iPhone, iPad und Mac an.</li>
+</ul>
+<h2>Automatische Antwort und Filter</h2>
+<ul>
+  <li><b>Automatische Antwort</b>: ein Text (und optional ein Betreff), der an Absender gesendet wird, solange sie eingeschaltet ist, optional nur zwischen zwei Daten; derselbe Absender bekommt sie erst nach der gewählten Anzahl von Tagen erneut. Mailinglisten, automatische Nachrichten und Spam bekommen nie eine automatische Antwort.</li>
+  <li><b>Filter</b> sortieren eingehende Mail: Wenn der Absender, die Empfänger oder der Betreff einen Text enthalten, verschieben sie die Nachricht in einen Ordner, markieren sie als gelesen oder löschen sie. Der erste passende Filter entscheidet.</li>
+  <li><b>Spam</b>: wie viel Spam nach Junk geht (oder die Stufe des ganzen Kontos) sowie die eigenen erlaubten Absender (nie Junk) und gesperrten Absender (immer Junk) des Benutzers.</li>
+</ul>

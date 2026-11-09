@@ -1,0 +1,21 @@
+<h1>Clienti e pacchetti</h1>
+<h2>Pacchetti</h2>
+<p>Un pacchetto contiene i limiti che riceve un cliente: quanti domini, caselle e alias, quanto spazio possono usare tutte le caselle insieme, la dimensione di una nuova casella e quella della casella più grande, e i <b>limiti di invio</b>. I sistemi di fatturazione indicano un pacchetto con il suo nome breve (per esempio <code>business-10</code>).</p>
+<ul>
+  <li><b>Messaggi all'ora / al giorno (per casella)</b> e <b>all'ora per l'intero cliente</b> proteggono la reputazione dell'indirizzo del server: una casella la cui password è stata rubata non può inviare migliaia di messaggi di spam. I messaggi oltre il limite attendono nella coda.</li>
+  <li><b>Destinatari per messaggio</b> impedisce che un messaggio arrivi a migliaia di indirizzi.</li>
+  <li>Passare un cliente a un pacchetto più piccolo non elimina nulla; non si può aggiungere niente di nuovo oltre i nuovi limiti.</li>
+</ul>
+<h2>Clienti</h2>
+<p>Un cliente possiede domini e caselle. La posta di ogni cliente è conservata sotto il suo <b>utente di sistema dedicato</b>, quindi nemmeno un difetto nel software di posta può permettere a un cliente di leggere la posta di un altro cliente. Un cliente non può mai instradare posta nelle caselle di un altro cliente, inviare con i suoi indirizzi o vederne i domini.</p>
+<ul>
+  <li><b>Accessi al pannello</b>: il cliente accede al pannello clienti allo stesso indirizzo del pannello di amministrazione. Ogni accesso deve configurare l'accesso a due fattori al primo login.</li>
+  <li><b>ID di fatturazione</b>: il numero del cliente nel vostro sistema di fatturazione; la REST API trova i clienti in base a esso.</li>
+  <li><b>Indirizzo in uscita</b> (quando il server ha indirizzi in uscita aggiuntivi, vedi Personale, impostazioni e aggiornamenti): la posta del cliente parte dal proprio indirizzo IP e nome host, quindi la sua reputazione di invio è solo sua. Pubblicate poi il record SPF mostrato su ciascun dominio del cliente.</li>
+</ul>
+<h2>Sospendere e disdire</h2>
+<ul>
+  <li><b>Sospeso</b>: la posta per i domini del cliente viene ancora ricevuta (non si perde nulla), ma nessuno del cliente può accedere, usare i programmi di posta o inviare. Le sessioni terminano subito.</li>
+  <li><b>Disdetto</b>: la posta per i domini del cliente viene rifiutata. I dati restano finché non vengono eliminati.</li>
+  <li><b>Attiva</b> riporta in servizio un cliente sospeso o disdetto.</li>
+</ul>

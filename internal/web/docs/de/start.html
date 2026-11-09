@@ -1,0 +1,30 @@
+<h1>Erste Schritte</h1>
+<p>EmailZit ist Mail-Hosting für viele Domains und Kunden auf Ihrem eigenen Server: ein <b>Admin-Panel</b> für das Personal des Servers, ein <b>Kunden-Panel</b>, in dem jeder Kunde seine eigenen Domains und Postfächer verwaltet, und <b>Seiten für Mail-Benutzer</b> (Webmail, eigenes Passwort, App-Passwörter, automatische Antwort, Filter).</p>
+<h2>Wie es aufgebaut ist</h2>
+<ul>
+  <li><b>EmailZit-Server</b> — die Panels und die REST-API, ausgeführt als nicht privilegierter Benutzer.</li>
+  <li><b>Postfix</b> empfängt und sendet Mail (SMTP auf Port 25, Einlieferung für Mailprogramme auf 465 und 587, immer verschlüsselt).</li>
+  <li><b>Dovecot</b> speichert die Mail und stellt IMAP (993) und POP3 (995) bereit.</li>
+  <li><b>PostgreSQL</b> enthält alles, was die Panels ändern; Postfix und Dovecot lesen direkt daraus, sodass ein neues Postfach sofort funktioniert, ohne dass etwas neu gestartet werden muss.</li>
+  <li>Ein kleiner <b>Root-Helfer</b> erledigt die wenigen Dinge, die Root-Rechte brauchen (Mailverzeichnisse, Zertifikate, Updates); jede Anfrage wird geprüft und in das Prüfprotokoll geschrieben.</li>
+</ul>
+<h2>Installation</h2>
+<ul>
+  <li><b>Appliance</b> — eine fertige virtuelle Maschine (OVA für VMware ESXi und Workstation, qcow2 für Proxmox VE und KVM, VHDX für Hyper-V Generation 1) oder das Installations-ISO für eine neue VM oder einen physischen Server (es löscht die erste Festplatte). Geben Sie ihr mindestens 2 CPUs, 2 GB Arbeitsspeicher und eine Festplatte für die Mail (das Root-Dateisystem wächst von selbst, wenn die virtuelle Festplatte vergrößert wird). Nach dem ersten Start zeigt der Bildschirm die Panel-Adresse und das Einrichtungstoken; die Anmeldung am Bildschirm als <code>ezadmin</code> (erstes Passwort <code>emailzit</code>, es muss geändert werden) öffnet das Einrichtungsmenü: Netzwerk (verwenden Sie für einen Mailserver eine feste Adresse), Servername, Zeitzone, Panel-Adresse und Einrichtungstoken, Passwort eines Personalkontos, Zustand der Dienste, Neustart.</li>
+  <li><b>Debian-13-Paket</b> — <code>sudo sh install.sh</code> aus dem Release oder das <code>.deb</code> mit <code>apt install</code>: Es installiert Postfix, Dovecot, Rspamd, Valkey und PostgreSQL aus Debian und richtet alles ein.</li>
+  <li>Ports: 25 (Mail von anderen Servern), 465 und 587 (Senden aus Mailprogrammen), 993 (IMAP), 995 (POP3), 8444 (Panels und Webmail) sowie 443 und 80 für die automatische Einrichtung von Mailprogrammen (Autoconfig für Thunderbird, Autodiscover für Outlook, die MTA-STS-Richtlinie; alles andere dort führt zu Webmail). EmailZit verwendet 443 und 80 nur, wenn kein Webserver installiert und HostZit nicht verbunden ist; sonst antwortet der Webserver von HostZit für diese Namen (<code>--public-web off</code> schaltet es ab). Der Server braucht einen Reverse-DNS-Namen (PTR), der zu seinem Mail-Hostnamen passt, und ausgehender Port 25 muss offen sein.</li>
+</ul>
+<h2>Wer was darf</h2>
+<ul>
+  <li><b>Administratoren</b> verwalten den Server, die Personalkonten, die Pakete und alle Kunden. <b>Operatoren</b> verwalten Kunden, Domains und Postfächer; <b>Betrachter</b> sehen nur zu.</li>
+  <li><b>Kunden</b> sehen und ändern nur ihre eigenen Domains, Postfächer, Aliase und Weiterleitungen, innerhalb der Grenzen ihres Pakets.</li>
+  <li><b>Mail-Benutzer</b> melden sich mit ihrer Adresse, ihrem Passwort und immer einem zweiten Faktor (einer Authenticator-App) an. Mailprogramme (Outlook, Thunderbird, Telefone) verwenden dieses Passwort nie: Jedes Programm bekommt sein eigenes <b>App-Passwort</b>.</li>
+</ul>
+<h2>Die ersten Schritte</h2>
+<ol>
+  <li>Legen Sie den Hostnamen des Servers unter <b>Einstellungen → Mailserver</b> fest (den Namen, mit dem sich Mailprogramme verbinden, z. B. <code>mail.example.com</code>).</li>
+  <li>Legen Sie ein <b>Paket</b> mit den Grenzen an, die Sie verkaufen (Domains, Postfächer, Speicher, Senden pro Stunde).</li>
+  <li>Legen Sie einen <b>Kunden</b> mit diesem Paket an und geben Sie dem Kunden eine Panel-Anmeldung.</li>
+  <li>Fügen Sie die <b>Domain</b> des Kunden hinzu, tragen Sie die auf der Domain-Seite angezeigten DNS-Einträge beim DNS-Anbieter der Domain ein und bestätigen Sie die Domain.</li>
+  <li>Legen Sie <b>Postfächer</b> an. Der Mail-Benutzer meldet sich unter <code>/mail</code> an, richtet den zweiten Faktor ein und erstellt App-Passwörter für seine Programme.</li>
+</ol>

@@ -1,0 +1,34 @@
+<h1>Webmail e le pagine degli utenti di posta</h1>
+<p>Ogni utente di posta ha le proprie pagine su <code>https://&lt;mail host&gt;:8444/mail</code> (su un server autonomo anche <code>https://&lt;mail host&gt;/</code> porta lì). Sono separate dai pannelli: un utente di posta non vede mai altre caselle, le impostazioni del cliente o il server.</p>
+<h2>Accesso</h2>
+<ul>
+  <li>L'indirizzo e la password della casella, e sempre un secondo fattore: al primo accesso l'utente scansiona un codice QR con un'app di autenticazione (Google Authenticator, Microsoft Authenticator, Aegis …) e conserva i codici di recupero.</li>
+  <li>Un utente che ha perso il telefono e i codici di recupero si rivolge al provider: il personale e il cliente possono <b>reimpostare il secondo fattore</b> nella pagina della casella; l'utente lo configura di nuovo al prossimo accesso.</li>
+  <li>La lingua delle pagine segue la scelta dell'utente (in alto a destra) e viene ricordata.</li>
+</ul>
+<h2>Webmail</h2>
+<ul>
+  <li>Le cartelle a sinistra (sul telefono in alto): Inbox, Drafts, Sent, Archive, Junk, Trash e le cartelle dell'utente, con il numero di messaggi non letti.</li>
+  <li>L'elenco mostra mittente, oggetto e data; i messaggi non letti sono in grassetto. Selezionate i messaggi per segnarli come letti o non letti, spostarli in Junk (per tenere lontano un mittente per sempre, aggiungetelo ai mittenti bloccati) o eliminarli (nel Trash; eliminandoli nel Trash vengono rimossi). <b>Sposta</b> mette i messaggi selezionati (o quello aperto) in un'altra cartella.</li>
+  <li><b>Cerca</b> trova le parole ovunque nei messaggi della cartella aperta (intestazioni e testo).</li>
+  <li>I messaggi scritti in HTML vengono mostrati in un riquadro protetto: script, moduli e immagini remote non vengono mai caricati, quindi aprire un messaggio non può rivelare nulla al mittente. Gli allegati vengono scaricati, mai aperti nel browser.</li>
+  <li><b>Scrivi</b>, <b>Rispondi</b>, <b>Rispondi a tutti</b> e <b>Inoltra</b> inviano tramite il server come fa un programma di posta (con i limiti di invio e la firma DKIM della casella); una copia va in Sent. Si possono aggiungere allegati fino alla dimensione massima dei messaggi del server. Durante la scrittura i campi degli indirizzi suggeriscono i contatti; la firma è già sotto il testo.</li>
+</ul>
+<h2>Contatti e firma</h2>
+<ul>
+  <li><b>Contatti</b>: la rubrica della webmail. Gli indirizzi a cui si invia posta dalla webmail vengono aggiunti da soli (con il nome scritto nel messaggio); l'utente può aggiungere, rinominare (salvando lo stesso indirizzo con un nuovo nome) e rimuovere voci.</li>
+  <li><b>Firma</b>: un testo che la webmail mette sotto ogni nuovo messaggio, risposta e inoltro. I programmi di posta hanno una propria impostazione della firma.</li>
+  <li>Quando la casella raggiunge l'80 % e il 95 % della sua quota, nella Inbox arriva un avviso dal server.</li>
+</ul>
+<h2>La mia casella</h2>
+<ul>
+  <li><b>Utilizzo</b>: quanta parte della quota è usata.</li>
+  <li><b>Password</b>: qui l'utente cambia la password web (almeno 12 caratteri).</li>
+  <li><b>Password per app</b>: una per programma o dispositivo, mostrata una sola volta alla creazione; un dispositivo perso significa eliminare la sua password per app. La pagina mostra anche le impostazioni per i programmi di posta e offre un profilo Apple (<code>.mobileconfig</code>) per iPhone, iPad e Mac.</li>
+</ul>
+<h2>Risposta automatica e filtri</h2>
+<ul>
+  <li><b>Risposta automatica</b>: un testo (e un oggetto facoltativo) inviato ai mittenti mentre è attiva, facoltativamente solo tra due date; lo stesso mittente la riceve di nuovo solo dopo il numero di giorni scelto. Mailing list, messaggi automatici e spam non ricevono mai una risposta automatica.</li>
+  <li><b>Filtri</b> smistano la posta in arrivo: quando il mittente, i destinatari o l'oggetto contengono un testo, spostano il messaggio in una cartella, lo segnano come letto o lo eliminano. Decide il primo filtro corrispondente.</li>
+  <li><b>Spam</b>: quanto spam va in Junk (o il livello dell'intero account), e i mittenti consentiti (mai Junk) e i mittenti bloccati (sempre Junk) dell'utente.</li>
+</ul>

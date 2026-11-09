@@ -1,0 +1,21 @@
+<h1>Müşteriler ve paketler</h1>
+<h2>Paketler</h2>
+<p>Bir paket, müşterinin aldığı sınırları içerir: kaç alan adı, posta kutusu ve takma ad, tüm posta kutularının birlikte ne kadar depolama kullanabileceği, yeni bir posta kutusunun ve en büyüğünün boyutu ve <b>gönderim sınırları</b>. Faturalama sistemleri bir pakete kısa adıyla başvurur (örneğin <code>business-10</code>).</p>
+<ul>
+  <li><b>Saatlik / günlük ileti (posta kutusu başına)</b> ve <b>tüm müşteri için saatlik</b> sınırlar sunucu adresinin itibarını korur: parolası çalınmış bir posta kutusu binlerce spam ileti gönderemez. Sınırı aşan iletiler kuyrukta bekler.</li>
+  <li><b>İleti başına alıcı</b>, tek bir iletinin binlerce adrese gitmesini önler.</li>
+  <li>Bir müşteriyi daha küçük bir pakete geçirmek hiçbir şeyi silmez; yalnızca yeni sınırların üzerinde yeni bir şey eklenemez.</li>
+</ul>
+<h2>Müşteriler</h2>
+<p>Bir müşterinin alan adları ve posta kutuları vardır. Her müşterinin postası kendi <b>sistem kullanıcısı</b> altında saklanır; böylece posta yazılımındaki bir hata bile bir müşterinin başka bir müşterinin postasını okumasına izin veremez. Bir müşteri, başka bir müşterinin posta kutularına asla posta yönlendiremez, onun adresleri olarak gönderemez veya alan adlarını göremez.</p>
+<ul>
+  <li><b>Panel girişleri</b>: müşteri, müşteri paneline yönetim paneliyle aynı adresten giriş yapar. Her giriş, ilk oturum açmada iki adımlı girişi ayarlamalıdır.</li>
+  <li><b>Faturalama kimliği</b>: müşterinin faturalama sisteminizdeki numarası; REST API müşterileri bununla bulur.</li>
+  <li><b>Giden adres</b> (sunucunun ek giden adresleri olduğunda, bkz. Personel, ayarlar ve güncellemeler): müşterinin postası kendi IP adresinden ve ana bilgisayar adından çıkar, böylece gönderim itibarı yalnızca kendisine aittir. Ardından müşterinin her alan adında gösterilen SPF kaydını yayımlayın.</li>
+</ul>
+<h2>Askıya alma ve sonlandırma</h2>
+<ul>
+  <li><b>Askıda</b>: müşterinin alan adlarına gelen posta yine de alınır (hiçbir şey kaybolmaz), ancak müşteriden hiç kimse oturum açamaz, posta programlarını kullanamaz veya gönderim yapamaz. Oturumlar hemen sona erer.</li>
+  <li><b>Sonlandırıldı</b>: müşterinin alan adlarına gelen posta reddedilir. Veriler silinene kadar kalır.</li>
+  <li><b>Etkinleştir</b>, askıya alınmış veya sonlandırılmış bir müşteriyi geri getirir.</li>
+</ul>

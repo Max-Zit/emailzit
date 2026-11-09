@@ -1,0 +1,34 @@
+<h1>Webmail et les pages des utilisateurs de messagerie</h1>
+<p>Chaque utilisateur de messagerie dispose de ses propres pages sur <code>https://&lt;mail host&gt;:8444/mail</code> (sur un serveur autonome, <code>https://&lt;mail host&gt;/</code> y mène aussi). Elles sont séparées des panneaux : un utilisateur de messagerie ne voit jamais d'autres boîtes, les paramètres du client ni le serveur.</p>
+<h2>Connexion</h2>
+<ul>
+  <li>L'adresse et le mot de passe de la boîte, et toujours un second facteur : à la première connexion, l'utilisateur scanne un code QR avec une application d'authentification (Google Authenticator, Microsoft Authenticator, Aegis …) et conserve les codes de récupération.</li>
+  <li>Un utilisateur qui a perdu son téléphone et ses codes de récupération s'adresse au fournisseur : le personnel et le client peuvent <b>réinitialiser la connexion à deux facteurs</b> sur la page de la boîte ; l'utilisateur la configure à nouveau à la connexion suivante.</li>
+  <li>La langue des pages suit le choix de l'utilisateur (en haut à droite) et est mémorisée.</li>
+</ul>
+<h2>Webmail</h2>
+<ul>
+  <li>Les dossiers à gauche (en haut sur un téléphone) : Boîte de réception, Brouillons, Envoyés, Archives, Junk, Corbeille et les dossiers de l'utilisateur, avec le nombre de messages non lus.</li>
+  <li>La liste affiche l'expéditeur, l'objet et la date ; les messages non lus sont en gras. Sélectionnez des messages pour les marquer comme lus ou non lus, les déplacer vers Junk (pour écarter définitivement un expéditeur, ajoutez-le aux expéditeurs bloqués) ou les supprimer (vers la Corbeille ; supprimer dans la Corbeille les efface). <b>Déplacer</b> place les messages sélectionnés (ou celui qui est ouvert) dans un autre dossier.</li>
+  <li><b>Rechercher</b> trouve les mots n'importe où dans les messages du dossier ouvert (en-têtes et texte).</li>
+  <li>Les messages rédigés en HTML sont affichés dans un cadre protégé : les scripts, les formulaires et les images distantes ne sont jamais chargés, de sorte qu'ouvrir un message ne peut rien révéler à l'expéditeur. Les pièces jointes sont téléchargées, jamais ouvertes dans le navigateur.</li>
+  <li><b>Écrire</b>, <b>Répondre</b>, <b>Répondre à tous</b> et <b>Transférer</b> envoient par le serveur comme le fait un logiciel de messagerie (avec les limites d'envoi et la signature DKIM de la boîte) ; une copie va dans Envoyés. Des pièces jointes jusqu'à la taille de message du serveur peuvent être ajoutées. Pendant la rédaction, les champs d'adresse proposent les contacts ; la signature se trouve déjà sous le texte.</li>
+</ul>
+<h2>Contacts et signature</h2>
+<ul>
+  <li><b>Contacts</b> : le carnet d'adresses du webmail. Les adresses auxquelles du courrier est envoyé depuis le webmail sont ajoutées d'elles-mêmes (avec le nom écrit dans le message) ; l'utilisateur peut ajouter, renommer (enregistrer la même adresse avec un nouveau nom) et supprimer des entrées.</li>
+  <li><b>Signature</b> : un texte que le webmail place sous chaque nouveau message, réponse et transfert. Les logiciels de messagerie ont leur propre réglage de signature.</li>
+  <li>Lorsque la boîte atteint 80 % et 95 % de son quota, un avertissement du serveur arrive dans la boîte de réception.</li>
+</ul>
+<h2>Ma boîte aux lettres</h2>
+<ul>
+  <li><b>Occupation</b> : la part du quota utilisée.</li>
+  <li><b>Mot de passe</b> : l'utilisateur change ici le mot de passe web (au moins 12 caractères).</li>
+  <li><b>Mots de passe d'application</b> : un par logiciel ou appareil, affiché une seule fois à la création ; un appareil perdu signifie supprimer son mot de passe d'application. La page affiche aussi les paramètres pour les logiciels de messagerie et propose un profil Apple (<code>.mobileconfig</code>) pour iPhone, iPad et Mac.</li>
+</ul>
+<h2>Réponse automatique et filtres</h2>
+<ul>
+  <li><b>Réponse automatique</b> : un texte (et un objet facultatif) envoyé aux expéditeurs tant qu'elle est activée, éventuellement uniquement entre deux dates ; le même expéditeur ne la reçoit à nouveau qu'après le nombre de jours choisi. Les listes de diffusion, les messages automatiques et le spam ne reçoivent jamais de réponse automatique.</li>
+  <li>Les <b>Filtres</b> trient le courrier entrant : lorsque l'expéditeur, les destinataires ou l'objet contiennent un texte, ils déplacent le message vers un dossier, le marquent comme lu ou le suppriment. Le premier filtre correspondant décide.</li>
+  <li><b>Spam</b> : la quantité de spam qui va dans Junk (ou le niveau de tout le compte), ainsi que les expéditeurs autorisés (jamais Junk) et bloqués (toujours Junk) propres à l'utilisateur.</li>
+</ul>

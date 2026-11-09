@@ -1,0 +1,30 @@
+<h1>Pierwsze kroki</h1>
+<p>EmailZit to hosting poczty dla wielu domen i klientów na twoim własnym serwerze: <b>panel administracyjny</b> dla personelu serwera, <b>panel klienta</b>, w którym każdy klient zarządza własnymi domenami i skrzynkami, oraz <b>strony użytkowników poczty</b> (webmail, własne hasło, hasła aplikacji, automatyczna odpowiedź, filtry).</p>
+<h2>Jak to jest zbudowane</h2>
+<ul>
+  <li><b>Serwer EmailZit</b> — panele i REST API, działające jako użytkownik bez uprawnień.</li>
+  <li><b>Postfix</b> odbiera i wysyła pocztę (SMTP na porcie 25, wysyłanie z programów pocztowych na 465 i 587, zawsze szyfrowane).</li>
+  <li><b>Dovecot</b> przechowuje pocztę i udostępnia IMAP (993) oraz POP3 (995).</li>
+  <li><b>PostgreSQL</b> przechowuje wszystko, co zmieniają panele; Postfix i Dovecot czytają z niej bezpośrednio, więc nowa skrzynka działa od razu, bez restartowania czegokolwiek.</li>
+  <li>Mały <b>pomocnik root</b> wykonuje te nieliczne czynności, które wymagają uprawnień root (katalogi poczty, certyfikaty, aktualizacje); każde żądanie jest sprawdzane i zapisywane w dzienniku audytu.</li>
+</ul>
+<h2>Instalacja</h2>
+<ul>
+  <li><b>Appliance</b> — gotowa maszyna wirtualna (OVA dla VMware ESXi i Workstation, qcow2 dla Proxmox VE i KVM, VHDX dla Hyper-V generacji 1) lub instalacyjny obraz ISO dla nowej maszyny wirtualnej albo serwera fizycznego (kasuje pierwszy dysk). Przydziel jej co najmniej 2 procesory, 2 GB pamięci i dysk na pocztę (główny system plików sam się powiększa, gdy dysk wirtualny zostanie powiększony). Po pierwszym uruchomieniu ekran pokazuje adres panelu i token konfiguracji; zalogowanie się na ekranie jako <code>ezadmin</code> (pierwsze hasło <code>emailzit</code>, trzeba je zmienić) otwiera menu konfiguracji: sieć (dla serwera poczty używaj stałego adresu), nazwa serwera, strefa czasowa, adres panelu i token konfiguracji, hasło konta personelu, stan usług, restart.</li>
+  <li><b>Pakiet dla Debiana 13</b> — <code>sudo sh install.sh</code> z wydania albo plik <code>.deb</code> przez <code>apt install</code>: instaluje Postfix, Dovecot, Rspamd, Valkey i PostgreSQL z Debiana i wszystko konfiguruje.</li>
+  <li>Porty: 25 (poczta z innych serwerów), 465 i 587 (wysyłanie z programów pocztowych), 993 (IMAP), 995 (POP3), 8444 (panele i webmail) oraz 443 i 80 dla automatycznej konfiguracji programów pocztowych (autoconfig dla Thunderbirda, Autodiscover dla Outlooka, polityka MTA-STS; wszystko inne prowadzi tam do webmaila). EmailZit używa 443 i 80 tylko wtedy, gdy nie jest zainstalowany żaden serwer WWW i HostZit nie jest połączony; w przeciwnym razie dla tych nazw odpowiada serwer WWW HostZit (<code>--public-web off</code> to wyłącza). Serwer potrzebuje nazwy odwrotnego DNS (PTR) zgodnej z jego nazwą hosta poczty, a wychodzący port 25 musi być otwarty.</li>
+</ul>
+<h2>Kto co może</h2>
+<ul>
+  <li><b>Administratorzy</b> zarządzają serwerem, kontami personelu, pakietami i wszystkimi klientami. <b>Operatorzy</b> zarządzają klientami, domenami i skrzynkami; <b>obserwatorzy</b> tylko przeglądają.</li>
+  <li><b>Klienci</b> widzą i zmieniają tylko własne domeny, skrzynki, aliasy i przekierowania, w granicach limitów swojego pakietu.</li>
+  <li><b>Użytkownicy poczty</b> logują się swoim adresem, swoim hasłem i zawsze drugim składnikiem (aplikacją uwierzytelniającą). Programy pocztowe (Outlook, Thunderbird, telefony) nigdy nie używają tego hasła: każdy program dostaje własne <b>hasło aplikacji</b>.</li>
+</ul>
+<h2>Pierwsze kroki</h2>
+<ol>
+  <li>Ustaw nazwę hosta serwera w <b>Ustawienia → Serwer poczty</b> (nazwa, z którą łączą się programy pocztowe, np. <code>mail.example.com</code>).</li>
+  <li>Utwórz <b>pakiet</b> z limitami, które sprzedajesz (domeny, skrzynki, miejsce, wysyłanie na godzinę).</li>
+  <li>Utwórz <b>klienta</b> z tym pakietem i daj mu login do panelu.</li>
+  <li>Dodaj <b>domenę</b> klienta, wpisz rekordy DNS pokazane na stronie domeny u dostawcy DNS domeny i zweryfikuj domenę.</li>
+  <li>Utwórz <b>skrzynki</b>. Użytkownik poczty loguje się na <code>/mail</code>, konfiguruje drugi składnik i tworzy hasła aplikacji dla swoich programów.</li>
+</ol>

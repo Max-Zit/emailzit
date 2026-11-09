@@ -68,7 +68,7 @@ func (s *Store) LogRefused(ctx context.Context, mailboxID, reason string) (int, 
 
 // BlockSending stops a mailbox from sending (abuse); staff lift it.
 func (s *Store) BlockSending(ctx context.Context, mailboxID string) error {
-	_, err := s.db.Exec(ctx, `UPDATE mailboxes SET send_blocked=true WHERE id=$1`, mailboxID)
+	_, err := s.db.Exec(ctx, `UPDATE mailboxes SET send_blocked=true, spam_counted_from=now() WHERE id=$1`, mailboxID)
 	return err
 }
 

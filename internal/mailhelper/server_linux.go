@@ -237,9 +237,7 @@ func (s *Server) apply(ctx context.Context, r Request) error {
 		_ = os.Remove(mailconf.RelayPasswordFile)
 	}
 	clam := s.clamAV(ctx, r)
-	if clam {
-		s.extraSignatures(ctx, r.ExtraSignatures)
-	}
+	s.extraSignatures(ctx, clam && r.ExtraSignatures)
 	last := r
 	s.last = &last
 	sysResolver := s.systemResolverPossible(ctx)

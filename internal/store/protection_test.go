@@ -41,6 +41,14 @@ func TestOutboundSpamSenders(t *testing.T) {
 	if len(got) != 0 {
 		t.Fatalf("a blocked mailbox is listed again: %+v", got)
 	}
+	// staff lift the block: the old refusals do not block it again
+	_, err = f.st.db.Exec(ctx, `UPDATE mailboxes SET send_blocked=false WHERE id=$1`, f.ana.ID)
+	must(t, err)
+	got, err = f.st.OutboundSpamSenders(ctx, since, 3)
+	must(t, err)
+	if len(got) != 0 {
+		t.Fatalf("old refusals block again after the lift: %+v", got)
+	}
 	st, err := f.st.MailStatsSince(ctx, since)
 	must(t, err)
 	if st.RefusedOut != 5 || st.RefusedIn != 1 || st.Spam != 4 || st.Viruses != 1 {

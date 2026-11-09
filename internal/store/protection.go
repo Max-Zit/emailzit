@@ -67,7 +67,7 @@ type SpamSender struct {
 func (s *Store) OutboundSpamSenders(ctx context.Context, since time.Time, min int) ([]SpamSender, error) {
 	rows, err := s.db.Query(ctx, `SELECT m.id::text, m.address, m.lang, count(DISTINCT CASE WHEN l.queue_id <> '' THEN l.queue_id ELSE l.id::text END)
 		FROM mail_log l JOIN mta_sender_logins sl ON sl.sender = l.sender JOIN mailboxes m ON m.address = sl.login
-		WHERE l.outbound AND l.status = 'rejected' AND l.at > $1 AND NOT m.send_blocked
+		WHERE l.outbound AND l.status = 'rejected' AND l.at > $1 AND l.at > m.spam_counted_from AND NOT m.send_blocked
 		  AND (l.info ILIKE '%spam message rejected%' OR l.info ILIKE '%virus found%' OR l.info ILIKE '%gtube pattern%')
 		GROUP BY m.id, m.address, m.lang HAVING count(DISTINCT CASE WHEN l.queue_id <> '' THEN l.queue_id ELSE l.id::text END) >= $2`, since, min)
 	if err != nil {

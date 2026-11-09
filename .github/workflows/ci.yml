@@ -95,6 +95,7 @@ jobs:
           set -e
           for t in dmarc:FuzzParseMessage dmarc:FuzzParse webmail:FuzzParse webmail:FuzzSafeHTML webmail:FuzzTargetFolder \
                    mailimport:FuzzScan mailimport:FuzzMailPath submit:FuzzPrepare policy:FuzzReadRequest authpolicy:FuzzGuard \
-                   maillog:FuzzLine sieve:FuzzCleanSenders netacl:FuzzParsePrefix web:FuzzTXTStatus web:FuzzAutodiscoverAddress web:FuzzSafeNext; do
+                   maillog:FuzzLine sieve:FuzzCleanSenders netacl:FuzzParsePrefix web:FuzzTXTStatus web:FuzzAutodiscoverAddress web:FuzzSafeNext \
+                   mtasts:FuzzParse mtasts:FuzzNetstring; do
             go test "./internal/${t%%:*}" -run '^$' -fuzz "^${t##*:}\$" -fuzztime 20s
           done

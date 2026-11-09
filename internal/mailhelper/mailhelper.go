@@ -22,6 +22,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/max-zit/emailzit/internal/mailconf"
 )
 
 // Socket is where the helper listens.
@@ -56,6 +58,12 @@ type Request struct {
 	RelayPassword string `json:"relay_password,omitempty"`
 	ClamAV        bool   `json:"clamav,omitempty"`    // virus scan on
 	IPv4Only      bool   `json:"ipv4_only,omitempty"` // send to other servers over IPv4 only
+	// AllowRiskyAttachments: programs, scripts and macro documents are not refused
+	AllowRiskyAttachments bool `json:"allow_risky_attachments,omitempty"`
+	// ExtraSignatures: Sanesecurity's signatures for ClamAV (with ClamAV)
+	ExtraSignatures bool `json:"extra_signatures,omitempty"`
+	// OutboundIPs: extra sending addresses (address + host name)
+	OutboundIPs []mailconf.OutboundIP `json:"outbound_ips,omitempty"`
 	// customer, trash
 	Customer string `json:"customer,omitempty"` // UUID
 	UID      int    `json:"uid,omitempty"`
@@ -119,6 +127,9 @@ func (r *Request) Validate() error {
 		}
 		if len(r.Relay) > 300 || len(r.RelayUser) > 256 || len(r.RelayPassword) > 256 || (r.RelayUser != "" && r.Relay == "") {
 			return errors.New("invalid relay")
+		}
+		if len(r.OutboundIPs) > 64 {
+			return errors.New("too many outbound addresses")
 		}
 		return nil
 	case ActionCustomer:

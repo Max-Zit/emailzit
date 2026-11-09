@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/max-zit/emailzit/internal/mailconf"
 	"github.com/max-zit/emailzit/internal/mailhelper"
 	"github.com/max-zit/emailzit/internal/store"
 )
@@ -13,7 +14,11 @@ type HelperMail struct{ C *mailhelper.Client }
 
 // Apply writes the server-wide configuration.
 func (h *HelperMail) Apply(ctx context.Context, m MailSettings) error {
-	req := mailhelper.Request{Action: mailhelper.ActionApply, Hostname: m.Hostname, MaxMessageMB: m.MaxMessageMB, ClamAV: m.ClamAV, IPv4Only: m.IPv4Only}
+	req := mailhelper.Request{Action: mailhelper.ActionApply, Hostname: m.Hostname, MaxMessageMB: m.MaxMessageMB, ClamAV: m.ClamAV, IPv4Only: m.IPv4Only,
+		AllowRiskyAttachments: m.AllowRiskyAttachments, ExtraSignatures: m.ClamAV && m.ExtraSignatures}
+	for _, o := range m.OutboundIPs {
+		req.OutboundIPs = append(req.OutboundIPs, mailconf.OutboundIP{Address: o.Address, HELO: o.HELO})
+	}
 	if m.RelayHost != "" {
 		relay, err := m.relay()
 		if err != nil {

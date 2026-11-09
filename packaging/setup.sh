@@ -30,7 +30,8 @@ if [ -z "$FROM_PKG" ]; then
 echo "postfix postfix/main_mailer_type select No configuration" | debconf-set-selections
 apt-get -q update
 apt-get -yq install --no-install-recommends postfix postfix-pgsql dovecot-core dovecot-imapd dovecot-pop3d \
-    dovecot-lmtpd dovecot-pgsql dovecot-sieve dovecot-managesieved postgresql openssl ca-certificates rspamd nftables
+    dovecot-lmtpd dovecot-pgsql dovecot-sieve dovecot-managesieved postgresql openssl ca-certificates rspamd nftables \
+    unbound dns-root-data gpgv
 # Rspamd keeps greylisting and rate data in Valkey (Redis on older systems)
 apt-get -yq install --no-install-recommends valkey-server 2>/dev/null || apt-get -yq install --no-install-recommends redis-server
 fi

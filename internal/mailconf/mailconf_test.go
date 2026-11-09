@@ -112,7 +112,7 @@ func TestRenderClamAV(t *testing.T) {
 		}
 		for _, f := range files {
 			if f.Path == RspamdAntivirus {
-				return strings.Contains(string(f.Content), `action = "reject"`)
+				return strings.Contains(string(f.Content), `symbol = "CLAM_VIRUS"`)
 			}
 		}
 		return false
@@ -123,5 +123,84 @@ func TestRenderClamAV(t *testing.T) {
 	s.ClamAV = true
 	if !has() {
 		t.Fatal("no antivirus with ClamAV")
+	}
+}
+
+func renderMap(t *testing.T, s Settings) map[string]string {
+	t.Helper()
+	files, err := Render(s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]string{}
+	for _, f := range files {
+		got[f.Path] = string(f.Content)
+	}
+	return got
+}
+
+func TestRenderProtection(t *testing.T) {
+	s := Settings{Hostname: "mail.example.com", MaxMessageMB: 25, DBName: "emailzit", CertFile: "/a", KeyFile: "/b", Rspamd: true, ClamAV: true, Unbound: true}
+	got := renderMap(t, s)
+	mm := got[RspamdLocal+"/multimap.conf"]
+	if !strings.Contains(mm, "EMAILZIT_RISKY_ATTACHMENT") || !strings.Contains(got[RspamdRiskyMap], "|exe|") || !strings.Contains(got[RspamdRiskyMap], "|docm|") {
+		t.Errorf("risky attachments not refused:\n%s", mm)
+	}
+	if !strings.Contains(got[RspamdOverride+"/options.inc"], `nameserver = ["127.0.0.1:5335"]`) {
+		t.Error("Rspamd does not use the local resolver")
+	}
+	if u := got[UnboundConf]; !strings.Contains(u, "127.0.0.1@5335") || strings.Contains(u, "@53\n") {
+		t.Errorf("unbound.conf:\n%s", u)
+	}
+	if !strings.Contains(got[RspamdLocal+"/settings.conf"], "authenticated = true") || !strings.Contains(got[RspamdLocal+"/force_actions.conf"], "CLAM_VIRUS") {
+		t.Error("outbound settings or virus refusal missing")
+	}
+	main, master := got[PostfixMain], got[PostfixMaster]
+	if !strings.Contains(master, "postscreen") || !strings.Contains(main, "zen.spamhaus.org=127.0.0.[2..11]*3") {
+		t.Error("postscreen missing")
+	}
+	if strings.Contains(main, "dane") || strings.Contains(main, "sender_dependent_default_transport_maps =") {
+		t.Error("DANE or sender transports without being asked for")
+	}
+	s.AllowRiskyAttachments = true
+	if strings.Contains(renderMap(t, s)[RspamdLocal+"/multimap.conf"], "EMAILZIT_RISKY_ATTACHMENT") {
+		t.Error("attachments refused although allowed")
+	}
+}
+
+func TestRenderDANEAndOutbound(t *testing.T) {
+	s := Settings{Hostname: "mail.example.com", MaxMessageMB: 25, DBName: "emailzit", CertFile: "/a", KeyFile: "/b", Unbound: true, SystemResolver: true,
+		TLSPolicySocket: "emailzit/tlspolicy",
+		OutboundIPs:     []OutboundIP{{Address: "203.0.113.5", HELO: "mail2.example.com", Present: true}, {Address: "2001:db8::5", HELO: "mail3.example.com"}}}
+	got := renderMap(t, s)
+	main, master := got[PostfixMain], got[PostfixMaster]
+	for _, want := range []string{"smtp_tls_security_level = dane", "smtp_dns_support_level = dnssec", "smtp_tls_policy_maps = socketmap:unix:emailzit/tlspolicy:mtasts",
+		"sender_dependent_default_transport_maps = proxy:pgsql:/etc/postfix/emailzit/sendertransport.cf"} {
+		if !strings.Contains(main, want) {
+			t.Errorf("main.cf lacks %q", want)
+		}
+	}
+	tr := TransportName("203.0.113.5")
+	if !strings.Contains(master, tr+" unix") || !strings.Contains(master, "smtp_bind_address=203.0.113.5") || !strings.Contains(master, "smtp_helo_name=mail2.example.com") {
+		t.Errorf("outbound transport:\n%s", master)
+	}
+	if strings.Contains(master, "smtp_bind_address6=2001:db8::5") {
+		t.Error("an address that is not on the server is bound")
+	}
+	if !strings.Contains(got[UnboundConf], "127.0.0.1@53") {
+		t.Error("system resolver not on port 53")
+	}
+	// a smart host: no DANE, no MTA-STS map, no own addresses
+	s.Relay = "[192.168.1.5]:1025"
+	main = renderMap(t, s)[PostfixMain]
+	if strings.Contains(main, "= dane") || strings.Contains(main, "smtp_tls_policy_maps") || strings.Contains(main, "sender_dependent_default_transport_maps =") {
+		t.Error("smart host with DANE, MTA-STS or own addresses")
+	}
+	for _, bad := range []OutboundIP{{Address: "127.0.0.2", HELO: "a.example.com"}, {Address: "203.0.113.5", HELO: "x\nrelayhost = evil"}, {Address: "203.0.113.5 ", HELO: "a.example.com"}} {
+		b := s
+		b.OutboundIPs = []OutboundIP{bad}
+		if _, err := Render(b); err == nil {
+			t.Errorf("accepted %+v", bad)
+		}
 	}
 }

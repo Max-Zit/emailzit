@@ -20,6 +20,7 @@ import (
 	"github.com/max-zit/emailzit/internal/logfile"
 	"github.com/max-zit/emailzit/internal/mailconf"
 	"github.com/max-zit/emailzit/internal/mailhelper"
+	"github.com/max-zit/emailzit/internal/mtasts"
 	"github.com/max-zit/emailzit/internal/store"
 )
 
@@ -61,11 +62,22 @@ func runMailHelper(ctx context.Context, dbURL, relay string) error {
 			RelayHost    string `json:"relay_host"`
 			RelayUser    string `json:"relay_user"`
 			ClamAV       bool   `json:"clamav"`
+			IPv4Only     bool   `json:"ipv4_only"`
+			AllowRisky   bool   `json:"allow_risky_attachments"`
+			ExtraSigs    bool   `json:"extra_signatures"`
+			OutboundIPs  []struct {
+				Address string `json:"address"`
+				HELO    string `json:"helo"`
+			} `json:"outbound_ips"`
 		}
 		if json.Unmarshal(raw, &m) == nil {
 			req.Hostname = m.Hostname
 			req.Relay, req.RelayUser, req.RelayPassword = startRelay(m.RelayHost, m.RelayUser)
-			req.ClamAV = m.ClamAV
+			req.ClamAV, req.IPv4Only = m.ClamAV, m.IPv4Only
+			req.AllowRiskyAttachments, req.ExtraSignatures = m.AllowRisky, m.ClamAV && m.ExtraSigs
+			for _, o := range m.OutboundIPs {
+				req.OutboundIPs = append(req.OutboundIPs, mailconf.OutboundIP{Address: o.Address, HELO: o.HELO})
+			}
 			if m.MaxMessageMB > 0 {
 				req.MaxMessageMB = m.MaxMessageMB
 			}
@@ -93,11 +105,14 @@ func mailHelperInstalled() bool {
 
 // listenPolicy opens the policy socket inside the Postfix queue directory
 // (prepared by the mail helper); nil without a mail system.
-func listenPolicy() (net.Listener, error) {
+func listenPolicy() (net.Listener, error) { return listenPostfixSocket("policy") }
+
+// listenPostfixSocket listens on a socket in PolicyDir (nil: no mail stack).
+func listenPostfixSocket(name string) (net.Listener, error) {
 	if _, err := os.Stat(mailhelper.PolicyDir); err != nil {
 		return nil, nil
 	}
-	p := filepath.Join(mailhelper.PolicyDir, "policy")
+	p := filepath.Join(mailhelper.PolicyDir, name)
 	_ = os.Remove(p)
 	l, err := net.Listen("unix", p)
 	if err != nil {
@@ -178,4 +193,37 @@ func startRelay(host, user string) (relay, u, pass string) {
 		}
 	}
 	return relay, "", ""
+}
+
+// startMTASTS serves the MTA-STS lookup for outgoing mail.
+func startMTASTS(ctx context.Context, log *slog.Logger) {
+	l, err := listenPostfixSocket("tlspolicy")
+	if err != nil {
+		log.Error("MTA-STS lookup not started", "err", err)
+		return
+	}
+	if l == nil {
+		return
+	}
+	tlsa := mtasts.TLSAChecker("127.0.0.1:53")
+	s := &mtasts.Service{Log: log, AllowUID: mailhelper.PostfixUID(), PeerUID: mailhelper.PeerUID,
+		// DANE only where the server resolves through the local, validating resolver
+		HasTLSA: func(ctx context.Context, host string) bool {
+			b, err := os.ReadFile("/etc/resolv.conf")
+			return err == nil && strings.HasPrefix(string(b), "# EmailZit") && tlsa(ctx, host)
+		},
+		LookupMX: func(ctx context.Context, domain string) ([]string, error) {
+			mx, err := net.DefaultResolver.LookupMX(ctx, domain)
+			var hosts []string
+			for _, m := range mx {
+				hosts = append(hosts, m.Host)
+			}
+			return hosts, err
+		}}
+	go func() {
+		if err := s.Serve(ctx, l); err != nil {
+			log.Error("MTA-STS lookup stopped", "err", err)
+		}
+	}()
+	log.Info("MTA-STS lookup listening", "socket", l.Addr().String())
 }

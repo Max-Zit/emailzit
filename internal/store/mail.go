@@ -209,6 +209,8 @@ type Customer struct {
 	Domains, Mailboxes, Aliases int
 	QuotaMB                     int64 // sum of the mailbox sizes
 	UsedBytes                   int64
+	// OutboundIP is the customer's own sending address (empty: the server's)
+	OutboundIP string
 }
 
 // UID is the system user (and group) the customer's mail belongs to.
@@ -223,12 +225,12 @@ const customerCols = `c.id, c.number, COALESCE(c.external_id, ''), COALESCE(c.us
 	(SELECT count(*) FROM mailboxes m WHERE m.customer_id=c.id),
 	(SELECT count(*) FROM aliases a WHERE a.customer_id=c.id),
 	(SELECT COALESCE(sum(quota_mb), 0) FROM mailboxes m WHERE m.customer_id=c.id),
-	(SELECT COALESCE(sum(used_bytes), 0) FROM mailboxes m WHERE m.customer_id=c.id)`
+	(SELECT COALESCE(sum(used_bytes), 0) FROM mailboxes m WHERE m.customer_id=c.id), c.outbound_ip`
 
 func scanCustomer(row pgx.Row) (*Customer, error) {
 	c := &Customer{}
 	err := row.Scan(&c.ID, &c.Number, &c.ExternalID, &c.Username, &c.Name, &c.Email, &c.PackageID, &c.PackageName, &c.Status, &c.StatusReason,
-		&c.Lang, &c.CreatedAt, &c.StatusAt, &c.Domains, &c.Mailboxes, &c.Aliases, &c.QuotaMB, &c.UsedBytes)
+		&c.Lang, &c.CreatedAt, &c.StatusAt, &c.Domains, &c.Mailboxes, &c.Aliases, &c.QuotaMB, &c.UsedBytes, &c.OutboundIP)
 	return c, err
 }
 
@@ -1250,9 +1252,9 @@ func (s *Store) ServerTotals(ctx context.Context) (Totals, error) {
 // start, so new views get their grants.
 func (s *Store) GrantMailRoles(ctx context.Context) error {
 	grants := map[string][]string{
-		"postfix": {`GRANT SELECT ON mta_domains, mta_mailboxes, mta_aliases, mta_sender_logins, mta_transport TO postfix`},
+		"postfix": {`GRANT SELECT ON mta_domains, mta_mailboxes, mta_aliases, mta_sender_logins, mta_transport, mta_sender_transport TO postfix`},
 		"dovecot": {`GRANT SELECT ON mda_users, mda_logins TO dovecot`},
-		"root": {`GRANT SELECT ON mda_users, mda_spam, customers TO root`, `GRANT SELECT (id, address) ON mailboxes TO root`,
+		"root": {`GRANT SELECT ON mda_users, mda_spam, customers, mta_domains TO root`, `GRANT SELECT (id, address) ON mailboxes TO root`,
 			`GRANT UPDATE (used_bytes, used_at) ON mailboxes TO root`, `GRANT SELECT ON settings TO root`, `GRANT SELECT (name) ON domains TO root`,
 			`GRANT INSERT, DELETE ON mail_log TO root`, `GRANT USAGE ON SEQUENCE mail_log_id_seq TO root`},
 	}

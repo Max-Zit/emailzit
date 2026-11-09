@@ -172,6 +172,7 @@ func publicAddrs() []netip.Addr {
 }
 
 func checkBlacklists(ctx context.Context, ips []netip.Addr) []ListResult {
+	res0 := blocklistResolver()
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 	var out []ListResult
@@ -180,7 +181,7 @@ func checkBlacklists(ctx context.Context, ips []netip.Addr) []ListResult {
 		rev := fmt.Sprintf("%d.%d.%d.%d", b[3], b[2], b[1], b[0])
 		for _, l := range Blacklists {
 			res := ListResult{IP: ip.String(), List: l}
-			addrs, err := net.DefaultResolver.LookupHost(ctx, rev+"."+l)
+			addrs, err := res0.LookupHost(ctx, rev+"."+l)
 			switch {
 			case err == nil && len(addrs) > 0:
 				// 127.255.255.x: the list refuses the query (public resolver)

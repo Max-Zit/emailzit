@@ -104,7 +104,11 @@ func (s *Server) publishDNS(ctx context.Context, domainID string, remove bool, d
 	m := s.MailConfig(ctx)
 	k, _ := s.store.DKIM(ctx, d.ID)
 	var recs []hzRecord
-	for _, r := range mailRecords(d, m, k) {
+	all := mailRecords(d, m, k)
+	if c, err := s.store.CustomerByID(ctx, d.CustomerID); err == nil {
+		all = withOutboundSPF(all, c.OutboundIP)
+	}
+	for _, r := range all {
 		if strings.HasPrefix(r.Name, "_emailzit.") {
 			continue // HostZit hosting the zone is the proof
 		}

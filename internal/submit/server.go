@@ -178,7 +178,12 @@ func (s *Server) limit(ctx context.Context, l *store.SendLimits, reason string, 
 // as the signed-in user, so Rspamd signs with the domain's DKIM key and
 // the delivery log shows web-<uid>.
 func (s *Server) inject(ctx context.Context, uid int, sender string, p *prepared) (string, error) {
-	c, err := s.Dial(ctx)
+	return injectAs(ctx, s.Dial, s.Hostname(ctx), fmt.Sprintf("web-%d", uid), sender, p)
+}
+
+// injectAs hands a message to Postfix with XCLIENT LOGIN=login.
+func injectAs(ctx context.Context, dial func(context.Context) (net.Conn, error), host, login, sender string, p *prepared) (string, error) {
+	c, err := dial(ctx)
 	if err != nil {
 		return "", fmt.Errorf("the mail server is not reachable: %w", err)
 	}
@@ -194,14 +199,13 @@ func (s *Server) inject(ctx context.Context, uid int, sender string, p *prepared
 		_, msg, err := t.ReadResponse(want)
 		return msg, smtpErr(err)
 	}
-	host := s.Hostname(ctx)
 	if _, err := step(220, ""); err != nil {
 		return "", err
 	}
 	if _, err := step(250, "EHLO %s", host); err != nil {
 		return "", err
 	}
-	if _, err := step(220, "XCLIENT LOGIN=web-%d", uid); err != nil {
+	if _, err := step(220, "XCLIENT LOGIN=%s", login); err != nil {
 		return "", err
 	}
 	if _, err := step(250, "EHLO %s", host); err != nil {

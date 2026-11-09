@@ -29,6 +29,10 @@ overrides:
       - valkey-server | redis-server
       - nftables
       - openssl
+      - ca-certificates
+      - unbound
+      - dns-root-data
+      - gpgv
 contents:
   - src: ./LICENSE
     dst: /usr/share/doc/emailzit-server/copyright

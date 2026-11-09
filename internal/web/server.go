@@ -51,10 +51,12 @@ type Server struct {
 	HelperAvailable func() bool
 	// Mail applies mail changes that need root (customer directories, DKIM
 	// keys); nil = nothing to apply (development without a mail stack).
-	Mail    MailApplier
-	upd     updateState
-	apiRate apiRate
-	backups backupRunner
+	Mail MailApplier
+	// SystemMail sends notices to the administrators (nil = none).
+	SystemMail SystemMailer
+	upd        updateState
+	apiRate    apiRate
+	backups    backupRunner
 	// routes lists the protected routes and who may use them (the role test)
 	routes    []routeInfo
 	apiRoutes []routeInfo // API routes and the scope each needs
@@ -291,6 +293,7 @@ func (s *Server) Handler() http.Handler {
 	staffWrite("POST /customers/{id}/logins", s.handleCustomerLogin)
 	staffWrite("POST /customers/{id}/web-send", s.handleWebSend)
 	staffWrite("POST /customers/{id}/spam", s.handleCustomerSpam)
+	staffWrite("POST /customers/{id}/outbound", s.handleCustomerOutbound)
 	staffWrite("POST /customers/{id}/export", s.handleCustomerExport)
 	staffWrite("POST /customers/{id}/import", s.handleCustomerImport)
 	staffWrite("GET /customers/{id}/exports/{name}", s.handleCustomerExportDownload)

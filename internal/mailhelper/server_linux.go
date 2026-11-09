@@ -22,6 +22,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -51,6 +52,10 @@ type Server struct {
 	AllowUID int
 	Run      func(ctx context.Context, name string, args ...string) ([]byte, error)
 	mu       sync.Mutex // one change at a time
+	// last is the last applied configuration (the resolver check applies it again)
+	last *Request
+	// saneOn: Sanesecurity signatures wanted (last apply)
+	saneOn atomic.Bool
 }
 
 // Serve listens on the socket until ctx ends.
@@ -232,9 +237,16 @@ func (s *Server) apply(ctx context.Context, r Request) error {
 		_ = os.Remove(mailconf.RelayPasswordFile)
 	}
 	clam := s.clamAV(ctx, r)
+	if clam {
+		s.extraSignatures(ctx, r.ExtraSignatures)
+	}
+	last := r
+	s.last = &last
+	sysResolver := s.systemResolverPossible(ctx)
 	files, err := mailconf.Render(mailconf.Settings{Hostname: host, MaxMessageMB: r.MaxMessageMB, DBName: s.DBName,
 		CertFile: s.CertFile, KeyFile: s.KeyFile, Relay: relay, RelayUser: relayUser, RelayPassword: relayPass, ClamAV: clam, IPv4Only: r.IPv4Only, PolicySocket: s.policySocket(), Rspamd: rspamdInstalled(),
-		AuthPolicyToken: s.authPolicyToken()})
+		AuthPolicyToken: s.authPolicyToken(), Unbound: unboundInstalled(), SystemResolver: sysResolver, AllowRiskyAttachments: r.AllowRiskyAttachments,
+		TLSPolicySocket: s.tlsPolicySocket(), OutboundIPs: presentAddrs(r.OutboundIPs)})
 	if err != nil {
 		return err
 	}
@@ -243,7 +255,7 @@ func (s *Server) apply(ctx context.Context, r Request) error {
 		return err
 	}
 	old := map[string][]byte{}
-	changed := false
+	changed, unboundChanged := false, false
 	for _, f := range files {
 		prev, err := os.ReadFile(f.Path)
 		if err == nil {
@@ -253,6 +265,14 @@ func (s *Server) apply(ctx context.Context, r Request) error {
 			}
 		}
 		changed = true
+		if dir := filepath.Dir(f.Path); dir == filepath.Dir(mailconf.RspamdDKIMMap) {
+			if _, err := os.Stat(dir); errors.Is(err, os.ErrNotExist) {
+				if err := os.MkdirAll(dir, 0o750); err != nil {
+					return err
+				}
+				_ = os.Chown(dir, 0, groupID("_rspamd"))
+			}
+		}
 		if err := writeFile(f.Path, f.Content, os.FileMode(f.Mode)); err != nil {
 			s.restore(old, files)
 			return err
@@ -261,8 +281,22 @@ func (s *Server) apply(ctx context.Context, r Request) error {
 			// the maps hold no secret, but only Postfix needs them
 			_ = os.Chown(f.Path, 0, groupID("postfix"))
 		}
+		if f.Path == mailconf.UnboundConf {
+			unboundChanged = true
+		}
 	}
 	fixOwners()
+	if unboundChanged {
+		if err := s.startUnbound(ctx); err != nil {
+			s.Log.Warn("local resolver", "err", err)
+		}
+	}
+	if unboundInstalled() {
+		s.useSystemResolver(ctx, sysResolver)
+	}
+	if err := s.writeLocalDomains(ctx); err != nil {
+		s.Log.Warn("domain list for Rspamd", "err", err)
+	}
 	// HostZit's nginx (when present) answers for autoconfig and MTA-STS
 	s.nginxHost = host
 	s.writeNginx(ctx, host)
@@ -433,6 +467,12 @@ func (s *Server) usageLoop(ctx context.Context) {
 		}
 		s.keepClamd(ctx)
 		s.mu.Lock()
+		s.keepUnbound(ctx)
+		s.checkResolver(ctx)
+		if err := s.writeLocalDomains(ctx); err != nil {
+			s.Log.Warn("domain list for Rspamd", "err", err)
+		}
+		s.updateSignatures(ctx)
 		if s.nginxHost != "" {
 			s.writeNginx(ctx, s.nginxHost) // HostZit installed later
 		}
@@ -558,6 +598,14 @@ func (s *Server) EnsureCustomerDirs(ctx context.Context) error {
 // queue directory (smtpd runs chrooted there), owned by the panel user,
 // readable by the group postfix.
 const PolicyDir = "/var/spool/postfix/emailzit"
+
+// tlsPolicySocket is the panel's MTA-STS lookup (socketmap) in PolicyDir.
+func (s *Server) tlsPolicySocket() string {
+	if _, err := os.Stat(PolicyDir); err == nil {
+		return "emailzit/tlspolicy"
+	}
+	return ""
+}
 
 func (s *Server) policySocket() string {
 	if s.Policy != "" {
@@ -880,7 +928,7 @@ func (s *Server) logLoop(ctx context.Context) {
 func (s *Server) followJournal(ctx context.Context, p *maillog.Parser) error {
 	args := []string{"-f", "-n", "0", "-o", "json", "--output-fields=MESSAGE,SYSLOG_IDENTIFIER"}
 	for _, t := range []string{"postfix/qmgr", "postfix/smtp", "postfix/lmtp", "postfix/cleanup", "postfix/smtpd",
-		"postfix/submission/smtpd", "postfix/submissions/smtpd", "postfix/error", "postfix/bounce"} {
+		"postfix/submission/smtpd", "postfix/submissions/smtpd", "postfix/emailzit-submit/smtpd", "postfix/postscreen", "postfix/error", "postfix/bounce"} {
 		args = append(args, "-t", t)
 	}
 	cmd := exec.CommandContext(ctx, "journalctl", args...) // #nosec G204 -- fixed arguments
@@ -910,8 +958,8 @@ func (s *Server) followJournal(ctx context.Context, p *maillog.Parser) error {
 			at = time.UnixMicro(us)
 		}
 		for _, e := range p.Line(at, rec.Ident, msg) {
-			if _, err := s.DB.Exec(ctx, `INSERT INTO mail_log(at, queue_id, sender, recipient, status, relay, dsn, info) VALUES($1,$2,$3,$4,$5,$6,$7,$8)`,
-				e.At, e.QueueID, e.Sender, e.Recipient, e.Status, e.Relay, e.DSN, e.Info); err != nil {
+			if _, err := s.DB.Exec(ctx, `INSERT INTO mail_log(at, queue_id, sender, recipient, status, relay, dsn, info, outbound) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+				e.At, e.QueueID, e.Sender, e.Recipient, e.Status, e.Relay, e.DSN, e.Info, e.Outbound); err != nil {
 				s.Log.Warn("delivery log: store", "err", err)
 			}
 		}
@@ -921,4 +969,13 @@ func (s *Server) followJournal(ctx context.Context, p *maillog.Parser) error {
 		}
 	}
 	return sc.Err()
+}
+
+func userID(name string) int {
+	u, err := user.Lookup(name)
+	if err != nil {
+		return 0
+	}
+	n, _ := strconv.Atoi(u.Uid)
+	return n
 }

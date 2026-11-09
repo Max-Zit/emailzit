@@ -1,6 +1,10 @@
 # EmailZit: written by the root helper; changes are overwritten.
 # service type  private unpriv  chroot  wakeup  maxproc command + args
-smtp      inet  n       -       y       -       -       smtpd
+# postscreen answers port 25 first (main.cf), then hands over to smtpd
+smtp      inet  n       -       y       -       1       postscreen
+smtpd     pass  -       -       y       -       -       smtpd
+dnsblog   unix  -       -       y       -       0       dnsblog
+tlsproxy  unix  -       -       y       -       0       tlsproxy
 # submission with STARTTLS (587) and over TLS (465): signed-in mail
 # programs only, each login may send only from its own addresses
 submission inet n       -       y       -       -       smtpd
@@ -80,3 +84,19 @@ lmtp      unix  -       -       y       -       -       lmtp
 anvil     unix  -       -       y       -       1       anvil
 scache    unix  -       -       y       -       1       scache
 postlog   unix-dgram n  -       n       -       1       postlogd
+{{- range .OutboundIPs}}
+# outbound address {{.Address}} ({{.HELO}}){{if not .Present}}: not on this server, sends from the default address{{end}}
+{{.Transport}} unix -       -       y       -       -       smtp
+  -o smtp_helo_name={{.HELO}}
+{{- if not .Present}}{{if $.IPv4Only}}
+  -o inet_protocols=ipv4{{end}}{{end}}
+{{- if .Present}}
+{{- if .IPv6}}
+  -o smtp_bind_address6={{.Address}}
+  -o inet_protocols=ipv6
+{{- else}}
+  -o smtp_bind_address={{.Address}}
+  -o inet_protocols=ipv4
+{{- end}}
+{{- end}}
+{{- end}}

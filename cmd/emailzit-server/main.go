@@ -282,6 +282,10 @@ func run() error {
 	go srv.SyncMail(ctx)
 	go srv.RunImports(ctx)
 	go srv.RunQuotaWarnings(ctx)
+	if srv.Mail != nil {
+		srv.SystemMail = systemMailer(srv)
+		go srv.RunProtection(ctx)
+	}
 	go func() {
 		t := time.NewTicker(5 * time.Minute)
 		defer t.Stop()
@@ -308,6 +312,7 @@ func run() error {
 		}()
 		log.Info("policy service listening", "socket", pl.Addr().String())
 	}
+	startMTASTS(ctx, log)
 	startSubmit(ctx, st, srv, log)
 	// For the root helper: which version runs and where (it checks this after an update).
 	if err := helper.WriteServerInfo(*dataDir, helper.ServerInfo{Version: version, MgmtListen: net0.MgmtListen}); err != nil {

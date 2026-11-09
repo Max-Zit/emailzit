@@ -29,13 +29,16 @@ type Event struct {
 	Relay     string
 	DSN       string
 	Info      string
+	// Outbound: mail of signed-in users (refused on submission) or a
+	// delivery to another server
+	Outbound bool
 }
 
 var (
 	qidRE      = regexp.MustCompile(`^([0-9A-Za-z]{8,20}): (.*)$`)
 	fromRE     = regexp.MustCompile(`^from=<([^>]*)>`)
 	deliveryRE = regexp.MustCompile(`^to=<([^>]*)>,(?: orig_to=<[^>]*>,)? relay=([^,]*), .*?dsn=([0-9.]+), status=(sent|deferred|bounced) \((.*)\)$`)
-	rejectRE   = regexp.MustCompile(`^NOQUEUE: reject: [A-Z]+ from [^:]*: ([0-9]{3} [0-9.]+ .*?); from=<([^>]*)> to=<([^>]*)>`)
+	rejectRE   = regexp.MustCompile(`^NOQUEUE: reject: [A-Z]+ from \S+?: ([0-9]{3} [0-9.]+ .*?); from=<([^>]*)>,? to=<([^>]*)>`)
 	milterRE   = regexp.MustCompile(`^milter-reject: [A-Z-]+ from [^:]*: ([0-9.]+ .*?); from=<([^>]*)> to=<([^>]*)>`)
 )
 
@@ -48,6 +51,7 @@ type Parser struct {
 type sender struct {
 	addr string
 	seen time.Time
+	out  bool // came in on a submission port (signed-in user)
 }
 
 // Line parses one log line of a Postfix program ("postfix/smtp" …) and
@@ -55,7 +59,7 @@ type sender struct {
 func (p *Parser) Line(at time.Time, program, msg string) []Event {
 	if strings.HasPrefix(msg, "NOQUEUE: reject:") {
 		if m := rejectRE.FindStringSubmatch(msg); m != nil {
-			return []Event{{At: at, Sender: addr(m[2]), Recipient: addr(m[3]), Status: Rejected, Info: clip(m[1])}}
+			return []Event{{At: at, Sender: addr(m[2]), Recipient: addr(m[3]), Status: Rejected, Info: clip(m[1]), Outbound: submission(program)}}
 		}
 		return nil
 	}
@@ -69,14 +73,17 @@ func (p *Parser) Line(at time.Time, program, msg string) []Event {
 		if f := fromRE.FindStringSubmatch(rest); f != nil {
 			p.remember(qid, addr(f[1]), at)
 		}
+	case submission(program) && strings.HasPrefix(rest, "client="):
+		p.markOutbound(qid, at)
 	case strings.HasPrefix(rest, "milter-reject:"):
+		// logged by cleanup, which runs the milters for smtpd
 		if r := milterRE.FindStringSubmatch(rest); r != nil {
-			return []Event{{At: at, QueueID: qid, Sender: addr(r[2]), Recipient: addr(r[3]), Status: Rejected, Info: clip(r[1])}}
+			return []Event{{At: at, QueueID: qid, Sender: addr(r[2]), Recipient: addr(r[3]), Status: Rejected, Info: clip(r[1]), Outbound: submission(program) || p.outbound(qid)}}
 		}
 	case strings.HasPrefix(rest, "to=<"):
 		if d := deliveryRE.FindStringSubmatch(rest); d != nil {
 			return []Event{{At: at, QueueID: qid, Sender: p.sender(qid), Recipient: addr(d[1]), Relay: clip(d[2]),
-				DSN: clip(d[3]), Status: d[4], Info: clip(d[5])}}
+				DSN: clip(d[3]), Status: d[4], Info: clip(d[5]), Outbound: strings.HasSuffix(program, "/smtp")}}
 		}
 	case rest == "removed":
 		p.forget(qid)
@@ -107,7 +114,7 @@ func (p *Parser) remember(qid, from string, at time.Time) {
 	if p.senders == nil {
 		p.senders = map[string]sender{}
 	}
-	p.senders[qid] = sender{addr: from, seen: at}
+	p.senders[qid] = sender{addr: from, seen: at, out: p.senders[qid].out}
 	if len(p.senders) > 100000 {
 		for k, v := range p.senders {
 			if at.Sub(v.seen) > 6*24*time.Hour {
@@ -127,4 +134,54 @@ func (p *Parser) forget(qid string) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	delete(p.senders, qid)
+}
+
+// submission tells whether a program takes mail of signed-in users (mail
+// programs on 465/587, websites through emailzit-submit).
+func submission(program string) bool {
+	switch program {
+	case "postfix/submission/smtpd", "postfix/submissions/smtpd", "postfix/emailzit-submit/smtpd":
+		return true
+	}
+	return false
+}
+
+// Reasons of a refusal, from its text.
+const (
+	ReasonSpam       = "spam"
+	ReasonVirus      = "virus"
+	ReasonAttachment = "attachment"
+)
+
+// Reason classifies the text of a refusal by Rspamd (empty: another
+// refusal).
+func Reason(info string) string {
+	l := strings.ToLower(info)
+	switch {
+	case strings.Contains(l, "virus found"):
+		return ReasonVirus
+	case strings.Contains(l, "as attachments"):
+		return ReasonAttachment
+	case strings.Contains(l, "spam message rejected"), strings.Contains(l, "gtube pattern"):
+		return ReasonSpam
+	}
+	return ""
+}
+
+// markOutbound notes that a queue ID came from a signed-in user.
+func (p *Parser) markOutbound(qid string, at time.Time) {
+	p.mu.Lock()
+	s := p.senders[qid]
+	s.out, s.seen = true, at
+	if p.senders == nil {
+		p.senders = map[string]sender{}
+	}
+	p.senders[qid] = s
+	p.mu.Unlock()
+}
+
+func (p *Parser) outbound(qid string) bool {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.senders[qid].out
 }

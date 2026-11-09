@@ -39,3 +39,41 @@ func TestParser(t *testing.T) {
 		t.Error("sender kept after removal")
 	}
 }
+
+func TestOutboundAndPostscreen(t *testing.T) {
+	var p Parser
+	at := time.Now()
+	ev := p.Line(at, "postfix/submission/smtpd", "4dQ1xY2zK3: milter-reject: END-OF-MESSAGE from client.example[198.51.100.7]: 5.7.1 Spam message rejected; from=<ana@acme.test> to=<x@gmail.com> proto=ESMTP helo=<pc>")
+	if len(ev) != 1 || !ev[0].Outbound || Reason(ev[0].Info) != ReasonSpam || ev[0].Sender != "ana@acme.test" {
+		t.Fatalf("submission spam: %+v", ev)
+	}
+	ev = p.Line(at, "postfix/smtpd", "4dQ1xY2zK4: milter-reject: END-OF-MESSAGE from mx.example[203.0.113.9]: 5.7.1 Virus found; from=<a@example.org> to=<ana@acme.test> proto=ESMTP helo=<mx>")
+	if len(ev) != 1 || ev[0].Outbound || Reason(ev[0].Info) != ReasonVirus {
+		t.Fatalf("inbound virus: %+v", ev)
+	}
+	ev = p.Line(at, "postfix/postscreen", "NOQUEUE: reject: RCPT from [203.0.113.66]:41234: 550 5.7.1 Service unavailable; client [203.0.113.66] blocked using zen.spamhaus.org; from=<spam@example.net>, to=<ana@acme.test>, proto=ESMTP, helo=<x>")
+	if len(ev) != 1 || ev[0].Recipient != "ana@acme.test" || ev[0].Status != Rejected {
+		t.Fatalf("postscreen: %+v", ev)
+	}
+	ev = p.Line(at, "postfix/smtpd", "NOQUEUE: reject: RCPT from unknown[2001:db8::1]: 554 5.7.1 <x@y>: Relay access denied; from=<a@b.example> to=<x@y.example> proto=ESMTP helo=<h>")
+	if len(ev) != 1 || ev[0].Sender != "a@b.example" {
+		t.Fatalf("smtpd ipv6: %+v", ev)
+	}
+	if Reason("5.7.1 This server does not accept programs, scripts or documents with macros as attachments.") != ReasonAttachment {
+		t.Fatal("attachment reason")
+	}
+}
+
+func TestOutboundThroughCleanup(t *testing.T) {
+	var p Parser
+	at := time.Now()
+	p.Line(at, "postfix/submission/smtpd", "5B1C2D3E4F: client=localhost[127.0.0.1], sasl_method=PLAIN, sasl_username=marko@acme.test")
+	ev := p.Line(at, "postfix/cleanup", "5B1C2D3E4F: milter-reject: END-OF-MESSAGE from localhost[127.0.0.1]: 5.7.1 Gtube pattern; from=<marko@acme.test> to=<friend@gmail.com> proto=ESMTP helo=<ez-mail1>")
+	if len(ev) != 1 || !ev[0].Outbound {
+		t.Fatalf("%+v", ev)
+	}
+	ev = p.Line(at, "postfix/cleanup", "6B1C2D3E4F: milter-reject: END-OF-MESSAGE from mx[203.0.113.1]: 5.7.1 Spam message rejected; from=<a@b.example> to=<ana@acme.test> proto=ESMTP helo=<mx>")
+	if len(ev) != 1 || ev[0].Outbound {
+		t.Fatalf("inbound marked outbound: %+v", ev)
+	}
+}

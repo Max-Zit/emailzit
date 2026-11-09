@@ -42,9 +42,21 @@ smtpd_tls_mandatory_exclude_ciphers = aNULL, eNULL, EXPORT, DES, 3DES, RC4, MD5,
 smtpd_tls_received_header = yes
 smtpd_tls_loglevel = 1
 smtpd_tls_session_cache_database = btree:${data_directory}/smtpd_scache
-smtp_tls_security_level = {{if .RelayUser}}encrypt{{else}}may{{end}}
+smtp_tls_security_level = {{if .RelayUser}}encrypt{{else if .DANE}}dane{{else}}may{{end}}
+{{- if .DANE}}
+# DNSSEC-validated answers from the local resolver: servers that publish
+# DANE (TLSA) records get mail only over TLS with the certificate named there
+smtp_dns_support_level = dnssec
+{{- end}}
+{{- if and .TLSPolicySocket (not .Relay)}}
+# MTA-STS: domains that ask for it get mail only over TLS to their listed
+# servers (EmailZit looks the policies up)
+smtp_tls_policy_maps = socketmap:unix:{{.TLSPolicySocket}}:mtasts
+{{- end}}
 smtp_tls_protocols = >=TLSv1.2
 smtp_tls_loglevel = 1
+# trusted CAs for "secure" (MTA-STS) and the smart host
+smtp_tls_CAfile = /etc/ssl/certs/ca-certificates.crt
 smtp_tls_session_cache_database = btree:${data_directory}/smtp_scache
 # mail programs and smart hosts (the "high" grade: submission, IMAP, POP3)
 # get only forward-secret AEAD suites; port 25 keeps the wider "medium"
@@ -64,8 +76,13 @@ virtual_alias_maps = proxy:pgsql:/etc/postfix/emailzit/aliases.cf
 virtual_transport = lmtp:unix:private/dovecot-lmtp
 # dmarc-reports@<domain> goes to the EmailZit server (emailzit-dmarc in master.cf)
 transport_maps = proxy:pgsql:/etc/postfix/emailzit/transport.cf
+{{- if .SenderTransports}}
+# customers with their own outbound address send through its transport
+# (master.cf: own address and HELO name)
+sender_dependent_default_transport_maps = proxy:pgsql:/etc/postfix/emailzit/sendertransport.cf
+{{- end}}
 smtpd_sender_login_maps = proxy:pgsql:/etc/postfix/emailzit/senders.cf
-proxy_read_maps = $local_recipient_maps $mydestination $virtual_alias_maps $virtual_alias_domains $virtual_mailbox_maps $virtual_mailbox_domains $relay_recipient_maps $relay_domains $canonical_maps $sender_canonical_maps $recipient_canonical_maps $relocated_maps $transport_maps $mynetworks $smtpd_sender_login_maps $smtpd_sender_restrictions
+proxy_read_maps = $local_recipient_maps $mydestination $virtual_alias_maps $virtual_alias_domains $virtual_mailbox_maps $virtual_mailbox_domains $relay_recipient_maps $relay_domains $canonical_maps $sender_canonical_maps $recipient_canonical_maps $relocated_maps $transport_maps $mynetworks $smtpd_sender_login_maps $smtpd_sender_restrictions $sender_dependent_default_transport_maps
 
 # ---- sign-in of mail programs: only on submission (465, 587), through Dovecot
 smtpd_sasl_type = dovecot
@@ -88,6 +105,9 @@ smtpd_data_restrictions = reject_unauth_pipelining, reject_multi_recipient_bounc
 smtpd_client_connection_count_limit = 20
 smtpd_client_connection_rate_limit = 60
 smtpd_client_message_rate_limit = 100
+smtpd_client_recipient_rate_limit = 300
+smtpd_client_new_tls_session_rate_limit = 100
+smtpd_client_auth_rate_limit = 30
 smtpd_error_sleep_time = 5s
 # Programs on this server do not use Postfix's sendmail (websites use
 # emailzit-sendmail, which counts their mail); only root may.
@@ -123,3 +143,14 @@ milter_default_action = accept
 milter_protocol = 6
 milter_mail_macros = i {mail_addr} {client_addr} {client_name} {auth_authen}
 {{- end}}
+
+# ---- postscreen in front of port 25: botnets that talk before the
+# greeting or are on DNS block lists never reach smtpd (one listing on
+# Spamhaus ZEN is enough, others count less; DNSWL lowers the score).
+# The answers are checked, so a refusing resolver lists nobody.
+postscreen_greet_action = enforce
+postscreen_dnsbl_action = enforce
+postscreen_dnsbl_threshold = 3
+postscreen_dnsbl_allowlist_threshold = -2
+postscreen_dnsbl_sites = zen.spamhaus.org=127.0.0.[2..11]*3, bl.spamcop.net=127.0.0.2*2, psbl.surriel.com=127.0.0.2*2, list.dnswl.org=127.0.[0..255].[1..3]*-2
+postscreen_cache_map = btree:$data_directory/postscreen_cache

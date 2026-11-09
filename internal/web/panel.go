@@ -80,6 +80,22 @@ type MailSettings struct {
 	RelayUser string `json:"relay_user,omitempty"`
 	// RelayPassword is sealed with the server key.
 	RelayPassword string `json:"relay_password,omitempty"`
+	// AllowRiskyAttachments: programs, scripts and macro documents are not
+	// refused (they are by default).
+	AllowRiskyAttachments bool `json:"allow_risky_attachments,omitempty"`
+	// ExtraSignatures adds Sanesecurity's free signatures to the virus scan.
+	ExtraSignatures bool `json:"extra_signatures,omitempty"`
+	// OutboundIPs are extra sending addresses customers can be given.
+	OutboundIPs []OutboundAddr `json:"outbound_ips,omitempty"`
+	// NoticeTo gets the notices for administrators (weekly report, block
+	// lists, automatic blocks); comma-separated, empty = none.
+	NoticeTo string `json:"notice_to,omitempty"`
+}
+
+// OutboundAddr is an extra sending address with its host name.
+type OutboundAddr struct {
+	Address string `json:"address"`
+	HELO    string `json:"helo"`
 }
 
 func defaultMail() MailSettings {
@@ -110,7 +126,7 @@ func (m *MailSettings) Validate() error {
 	if len(m.RelayUser) > 256 || strings.ContainsAny(m.RelayUser, " \t\r\n:") {
 		return errors.New("the user name of the smart host is not valid")
 	}
-	return nil
+	return m.validateProtection()
 }
 
 // MailConfig loads the mail settings.
@@ -137,7 +153,12 @@ func (s *Server) showMailSettings(w http.ResponseWriter, r *http.Request, status
 func (s *Server) handleMailSettingsSave(w http.ResponseWriter, r *http.Request) {
 	m := MailSettings{Hostname: r.FormValue("hostname"), RequireVerification: r.FormValue("require_verification") == "1",
 		Dedicated: r.FormValue("dedicated") == "1", MaxMessageMB: formInt(r, "max_message_mb"), AllowPrivateImports: r.FormValue("allow_private_imports") == "1", ClamAV: r.FormValue("clamav") == "1", IPv4Only: r.FormValue("ipv4_only") == "1",
-		RelayHost: r.FormValue("relay_host"), RelayUser: r.FormValue("relay_user")}
+		RelayHost: r.FormValue("relay_host"), RelayUser: r.FormValue("relay_user"),
+		AllowRiskyAttachments: r.FormValue("block_attachments") != "1", ExtraSignatures: r.FormValue("extra_signatures") == "1", NoticeTo: r.FormValue("notice_to")}
+	if err := m.parseOutboundIPs(r.FormValue("outbound_ips")); err != nil {
+		s.showMailSettings(w, r, http.StatusBadRequest, m, err.Error())
+		return
+	}
 	// the saved password stays unless a new one is entered (for the same login)
 	old := s.MailConfig(r.Context())
 	if p := r.FormValue("relay_password"); p != "" {
@@ -157,7 +178,16 @@ func (s *Server) handleMailSettingsSave(w http.ResponseWriter, r *http.Request) 
 		s.serverError(w, r, err)
 		return
 	}
-	s.audit(r, "settings.mail", "settings", "host name %q, verification %v, dedicated %v, max message %d MB, smart host %q (login %q), virus scan %v, IPv4 only %v", m.Hostname, m.RequireVerification, m.Dedicated, m.MaxMessageMB, m.RelayHost, m.RelayUser, m.ClamAV, m.IPv4Only)
+	keep := make([]string, len(m.OutboundIPs))
+	for i, o := range m.OutboundIPs {
+		keep[i] = o.Address
+	}
+	if n, err := s.store.ClearOutboundIPs(r.Context(), keep); err != nil {
+		s.log.Error("outbound addresses of customers", "err", err)
+	} else if n > 0 {
+		s.audit(r, "customer.outbound_ip", "settings", "%d customers send from the server's address again (their address was removed)", n)
+	}
+	s.audit(r, "settings.mail", "settings", "host name %q, verification %v, dedicated %v, max message %d MB, smart host %q (login %q), virus scan %v, IPv4 only %v, risky attachments allowed %v, extra signatures %v, outbound addresses %d, notices to %q", m.Hostname, m.RequireVerification, m.Dedicated, m.MaxMessageMB, m.RelayHost, m.RelayUser, m.ClamAV, m.IPv4Only, m.AllowRiskyAttachments, m.ExtraSignatures, len(m.OutboundIPs), m.NoticeTo)
 	s.applyMail(r)
 	go s.publishAllDNS(context.WithoutCancel(r.Context()))
 	s.redirect(w, r, "/settings/mail", "Saved.")
@@ -344,6 +374,9 @@ type customerData struct {
 	Exporting bool // an export is running
 	Import    *job // the newest import job
 	Verified  bool // new domains are verified at once (no verification required)
+	// Outbound lists the extra sending addresses of the server
+	Outbound []OutboundAddr
+	Relay    bool // a smart host sends all mail (own addresses do not apply)
 }
 
 func (s *Server) loadCustomer(w http.ResponseWriter, r *http.Request) *store.Customer {
@@ -372,6 +405,8 @@ func (s *Server) handleCustomer(w http.ResponseWriter, r *http.Request) {
 					d.Exports, d.Exporting = s.exportFiles(c.ID), s.exportRunning(c.ID)
 					d.Import = s.lastImport(c.ID)
 					d.Spam, _ = s.store.CustomerSpamLevel(r.Context(), c.ID)
+					m := s.MailConfig(r.Context())
+					d.Outbound, d.Relay = m.OutboundIPs, m.RelayHost != ""
 				}
 			}
 		}
@@ -528,6 +563,9 @@ func (s *Server) handleDomain(w http.ResponseWriter, r *http.Request) {
 	}
 	k, _ := s.store.DKIM(r.Context(), dom.ID)
 	d.Records = mailRecords(dom, d.Mail, k)
+	if c, err := s.store.CustomerByID(r.Context(), dom.CustomerID); err == nil {
+		d.Records = withOutboundSPF(d.Records, c.OutboundIP)
+	}
 	if r.Method == http.MethodPost {
 		d.Checked = s.checkRecords(r.Context(), d.Records)
 	}

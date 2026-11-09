@@ -171,11 +171,42 @@ func txtStatus(want string, found []string) string {
 		switch {
 		case strings.ReplaceAll(t, " ", "") == strings.ReplaceAll(want, " ", ""):
 			return CheckOK
-		case strings.HasPrefix(want, "v=spf1") && strings.HasPrefix(t, "v=spf1") && (strings.Contains(t, " mx") || strings.Contains(t, "a:")):
+		case strings.HasPrefix(want, "v=spf1") && strings.HasPrefix(t, "v=spf1") && (strings.Contains(t, " mx") || strings.Contains(t, "a:")) && spfHasOwnIP(want, t):
 			return CheckOK // an own SPF record that includes this server
 		case prefix != "" && strings.HasPrefix(want, "v=DMARC1") && strings.HasPrefix(t, prefix):
 			return CheckOK // any DMARC policy
 		}
 	}
 	return CheckDifferent
+}
+
+// withOutboundSPF puts the customer's own sending address into the SPF
+// record (mail from it is not covered by "mx").
+func withOutboundSPF(recs []DNSRecord, ip string) []DNSRecord {
+	if ip == "" {
+		return recs
+	}
+	mech := "ip4:" + ip
+	if strings.Contains(ip, ":") {
+		mech = "ip6:" + ip
+	}
+	for i, r := range recs {
+		if r.Type == "TXT" && r.Value == "v=spf1 mx ~all" {
+			recs[i].Value = "v=spf1 mx " + mech + " ~all"
+		}
+	}
+	return recs
+}
+
+// spfHasOwnIP: when the suggested record names an own address (ip4:/ip6:),
+// the found record must name it too.
+func spfHasOwnIP(want, found string) bool {
+	for _, f := range strings.Fields(want) {
+		if strings.HasPrefix(f, "ip4:") || strings.HasPrefix(f, "ip6:") {
+			if !strings.Contains(" "+found+" ", " "+f+" ") && !strings.Contains(" "+found+" ", " +"+f+" ") {
+				return false
+			}
+		}
+	}
+	return true
 }

@@ -22,7 +22,7 @@ systemctl enable emailzit-icmp.service
 systemctl enable emailzit-firstboot.service emailzit-appliance-boot.service
 # Postfix and Dovecot stay off until EmailZit has written their
 # configuration at the first start.
-systemctl disable postfix dovecot rspamd >/dev/null 2>&1 || true
+systemctl disable postfix dovecot rspamd unbound >/dev/null 2>&1 || true
 # Automatic security updates of Debian.
 printf 'APT::Periodic::Update-Package-Lists "1";\nAPT::Periodic::Unattended-Upgrade "1";\n' > /etc/apt/apt.conf.d/20auto-upgrades
 # Where to get the source code of the GPL software, and the exact Debian

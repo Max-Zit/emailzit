@@ -45,6 +45,15 @@
   </form>
   <small class="muted">{{.T "A mailbox can have its own level and its own allowed and blocked senders (mailbox page or the user's mail settings)."}}</small>
 </section>
+{{if .Data.Outbound}}<section class="panel" id="outbound">
+  <h2>{{template "icon" "route"}}{{.T "Outbound address"}}</h2>
+  {{if .Data.Relay}}<p class="notice-warn">{{.T "All mail goes through the smart host (Settings → Mail server), so the outbound address has no effect."}}</p>{{end}}
+  <form method="post" action="/customers/{{$c.ID}}/outbound" class="row">
+    <label>{{.T "The customer's mail leaves from"}}<select name="outbound_ip"><option value="">{{.T "the server's address"}}</option>{{range .Data.Outbound}}<option value="{{.Address}}" {{if eq .Address $c.OutboundIP}}selected{{end}}>{{.Address}} ({{.HELO}})</option>{{end}}</select></label>
+    {{if .User.CanWrite}}<button class="secondary">{{.T "Save"}}</button>{{end}}
+  </form>
+  <small class="muted">{{.T "The SPF records of the customer's domains must name the address; the record to publish is shown on each domain's page (with HostZit hosting the zone it is updated by itself)."}}</small>
+</section>{{end}}
 <section class="panel" id="export">
   <h2>{{template "icon" "download"}}{{.T "Export"}}</h2>
   <p class="muted">{{.T "Packs all mail of the customer and the settings (domains, mailboxes, aliases, filters, spam settings; no passwords or keys) into one file, for BackupZit or for moving to another server. The newest three exports are kept."}}</p>

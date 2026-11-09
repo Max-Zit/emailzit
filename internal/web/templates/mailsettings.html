@@ -22,6 +22,23 @@
     <h2>{{template "icon" "shield"}}{{.T "Virus scan"}}</h2>
     <label class="check"><input type="checkbox" name="clamav" value="1" {{if .Data.ClamAV}}checked{{end}}>{{.T "Scan every message with ClamAV and refuse infected mail"}}</label>
     <small class="muted">{{.T "ClamAV is installed by itself when this is switched on and needs about 1 GB of memory; the scan starts once its virus signatures are downloaded (a few minutes). Switched off, ClamAV stops too."}}</small>
+    <label class="check"><input type="checkbox" name="extra_signatures" value="1" {{if .Data.ExtraSignatures}}checked{{end}}>{{.T "Also use Sanesecurity's free signatures (spam, phishing, scams, malicious links and macros)"}}</label>
+    <small class="muted">{{.T "Downloaded every six hours from Sanesecurity's mirrors and checked against their signing key before ClamAV loads them; spam signatures only add to the spam score. Free to use; Sanesecurity asks companies for a donation."}}</small>
+  </section>
+  <section class="panel" id="protection">
+    <h2>{{template "icon" "shield"}}{{.T "Protection"}}</h2>
+    <label class="check"><input type="checkbox" name="block_attachments" value="1" {{if not .Data.AllowRiskyAttachments}}checked{{end}}>{{.T "Refuse programs, scripts, shortcuts, disk images and Office files with macros as attachments (also inside archives)"}}</label>
+    <small class="muted">{{.T "For example .exe, .js, .vbs, .bat, .lnk, .iso, .docm and .xlsm: the usual way ransomware arrives. The sender is told to share such files by link."}}</small>
+    <p class="small">{{.T "Always on: messages with known phishing links (PhishTank) and messages whose sender poses as someone of this server in the name get \"[Phishing?]\" in front of the subject; spam sent by signed-in users is refused, and a mailbox whose mail is refused as spam or virus 3 times within an hour can no longer send (the administrators and the mailbox are told); unknown servers on DNS block lists or talking before the greeting are turned away at port 25."}}</p>
+  </section>
+  <section class="panel" id="notices">
+    <h2>{{template "icon" "mail"}}{{.T "Notices for administrators"}}</h2>
+    <label>{{.T "Send notices to"}}<input name="notice_to" value="{{.Data.NoticeTo}}" spellcheck="false" autocapitalize="none" class="mono" placeholder="admin@example.com"><small>{{.T "Up to five addresses, separated by commas: a weekly report on Monday morning, a notice when an address of this server lands on a block list, and when a mailbox is blocked for sending spam. Empty: no notices."}}</small></label>
+  </section>
+  <section class="panel" id="outbound">
+    <h2>{{template "icon" "route"}}{{.T "Outbound addresses"}}</h2>
+    <p class="muted">{{.T "Extra IP addresses of this server for outgoing mail, each with its own host name. Give a customer one on the customer's page: their mail then leaves from it, so a customer who sends spam cannot spoil the reputation of the others."}}</p>
+    <label>{{.T "Addresses"}}<textarea name="outbound_ips" rows="4" spellcheck="false" autocapitalize="none" class="mono" placeholder="203.0.113.5 mail2.example.com">{{.Data.OutboundText}}</textarea><small>{{.T "One per line: the address and its host name. The address must be configured on this server; the host name must point at it and its PTR record must name the host name. Without a smart host only. The SPF records of the customer's domains then name the address (shown on each domain's page)."}}</small></label>
   </section>
   <section class="panel" id="relay">
     <h2>{{template "icon" "route"}}{{.T "Outgoing mail through a smart host"}}</h2>

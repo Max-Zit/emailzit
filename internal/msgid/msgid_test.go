@@ -24,7 +24,8 @@ func TestNoSpamPattern(t *testing.T) {
 	if !randy.MatchString("<3f9a0c1b2d4e5f60718293a4@backupzit.com>") {
 		t.Fatal("MSGID_RANDY pattern does not match the old form")
 	}
-	if New("x.org", time.Now()) == New("x.org", time.Now()) {
+	now := time.Now()
+	if a, b := New("x.org", now), New("x.org", now); a == b {
 		t.Fatal("two equal Message-IDs")
 	}
 }

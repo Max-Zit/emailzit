@@ -5,7 +5,7 @@ Its programs contain the following components under their own licenses, all comp
 
 | Component | Version | License |
 |---|---|---|
-| Go standard library and runtime | go1.27.3 | BSD-3-Clause |
+| Go standard library and runtime | go1.27.4 | BSD-3-Clause |
 | github.com/coreos/go-oidc/v3 | v3.21.0 | Apache-2.0 |
 | github.com/emersion/go-imap | v1.2.1 | MIT |
 | github.com/emersion/go-message | v0.18.2 | MIT |

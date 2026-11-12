@@ -23,9 +23,11 @@ while [ $# -gt 0 ]; do
 done
 
 [ "$(id -u)" = 0 ] || { echo "run as root (sudo sh install.sh)" >&2; exit 1; }
-. /etc/os-release
-if [ "${ID:-}" != debian ] || [ "${VERSION_ID:-0}" -lt 13 ]; then
-    echo "EmailZit needs Debian 13 or newer (found ${PRETTY_NAME:-unknown})." >&2
+# read in a subshell: os-release sets VERSION, which would replace ours
+OS=$(. /etc/os-release && echo "${ID:-}|${VERSION_ID:-0}|${PRETTY_NAME:-unknown}")
+OS_ID=${OS%%|*} OS_VER=${OS#*|} OS_VER=${OS_VER%%|*} OS_NAME=${OS##*|}
+if [ "$OS_ID" != debian ] || [ "${OS_VER%%.*}" -lt 13 ] 2>/dev/null; then
+    echo "EmailZit needs Debian 13 or newer (found $OS_NAME)." >&2
     exit 1
 fi
 case "$(uname -m)" in
@@ -48,7 +50,7 @@ DEB="emailzit-server_${VERSION}_${ARCH}.deb"
 echo "Downloading EmailZit $VERSION ($ARCH) …"
 curl -fsSL -o "$TMP/$DEB" "$SOURCE/download/v$VERSION/$DEB"
 curl -fsSL -o "$TMP/SHA256SUMS" "$SOURCE/download/v$VERSION/SHA256SUMS"
-(cd "$TMP" && grep " $DEB\$" SHA256SUMS | sha256sum -c -) || { echo "the download does not match SHA256SUMS" >&2; exit 1; }
+(cd "$TMP" && grep -E " \*?$DEB\$" SHA256SUMS | sha256sum -c -) || { echo "the download does not match SHA256SUMS" >&2; exit 1; }
 
 export DEBIAN_FRONTEND=noninteractive
 echo "postfix postfix/main_mailer_type select No configuration" | debconf-set-selections
@@ -58,5 +60,5 @@ if [ -n "$HOSTNAME_ARG" ]; then
     sh /usr/share/emailzit/setup.sh --from-package --hostname "$HOSTNAME_ARG"
 fi
 echo
-echo "EmailZit $VERSION is installed. Open https://$(hostname -f):8444 and finish the setup."
+echo "EmailZit $VERSION is installed. Open https://${HOSTNAME_ARG:-$(hostname -f)}:8444 and finish the setup."
 echo "The setup token is in /var/lib/emailzit/setup-token.txt."

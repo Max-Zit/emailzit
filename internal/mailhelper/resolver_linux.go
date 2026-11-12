@@ -79,8 +79,27 @@ func portFree(addr string) bool {
 	return true
 }
 
+// Debian's Unbound validates DNSSEC with this trust anchor, which its
+// service creates from dns-root-data on its first start. Where the package
+// was installed without starting the service (the appliance image installs
+// it during the Debian installation), the file is missing and
+// unbound-checkconf fails, so Unbound never started (no DANE, no block list
+// lookups for Rspamd).
+const (
+	unboundRootKey = "/var/lib/unbound/root.key"
+	unboundHelper  = "/usr/libexec/unbound-helper"
+)
+
 // startUnbound (re)starts Unbound after its file changed.
 func (s *Server) startUnbound(ctx context.Context) error {
+	if _, err := os.Stat(unboundRootKey); err != nil {
+		if _, err := os.Stat(unboundHelper); err == nil {
+			// copies /usr/share/dns/root.key as user unbound, like the service's ExecStartPre
+			if out, err := s.Run(ctx, unboundHelper, "root_trust_anchor_update"); err != nil {
+				s.Log.Warn("unbound trust anchor", "err", firstLine(out, err))
+			}
+		}
+	}
 	if out, err := s.Run(ctx, "unbound-checkconf"); err != nil {
 		return errors.New("unbound-checkconf: " + firstLine(out, err))
 	}

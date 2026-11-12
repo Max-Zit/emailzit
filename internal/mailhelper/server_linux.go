@@ -288,6 +288,10 @@ func (s *Server) apply(ctx context.Context, r Request) error {
 		if err := s.startUnbound(ctx); err != nil {
 			s.Log.Warn("local resolver", "err", err)
 		}
+	} else {
+		// file unchanged but Unbound not running (it could not start
+		// before): start it now, before the resolver decision below
+		s.keepUnbound(ctx)
 	}
 	if unboundInstalled() {
 		s.useSystemResolver(ctx, sysResolver)

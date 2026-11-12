@@ -42,6 +42,8 @@ Or download the **appliance image** from the [newest release](https://github.com
 
 Open `https://<server>:8444`, create the first administrator and set the server's host name; the panel then shows every DNS record a domain needs. The host name must point at the server and the server's address back at the host name (PTR record at your provider).
 
+After the installation only private networks may reach port 8444. On a server with a public address, sign in the first time through an SSH tunnel (`ssh -L 8444:127.0.0.1:8444 root@<server>`, then `https://127.0.0.1:8444`) and add `0.0.0.0/0` and `::/0` under **Network and access**: customers and mail users (webmail) need the port too. Staff accounts stay protected by the second factor and the blocking after failed sign-ins.
+
 Requirements: 2 vCPU, 2 GB RAM (4 GB with the virus scan), 20 GB disk plus the mail itself.
 
 The appliance image is checked before every release with Trivy, Lynis, testssl.sh and Nuclei; see [SECURITY.md](SECURITY.md).

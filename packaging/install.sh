@@ -62,3 +62,5 @@ fi
 echo
 echo "EmailZit $VERSION is installed. Open https://${HOSTNAME_ARG:-$(hostname -f)}:8444 and finish the setup."
 echo "The setup token is in /var/lib/emailzit/setup-token.txt."
+echo "Only private networks may reach port 8444 until you change it under Network and access;"
+echo "from elsewhere use an SSH tunnel: ssh -L 8444:127.0.0.1:8444 root@<this server>, then https://127.0.0.1:8444"

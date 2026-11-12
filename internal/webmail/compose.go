@@ -2,8 +2,6 @@ package webmail
 
 import (
 	"bytes"
-	"crypto/rand"
-	"encoding/hex"
 	"errors"
 	"io"
 	"net/mail"
@@ -11,6 +9,8 @@ import (
 	"time"
 
 	gomail "github.com/emersion/go-message/mail"
+
+	"github.com/max-zit/emailzit/internal/msgid"
 )
 
 // Draft is a message written in the webmail.
@@ -83,9 +83,7 @@ func (d *Draft) Build(host string) ([]byte, []string, error) {
 		h.SetAddressList("Cc", conv(cc))
 	}
 	h.SetSubject(strings.ReplaceAll(strings.ReplaceAll(d.Subject, "\r", ""), "\n", " "))
-	var rnd [12]byte
-	_, _ = rand.Read(rnd[:])
-	h.SetMessageID(hex.EncodeToString(rnd[:]) + "@" + host)
+	h.SetMessageID(msgid.New(host, time.Now()))
 	if d.InReplyTo != "" {
 		h.Set("In-Reply-To", "<"+strings.Trim(d.InReplyTo, "<> \r\n")+">")
 	}

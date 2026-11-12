@@ -10,13 +10,13 @@ package submit
 
 import (
 	"bytes"
-	"crypto/rand"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/mail"
 	"strings"
 	"time"
+
+	"github.com/max-zit/emailzit/internal/msgid"
 )
 
 // Request is the first line emailzit-sendmail sends (JSON), followed by the
@@ -187,9 +187,7 @@ func prepare(req Request, raw []byte, hostname string, now time.Time) (*prepared
 		b.WriteString("Date: " + now.Format(time.RFC1123Z) + "\n")
 	}
 	if !hasID {
-		r := make([]byte, 12)
-		_, _ = rand.Read(r)
-		b.WriteString("Message-ID: <" + hex.EncodeToString(r) + "@" + hostname + ">\n")
+		b.WriteString("Message-ID: <" + msgid.New(hostname, now) + ">\n")
 	}
 	for _, f := range out {
 		b.WriteString(f.raw)

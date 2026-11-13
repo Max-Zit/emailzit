@@ -166,6 +166,7 @@ func restoreBackup(ctx context.Context, file, passFile, dataDir, dbURL string) e
 	// the new server must take over the mail settings of the old one
 	// (host name, limits, protection): the panel applies them at its next
 	// start when it sees this mark
+	// #nosec G703 -- the administrator names the data directory on the command line
 	if err := os.WriteFile(filepath.Join(dataDir, web.ApplyMailMark), []byte(m.Created.UTC().Format(time.RFC3339)+"\n"), 0o600); err != nil {
 		fmt.Fprintf(os.Stderr, "note: the mail configuration must be written again by hand (Settings → Mail → Save): %v\n", err)
 	}

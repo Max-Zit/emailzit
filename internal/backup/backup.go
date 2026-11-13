@@ -133,6 +133,7 @@ func Create(ctx context.Context, db Dumper, dataDir, tmpDir, serverVersion, pass
 // an administrator left in the directory is only reported, so a single
 // unreadable file does not cost the server its backup.
 func dataFiles(dataDir string) (files, skipped []string, err error) {
+	var found []string
 	for _, top := range DataFiles {
 		root := filepath.Join(dataDir, top)
 		if _, err := os.Lstat(root); errors.Is(err, fs.ErrNotExist) {
@@ -149,22 +150,26 @@ func dataFiles(dataDir string) (files, skipped []string, err error) {
 			if err != nil {
 				return err
 			}
-			rel = filepath.ToSlash(rel)
-			f, err := os.Open(p) // #nosec G304 -- files of our own data directory
-			if err != nil {
-				if requiredFiles[rel] {
-					return err
-				}
-				skipped = append(skipped, rel)
-				return nil
-			}
-			_ = f.Close()
-			files = append(files, rel)
+			found = append(found, filepath.ToSlash(rel))
 			return nil
 		})
 		if err != nil {
 			return nil, nil, err
 		}
+	}
+	// readable or not is decided outside the walk (a check inside it would
+	// race with the directory it is walking)
+	for _, rel := range found {
+		f, err := os.Open(filepath.Join(dataDir, filepath.FromSlash(rel))) // #nosec G304 -- files of our own data directory
+		if err != nil {
+			if requiredFiles[rel] {
+				return nil, nil, err
+			}
+			skipped = append(skipped, rel)
+			continue
+		}
+		_ = f.Close()
+		files = append(files, rel)
 	}
 	for name := range requiredFiles {
 		if name == "secret.key" && !slices.Contains(files, name) {

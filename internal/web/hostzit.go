@@ -26,12 +26,23 @@ import (
 
 const settingHostZit = "hostzit"
 
-// HostZitLink is where HostZit's API is.
+// HostZitLink is where HostZit's API is. A link made with a pairing code
+// also knows the other server's name and addresses and the token EmailZit
+// gave it, so Unlink can take that token back.
 type HostZitLink struct {
 	URL      string `json:"url"`   // e.g. https://host.example.com:8442
 	Token    string `json:"token"` // sealed hzt_… token with the scope dns:mail
 	Insecure bool   `json:"insecure"`
+	// Paired link (empty for a link typed in by hand):
+	ServerName string    `json:"server_name,omitempty"`
+	Addresses  []string  `json:"addresses,omitempty"` // addresses of HostZit
+	Pin        string    `json:"pin,omitempty"`       // SHA-256 of HostZit's public key
+	TokenID    string    `json:"token_id,omitempty"`  // the ezt_ token EmailZit gave HostZit
+	LinkedAt   time.Time `json:"linked_at,omitempty"`
 }
+
+// Paired reports whether the link was made with a pairing code.
+func (l HostZitLink) Paired() bool { return l.TokenID != "" }
 
 func (s *Server) hostzitLink(ctx context.Context) HostZitLink {
 	var l HostZitLink
@@ -174,6 +185,7 @@ func (s *Server) publishAllDNS(ctx context.Context) {
 type hostzitData struct {
 	L        HostZitLink
 	HasToken bool
+	Code     string // a fresh pairing code, shown once
 }
 
 func (s *Server) handleHostZit(w http.ResponseWriter, r *http.Request) {
@@ -185,11 +197,18 @@ func (s *Server) handleHostZitSave(w http.ResponseWriter, r *http.Request) {
 	old := s.hostzitLink(r.Context())
 	l := HostZitLink{URL: strings.TrimRight(strings.TrimSpace(r.FormValue("url")), "/"), Insecure: r.FormValue("insecure") == "1", Token: old.Token}
 	if l.URL != "" {
-		u, err := url.Parse(l.URL)
-		if err != nil || u.Scheme != "https" || u.Host == "" || u.User != nil || (u.Path != "" && u.Path != "/") || u.RawQuery != "" || len(l.URL) > 200 {
-			s.redirectErr(w, r, "/settings/hostzit", "The address must look like https://host.example.com:8442")
+		if _, err := validLinkURL(l.URL); err != nil {
+			s.redirectErr(w, r, "/settings/hostzit", err.Error())
 			return
 		}
+	}
+	// A paired link keeps what the pairing settled as long as the address
+	// stays the same; another address means the token we gave is of no use.
+	switch {
+	case old.Paired() && l.URL == old.URL:
+		l.ServerName, l.Addresses, l.Pin, l.TokenID, l.LinkedAt = old.ServerName, old.Addresses, old.Pin, old.TokenID, old.LinkedAt
+	case old.TokenID != "":
+		_ = s.store.DeleteAPIToken(r.Context(), old.TokenID)
 	}
 	if t := strings.TrimSpace(r.FormValue("token")); t != "" {
 		if !strings.HasPrefix(t, "hzt_") || len(t) > 200 || strings.ContainsAny(t, " \r\n") {

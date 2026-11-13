@@ -92,6 +92,11 @@ func (s *Server) apiHandler() http.Handler {
 	need("GET /api/v1/jobs/{id}", store.ScopeCustomersRead, s.apiJob)
 	need("GET /api/v1/server/status", store.ScopeCustomersRead, s.apiServerStatus)
 	need("POST /api/v1/customers/{id}/sso", store.ScopeSSO, s.apiCustomerSSO)
+	// pairing: step 1 carries the pairing code instead of a token, the
+	// other two the token of the paired HostZit
+	mux.HandleFunc("POST /api/v1/link/hostzit", s.handleLinkHostZit)
+	need("PUT /api/v1/link/hostzit/dns-token", store.ScopeCustomersWrite, s.handleLinkDNSToken)
+	need("DELETE /api/v1/link/hostzit", store.ScopeCustomersWrite, s.handleLinkDelete)
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
 		apiError(w, http.StatusNotFound, "not_found", "unknown API path", "")
 	})

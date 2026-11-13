@@ -33,6 +33,8 @@ type Server struct {
 	approvalHandlers map[string]http.HandlerFunc
 	// jobs are running and recent exports.
 	jobs jobList
+	// pairLimit counts the attempts at the pairing endpoint.
+	pairLimit pairingLimiter
 	// testMail remembers when a domain last sent a test message (one a
 	// minute, so the page cannot be used to send more).
 	testMail struct {
@@ -365,6 +367,8 @@ func (s *Server) Handler() http.Handler {
 	admin("GET /settings/backup/file/{name}", s.handleBackupDownload)
 	admin("GET /settings/hostzit", s.handleHostZit)
 	admin("POST /settings/hostzit", s.handleHostZitSave)
+	admin("POST /settings/hostzit/code", s.handleHostZitCode)
+	admin("POST /settings/hostzit/unlink", s.handleHostZitUnlink)
 	admin("GET /settings/api", s.handleAPITokens)
 	admin("POST /settings/api", s.handleAPITokenCreate)
 	admin("POST /settings/api/{id}/delete", s.fourEyes("apitoken.delete", s.handleAPITokenDelete))

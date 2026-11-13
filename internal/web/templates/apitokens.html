@@ -34,7 +34,7 @@
     <fieldset><legend>{{.T "Permissions"}}</legend>
       {{range .Data.Scopes}}<label class="check"><input type="checkbox" name="scope" value="{{.}}" checked><span class="mono">{{.}}</span></label>{{end}}
     </fieldset>
-    <label>{{.T "Allowed addresses"}} <small>{{.T "optional"}}</small><textarea name="ips" rows="2" spellcheck="false" placeholder="203.0.113.10"></textarea><small>{{.T "One address or network per line; empty = any address."}}</small></label>
+    <label>{{.T "Allowed addresses"}} <small>{{.T "optional"}}</small><textarea name="ips" rows="2" spellcheck="false" placeholder="203.0.113.10"></textarea><small>{{.T "One address or network per line; empty = any address. Write every address of the other server, IPv4 and IPv6 — it may come over either of them."}}</small></label>
     <div><button class="primary">{{template "icon" "plus"}}{{.T "Create token"}}</button></div>
   </form>
 </section>

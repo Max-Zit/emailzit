@@ -21,16 +21,67 @@ import (
 var webServers = []string{"/usr/sbin/nginx", "/usr/sbin/apache2", "/usr/bin/caddy", "/usr/sbin/lighttpd"}
 
 // startPublic serves autoconfig, Autodiscover and MTA-STS on the standard
-// ports 443 and 80 (mode "auto": only on a mail server without a web
-// server and without a HostZit link; "off": never).
+// ports 443 and 80 (mode "auto": only on a mail server where no web server
+// of its own holds them; "off": never). A web server that appears later
+// gets the ports, and when it goes away they are taken back.
 func startPublic(ctx context.Context, mode string, srv *web.Server, fallback tls.Certificate, panelAddr string, log *slog.Logger) []*http.Server {
 	if mode == "off" || srv.Mail == nil {
 		return nil
 	}
-	if why := portsTaken(ctx, srv); why != "" {
-		log.Info("public web ports left to " + why)
-		return nil
+	// the listeners come and go with the web server of this machine, so
+	// they are not handed to the caller; they close when ctx is done
+	go (&publicPorts{}).watch(ctx, srv, fallback, panelAddr, log)
+	return nil
+}
+
+// publicPorts holds the listeners of 80 and 443 while this server has them.
+type publicPorts struct {
+	mu      sync.Mutex
+	servers []*http.Server
+}
+
+// watch gives the ports away when a web server of this machine holds them
+// and takes them back when it no longer does.
+func (p *publicPorts) watch(ctx context.Context, srv *web.Server, fallback tls.Certificate, panelAddr string, log *slog.Logger) {
+	t := time.NewTicker(20 * time.Second)
+	defer t.Stop()
+	first := true
+	for {
+		why := portsTaken()
+		p.mu.Lock()
+		switch {
+		case why != "" && first:
+			log.Info("public web ports left to " + why)
+		case why != "" && len(p.servers) > 0:
+			for _, hs := range p.servers {
+				_ = hs.Close()
+			}
+			p.servers = nil
+			log.Info("public web ports handed over to " + why)
+		case why == "" && len(p.servers) == 0:
+			if !first {
+				log.Info("public web ports are free again")
+			}
+			p.servers = listenPublic(srv, fallback, panelAddr, log)
+		}
+		first = false
+		p.mu.Unlock()
+		select {
+		case <-ctx.Done():
+			p.mu.Lock()
+			for _, hs := range p.servers {
+				_ = hs.Close()
+			}
+			p.servers = nil
+			p.mu.Unlock()
+			return
+		case <-t.C:
+		}
 	}
+}
+
+// listenPublic opens 443 and 80 and serves the public pages on them.
+func listenPublic(srv *web.Server, fallback tls.Certificate, panelAddr string, log *slog.Logger) []*http.Server {
 	_, port, err := net.SplitHostPort(panelAddr)
 	if err != nil {
 		port = "8444"
@@ -59,40 +110,19 @@ func startPublic(ctx context.Context, mode string, srv *web.Server, fallback tls
 		out = append(out, hs)
 		log.Info("listening", "listener", "public (autoconfig, Autodiscover, MTA-STS)", "addr", l.addr)
 	}
-	if len(out) > 0 {
-		// a web server installed later (HostZit) gets the ports: hand them over
-		go func() {
-			t := time.NewTicker(20 * time.Second)
-			defer t.Stop()
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case <-t.C:
-				}
-				if why := portsTaken(ctx, srv); why != "" {
-					for _, hs := range out {
-						_ = hs.Close()
-					}
-					log.Info("public web ports handed over to " + why)
-					return
-				}
-			}
-		}()
-	}
 	return out
 }
 
-// portsTaken names who owns the ports 80 and 443 instead of EmailZit ("" =
-// nobody): an installed web server or a linked HostZit.
-func portsTaken(ctx context.Context, srv *web.Server) string {
+// portsTaken names the web server of THIS machine that owns the ports 80
+// and 443 instead of EmailZit ("" = nobody). A linked HostZit does not
+// count: it may run on another server, and then nothing would answer on 80
+// and 443 here (MTA-STS, autoconfig and Autodiscover would be dead).
+// HostZit on the same machine always installs nginx, which is in the list.
+func portsTaken() string {
 	for _, p := range webServers {
 		if _, err := os.Stat(p); err == nil {
 			return "the web server " + p
 		}
-	}
-	if srv.HostZitLinked(ctx) {
-		return "HostZit"
 	}
 	return ""
 }

@@ -254,6 +254,3 @@ func (s *Server) handleWebSend(w http.ResponseWriter, r *http.Request) {
 	s.redirect(w, r, back, "Mail from the hosting account is allowed again.")
 }
 
-// HostZitLinked tells whether HostZit is linked (its web server then owns
-// the ports 80 and 443 of a shared server).
-func (s *Server) HostZitLinked(ctx context.Context) bool { return s.hostzitLink(ctx).URL != "" }

@@ -438,6 +438,7 @@
   "One IP address or network per line (CIDR, e.g. 192.168.1.0/24, or 0.0.0.0/0 and ::/0 for everyone). Connections from other addresses are closed before TLS. The server itself (127.0.0.1) is always allowed.": "1 行に 1 つの IP アドレスまたはネットワーク（CIDR、例：192.168.1.0/24、全員なら 0.0.0.0/0 と ::/0）。その他のアドレスからの接続は TLS の前に閉じられます。サーバー自身（127.0.0.1）は常に許可されます。",
   "One address (ana@example.com) or whole domain (example.com) per line, up to 200 per list. The sender is the From address of the message.": "1 行に 1 つのアドレス（ana@example.com）またはドメイン全体（example.com）、1 つのリストに最大 200 件。送信者はメッセージの From アドレスです。",
   "One address or network per line; empty = any address.": "1 行に 1 つのアドレスまたはネットワーク。空欄 = すべてのアドレス。",
+  "One address or network per line; empty = any address. Write every address of the other server, IPv4 and IPv6 — it may come over either of them.": "1 行に 1 つのアドレスまたはネットワーク。空欄はすべてのアドレスを許可します。相手サーバーのアドレスは IPv4 と IPv6 の両方を書いてください。どちらで接続してくるか分かりません。",
   "One or more addresses, separated by commas.": "1 つ以上のアドレスをカンマで区切って入力。",
   "One per line: the address and its host name. The address must be configured on this server; the host name must point at it and its PTR record must name the host name. Without a smart host only. The SPF records of the customer's domains then name the address (shown on each domain's page).": "1 行に 1 つ：アドレスとそのホスト名。アドレスはこのサーバーに設定されている必要があり、ホスト名はそのアドレスを指し、アドレスの PTR レコードはホスト名を示す必要があります。スマートホストを使わない場合のみ。顧客のドメインの SPF レコードにはそのアドレスが記載されます（各ドメインのページに表示）。",
   "One to three, separated by commas.": "1～3 個をコンマ区切りで。",

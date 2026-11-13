@@ -438,6 +438,7 @@
   "One IP address or network per line (CIDR, e.g. 192.168.1.0/24, or 0.0.0.0/0 and ::/0 for everyone). Connections from other addresses are closed before TLS. The server itself (127.0.0.1) is always allowed.": "每行一个 IP 地址或网络（CIDR，例如 192.168.1.0/24，或 0.0.0.0/0 和 ::/0 表示所有人）。来自其他地址的连接在 TLS 之前即被关闭。服务器本身（127.0.0.1）始终允许。",
   "One address (ana@example.com) or whole domain (example.com) per line, up to 200 per list. The sender is the From address of the message.": "每行一个地址（ana@example.com）或整个域名（example.com），每个列表最多 200 条。发件人指邮件的 From 地址。",
   "One address or network per line; empty = any address.": "每行一个地址或网络；留空 = 任何地址。",
+  "One address or network per line; empty = any address. Write every address of the other server, IPv4 and IPv6 — it may come over either of them.": "每行一个地址或网段；留空表示不限。请把对方服务器的所有地址都写上，IPv4 和 IPv6 都要——它可能从任意一个过来。",
   "One or more addresses, separated by commas.": "一个或多个地址，用逗号分隔。",
   "One per line: the address and its host name. The address must be configured on this server; the host name must point at it and its PTR record must name the host name. Without a smart host only. The SPF records of the customer's domains then name the address (shown on each domain's page).": "每行一个：地址及其主机名。该地址必须已在本服务器上配置；主机名必须指向该地址，且该地址的 PTR 记录必须指明该主机名。仅在不使用智能主机时有效。客户各域名的 SPF 记录随后会包含该地址（显示在每个域名的页面上）。",
   "One to three, separated by commas.": "一到三个，用逗号分隔。",

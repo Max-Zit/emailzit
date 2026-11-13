@@ -79,7 +79,7 @@ func (s *Server) SyncMail(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
-		case <-time.After(2 * time.Second):
+		case <-time.After(helperStartWait):
 		}
 	}
 	// after a restore the mail services still carry the configuration of
@@ -129,3 +129,7 @@ func (h *HelperMail) Unban(ctx context.Context, ip string) error {
 // panel writes the mail configuration of the restored settings at its next
 // start and removes the file.
 const ApplyMailMark = "apply-mail-settings"
+
+// helperStartWait is how long SyncMail waits between two attempts to reach
+// the mail helper at start (a variable so tests do not wait).
+var helperStartWait = 2 * time.Second

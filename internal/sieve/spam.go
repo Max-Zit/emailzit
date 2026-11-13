@@ -30,7 +30,11 @@ var (
 	ErrTooManySenders = errors.New("at most 200 entries per list")
 )
 
-var senderRE = regexp.MustCompile(`^([a-z0-9!#$%&'*+/=?^_{|}~.-]{1,64}@)?([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9-]{2,63}$`)
+// senderRE accepts an address or a domain. The local part allows the
+// printable characters of RFC 5322 except the braces: an entry ends up in a
+// Sieve string, and "${…}" would be a variable there if a later script ever
+// asked for the variables extension. Nobody has such an address.
+var senderRE = regexp.MustCompile(`^([a-z0-9!#$%&'*+/=?^_~.-]{1,64}@)?([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9-]{2,63}$`)
 
 // CleanSenders checks an allow or block list: addresses (ana@example.com)
 // and whole domains (example.com or @example.com), one per line or

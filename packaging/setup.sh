@@ -59,7 +59,10 @@ fi
 # with Postfix over port 25 and over local mail.
 for M in exim4 sendmail nullmailer opensmtpd; do
     if systemctl is-enabled "$M" >/dev/null 2>&1 || systemctl is-active --quiet "$M" 2>/dev/null; then
-        systemctl disable --now "$M" >/dev/null 2>&1 || true
+        # separate steps: "disable --now" leaves a SysV service (exim4)
+        # running on Debian
+        systemctl stop "$M" >/dev/null 2>&1 || true
+        systemctl disable "$M" >/dev/null 2>&1 || true
         echo "stopped and disabled $M (EmailZit uses Postfix)"
     fi
 done

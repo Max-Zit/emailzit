@@ -200,8 +200,12 @@ func (r *Request) Validate() error {
 	case ActionCert:
 		return validCert(r.Chain, r.Key)
 	case ActionBan:
+		if r.IP == "all" && r.Minutes == 0 { // lift every block
+			return nil
+		}
 		a, err := netip.ParseAddr(r.IP)
-		if err != nil || a.IsLoopback() || a.IsUnspecified() || a.IsMulticast() || r.Minutes < 1 || r.Minutes > 10080 {
+		// 0 minutes lifts the block of that address
+		if err != nil || a.IsLoopback() || a.IsUnspecified() || a.IsMulticast() || r.Minutes < 0 || r.Minutes > 10080 {
 			return errors.New("invalid address or time")
 		}
 		return nil

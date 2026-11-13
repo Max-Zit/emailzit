@@ -2,6 +2,8 @@ package web
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/max-zit/emailzit/internal/mailconf"
@@ -80,6 +82,18 @@ func (s *Server) SyncMail(ctx context.Context) {
 		case <-time.After(2 * time.Second):
 		}
 	}
+	// after a restore the mail services still carry the configuration of
+	// the machine they were installed on; write the settings of the backup
+	mark := filepath.Join(s.DataDir, ApplyMailMark)
+	if _, err := os.Stat(mark); err == nil {
+		m := s.MailConfig(ctx)
+		if err := s.Mail.Apply(ctx, m); err != nil {
+			s.log.Error("mail configuration after a restore", "err", err)
+		} else {
+			s.log.Info("mail configuration written again after a restore", "hostname", m.Hostname)
+			_ = os.Remove(mark)
+		}
+	}
 	doms, err := s.store.Domains(ctx, store.Staff, "")
 	if err != nil {
 		s.log.Error("mail sync", "err", err)
@@ -110,3 +124,8 @@ func (s *Server) installDKIM(ctx context.Context, domainID string) {
 func (h *HelperMail) Unban(ctx context.Context, ip string) error {
 	return h.C.Call(ctx, mailhelper.Request{Action: mailhelper.ActionBan, IP: ip, Minutes: 0, By: "panel"})
 }
+
+// ApplyMailMark is the file a restore leaves in the data directory: the
+// panel writes the mail configuration of the restored settings at its next
+// start and removes the file.
+const ApplyMailMark = "apply-mail-settings"

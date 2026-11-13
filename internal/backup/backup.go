@@ -21,6 +21,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 )
@@ -32,6 +33,9 @@ type Manifest struct {
 	ServerVersion string    `json:"server_version"`
 	Created       time.Time `json:"created"`
 	Files         []string  `json:"files"`
+	// Skipped names files under DataFiles the server could not read (an old
+	// certificate put aside, for example); they are not in the backup.
+	Skipped []string `json:"skipped,omitempty"`
 }
 
 const (
@@ -44,6 +48,12 @@ const (
 
 // DataFiles are the parts of the data directory a backup holds.
 var DataFiles = []string{"secret.key", "tls"}
+
+// requiredFiles must be in every backup: without them a new server cannot
+// take over. Anything else under DataFiles is extra (an old certificate an
+// administrator put aside, for example) and is left out when it cannot be
+// read, so one stray file does not cost the server its backup.
+var requiredFiles = map[string]bool{"secret.key": true, "tls/panel.crt": true, "tls/panel.key": true}
 
 // Dumper writes the database (store.Store).
 type Dumper interface {
@@ -66,11 +76,11 @@ func Create(ctx context.Context, db Dumper, dataDir, tmpDir, serverVersion, pass
 	if err := bw.Flush(); err != nil {
 		return nil, err
 	}
-	files, err := dataFiles(dataDir)
+	files, skipped, err := dataFiles(dataDir)
 	if err != nil {
 		return nil, err
 	}
-	m := &Manifest{Format: 1, Product: "EmailZit", ServerVersion: serverVersion, Created: time.Now().UTC(), Files: files}
+	m := &Manifest{Format: 1, Product: "EmailZit", ServerVersion: serverVersion, Created: time.Now().UTC(), Files: files, Skipped: skipped}
 
 	out := w
 	var enc io.WriteCloser
@@ -117,10 +127,12 @@ func Create(ctx context.Context, db Dumper, dataDir, tmpDir, serverVersion, pass
 	return m, nil
 }
 
-// dataFiles lists the regular files of DataFiles (slash paths relative to
-// the data directory).
-func dataFiles(dataDir string) ([]string, error) {
-	var out []string
+// dataFiles lists the regular files of DataFiles that can be read (slash
+// paths relative to the data directory) and, separately, the ones that
+// cannot. A file EmailZit needs (requiredFiles) is an error; anything else
+// an administrator left in the directory is only reported, so a single
+// unreadable file does not cost the server its backup.
+func dataFiles(dataDir string) (files, skipped []string, err error) {
 	for _, top := range DataFiles {
 		root := filepath.Join(dataDir, top)
 		if _, err := os.Lstat(root); errors.Is(err, fs.ErrNotExist) {
@@ -137,14 +149,29 @@ func dataFiles(dataDir string) ([]string, error) {
 			if err != nil {
 				return err
 			}
-			out = append(out, filepath.ToSlash(rel))
+			rel = filepath.ToSlash(rel)
+			f, err := os.Open(p) // #nosec G304 -- files of our own data directory
+			if err != nil {
+				if requiredFiles[rel] {
+					return err
+				}
+				skipped = append(skipped, rel)
+				return nil
+			}
+			_ = f.Close()
+			files = append(files, rel)
 			return nil
 		})
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
-	return out, nil
+	for name := range requiredFiles {
+		if name == "secret.key" && !slices.Contains(files, name) {
+			return nil, nil, fmt.Errorf("%s is missing from the data directory", name)
+		}
+	}
+	return files, skipped, nil
 }
 
 func addBytes(tw *tar.Writer, name string, b []byte, mod time.Time) error {

@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -22,6 +23,7 @@ import (
 	"github.com/max-zit/emailzit/internal/mailhelper"
 	"github.com/max-zit/emailzit/internal/mtasts"
 	"github.com/max-zit/emailzit/internal/store"
+	"github.com/max-zit/emailzit/internal/web"
 )
 
 // runMailHelper is the root mail helper service. It connects to the
@@ -161,8 +163,17 @@ func restoreBackup(ctx context.Context, file, passFile, dataDir, dbURL string) e
 	if err != nil {
 		return fmt.Errorf("restore: %w", err)
 	}
+	// the new server must take over the mail settings of the old one
+	// (host name, limits, protection): the panel applies them at its next
+	// start when it sees this mark
+	if err := os.WriteFile(filepath.Join(dataDir, web.ApplyMailMark), []byte(m.Created.UTC().Format(time.RFC3339)+"\n"), 0o600); err != nil {
+		fmt.Fprintf(os.Stderr, "note: the mail configuration must be written again by hand (Settings → Mail → Save): %v\n", err)
+	}
 	fmt.Printf("Restored the backup of %s (EmailZit %s, %d files). Start the services now.\n",
 		m.Created.Local().Format("2006-01-02 15:04"), m.ServerVersion, len(m.Files))
+	if len(m.Skipped) > 0 {
+		fmt.Printf("Not in the backup (the old server could not read them): %s\n", strings.Join(m.Skipped, ", "))
+	}
 	return nil
 }
 

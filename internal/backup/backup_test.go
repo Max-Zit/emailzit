@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -79,6 +80,72 @@ func TestSafeRel(t *testing.T) {
 		"../etc/passwd": false, "tls/../../x": false, "/etc/passwd": false, "logs/x": false, "tls\\x": false, "": false} {
 		if safeRel(p) != ok {
 			t.Errorf("safeRel(%q) = %v", p, !ok)
+		}
+	}
+}
+
+// A file in the data directory that the server may not read (an old
+// certificate an administrator put aside) must not cost it the backup: it
+// is left out and named in the manifest. A file EmailZit needs is an error.
+func TestCreateSkipsUnreadableExtras(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root reads every file")
+	}
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "secret.key"), []byte("key"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	tls := filepath.Join(dir, "tls")
+	if err := os.Mkdir(tls, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	for _, n := range []string{"panel.crt", "panel.key"} {
+		if err := os.WriteFile(filepath.Join(tls, n), []byte(n), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	stray := filepath.Join(tls, "panel.key.selfsigned")
+	if err := os.WriteFile(stray, []byte("old"), 0o000); err != nil {
+		t.Fatal(err)
+	}
+	if f, err := os.Open(stray); err == nil { // some systems ignore the mode
+		_ = f.Close()
+		t.Skip("this file system does not refuse the read")
+	}
+	var buf bytes.Buffer
+	m, err := Create(context.Background(), fakeDB("db"), dir, t.TempDir(), "test", "", &buf)
+	if err != nil {
+		t.Fatalf("the backup failed because of a stray file: %v", err)
+	}
+	if !slices.Contains(m.Skipped, "tls/panel.key.selfsigned") {
+		t.Errorf("the skipped file is not in the manifest: %v", m.Skipped)
+	}
+	if slices.Contains(m.Files, "tls/panel.key.selfsigned") {
+		t.Error("the unreadable file is listed as part of the backup")
+	}
+	for _, want := range []string{"secret.key", "tls/panel.crt", "tls/panel.key"} {
+		if !slices.Contains(m.Files, want) {
+			t.Errorf("%s is missing from the backup", want)
+		}
+	}
+}
+
+// Which files a backup may do without: EmailZit's own are required, the
+// rest of the TLS folder is extra.
+func TestRequiredFiles(t *testing.T) {
+	for _, c := range []struct {
+		name     string
+		required bool
+	}{
+		{"secret.key", true},
+		{"tls/panel.crt", true},
+		{"tls/panel.key", true},
+		{"tls/panel.key.selfsigned", false},
+		{"tls/public.crt", false},
+		{"tls/old-2024.pem", false},
+	} {
+		if requiredFiles[c.name] != c.required {
+			t.Errorf("%s: required = %v, want %v", c.name, requiredFiles[c.name], c.required)
 		}
 	}
 }

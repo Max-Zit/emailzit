@@ -173,9 +173,14 @@ func (s *Server) writeBackup(ctx context.Context, b BackupSettings, at time.Time
 	if err != nil {
 		return "", 0, err
 	}
-	_, err = backup.Create(ctx, s.store, s.DataDir, dir, s.Version, pass, f)
+	m, err := backup.Create(ctx, s.store, s.DataDir, dir, s.Version, pass, f)
 	if cerr := f.Close(); err == nil {
 		err = cerr
+	}
+	if err == nil && m != nil && len(m.Skipped) > 0 {
+		// files of the data directory the server may not read: they are not
+		// EmailZit's own, so the backup is written without them
+		s.log.Warn("console backup: files left out", "files", strings.Join(m.Skipped, ", "))
 	}
 	if err != nil {
 		_ = os.Remove(tmp)

@@ -60,6 +60,9 @@ type Request struct {
 	IPv4Only      bool   `json:"ipv4_only,omitempty"` // send to other servers over IPv4 only
 	// AllowRiskyAttachments: programs, scripts and macro documents are not refused
 	AllowRiskyAttachments bool `json:"allow_risky_attachments,omitempty"`
+	// AllowDMARCFailures: mail the sender's own domain declares forged
+	// (DMARC p=reject) is accepted anyway
+	AllowDMARCFailures bool `json:"allow_dmarc_failures,omitempty"`
 	// ExtraSignatures: Sanesecurity's signatures for ClamAV (with ClamAV)
 	ExtraSignatures bool `json:"extra_signatures,omitempty"`
 	// OutboundIPs: extra sending addresses (address + host name)

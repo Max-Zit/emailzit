@@ -162,9 +162,18 @@ func TestRenderProtection(t *testing.T) {
 	if strings.Contains(main, "dane") || strings.Contains(main, "sender_dependent_default_transport_maps =") {
 		t.Error("DANE or sender transports without being asked for")
 	}
+	fa := got[RspamdLocal+"/force_actions.conf"]
+	if !strings.Contains(fa, "DMARC_POLICY_REJECT") || !strings.Contains(fa, "DMARC_POLICY_QUARANTINE") || !strings.Contains(fa, "!MAILLIST") {
+		t.Errorf("forged senders not refused:\n%s", fa)
+	}
 	s.AllowRiskyAttachments = true
-	if strings.Contains(renderMap(t, s)[RspamdLocal+"/multimap.conf"], "EMAILZIT_RISKY_ATTACHMENT") {
+	s.AllowDMARCFailures = true
+	got = renderMap(t, s)
+	if strings.Contains(got[RspamdLocal+"/multimap.conf"], "EMAILZIT_RISKY_ATTACHMENT") {
 		t.Error("attachments refused although allowed")
+	}
+	if strings.Contains(got[RspamdLocal+"/force_actions.conf"], "DMARC_POLICY_REJECT") {
+		t.Error("DMARC failures refused although allowed")
 	}
 }
 

@@ -264,6 +264,9 @@ func run() error {
 				if err := hc.Call(context.Background(), mailhelper.Request{Action: mailhelper.ActionBan, IP: ip.String(), Minutes: int(d.Minutes()), By: "auth-guard"}); err != nil {
 					log.Error("firewall block", "ip", ip, "err", err)
 				}
+				// also in the panel's list of blocked addresses, so an
+				// administrator sees it and can lift it there
+				_, _ = st.BlockIP(context.Background(), ip.String(), func(int) time.Duration { return d }, store.MailBlockReason)
 				_ = st.Audit(context.Background(), "-", ip.String(), "mail.login.blocked", "ip:"+ip.String(), "address blocked after failed mail sign-ins")
 			}
 		}

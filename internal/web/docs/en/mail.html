@@ -17,6 +17,7 @@
   <li>An <b>alias</b> (e.g. <code>info@</code>) receives mail and delivers it to one or more addresses: mailboxes of the same customer or outside addresses.</li>
   <li>A <b>forwarder</b> is an alias on the address of a mailbox. To keep a copy in the mailbox, list the mailbox itself among the destinations.</li>
   <li><b>Send as</b>: the mailboxes an alias delivers to may also send with the alias as sender.</li>
+  <li><b>postmaster@</b> and <b>abuse@</b> are created with the first mailbox of a domain and point to it: every domain has to take mail for them (RFC 5321 and RFC 2142), and the TLS reports of the domain go to postmaster. They do not use up the alias limit of the package and can be pointed elsewhere or deleted like any other alias.</li>
 </ul>
 <h2>Protection</h2>
 <ul>

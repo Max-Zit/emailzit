@@ -17,6 +17,7 @@
   <li>Ein <b>Alias</b> (z. B. <code>info@</code>) empfängt Mail und stellt sie an eine oder mehrere Adressen zu: Postfächer desselben Kunden oder externe Adressen.</li>
   <li>Eine <b>Weiterleitung</b> ist ein Alias auf der Adresse eines Postfachs. Um eine Kopie im Postfach zu behalten, führen Sie das Postfach selbst unter den Zielen auf.</li>
   <li><b>Senden als</b>: Die Postfächer, an die ein Alias zustellt, dürfen auch mit dem Alias als Absender senden.</li>
+  <li><b>postmaster@</b> und <b>abuse@</b> entstehen mit dem ersten Postfach einer Domain und zeigen darauf: Jede Domain muss E-Mail an sie annehmen (RFC 5321 und RFC 2142), und die TLS-Berichte der Domain gehen an postmaster. Sie verbrauchen das Alias-Kontingent des Pakets nicht und lassen sich wie jedes andere Alias umleiten oder löschen.</li>
 </ul>
 <h2>Schutz</h2>
 <ul>

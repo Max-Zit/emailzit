@@ -34,28 +34,44 @@ overrides:
       - dns-root-data
       - gpgv
 contents:
+  # every file states its mode: nfpm on Windows gives 0664 to a file without
+  # file_info, which some tools (logrotate, systemd) refuse
   - src: ./LICENSE
     dst: /usr/share/doc/emailzit-server/copyright
+    file_info:
+      mode: 0644
   - src: ./THIRD_PARTY_LICENSES.md
     dst: /usr/share/doc/emailzit-server/THIRD_PARTY_LICENSES.md
+    file_info:
+      mode: 0644
   - src: ./bin/pkg/emailzit-server
     dst: /usr/bin/emailzit-server
     file_info:
       mode: 0755
   - src: ./packaging/linux/emailzit-server.service
     dst: /usr/lib/systemd/system/emailzit-server.service
+    file_info:
+      mode: 0644
   - src: ./packaging/linux/emailzit-mail-helper.service
     dst: /usr/lib/systemd/system/emailzit-mail-helper.service
+    file_info:
+      mode: 0644
   - src: ./packaging/linux/emailzit-submit.socket
     dst: /usr/lib/systemd/system/emailzit-submit.socket
+    file_info:
+      mode: 0644
   - src: ./bin/pkg/emailzit-sendmail
     dst: /usr/sbin/emailzit-sendmail
     file_info:
       mode: 0755
   - src: ./packaging/linux/emailzit-helper.path
     dst: /usr/lib/systemd/system/emailzit-helper.path
+    file_info:
+      mode: 0644
   - src: ./packaging/linux/emailzit-helper.service
     dst: /usr/lib/systemd/system/emailzit-helper.service
+    file_info:
+      mode: 0644
   - src: ./packaging/setup.sh
     dst: /usr/share/emailzit/setup.sh
     file_info:

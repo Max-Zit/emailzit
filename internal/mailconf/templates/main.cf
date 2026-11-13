@@ -23,6 +23,10 @@ smtpd_helo_required = yes
 strict_rfc821_envelopes = yes
 show_user_unknown_table_name = no
 smtputf8_enable = yes
+# a signed-in sender is one of ours: complete a message that arrives without
+# Date or Message-ID (some mail programs leave them out, and receivers count
+# that as spam)
+local_header_rewrite_clients = permit_inet_interfaces, permit_sasl_authenticated
 # never tell who exists by bouncing late: unknown recipients are refused
 # during the SMTP dialogue
 smtpd_reject_unlisted_recipient = yes

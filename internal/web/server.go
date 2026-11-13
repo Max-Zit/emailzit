@@ -75,6 +75,8 @@ type MailApplier interface {
 	DKIM(ctx context.Context, k *store.DKIMKey) error
 	// Spam rewrites the spam scripts of a customer's mailboxes (or one).
 	Spam(ctx context.Context, customerID, address string) error
+	// Unban lifts a firewall block of the mail sign-in guard ("all": every one).
+	Unban(ctx context.Context, ip string) error
 	// Notice puts a message of the server into a mailbox (quota warning).
 	Notice(ctx context.Context, address, subject, body string) error
 }

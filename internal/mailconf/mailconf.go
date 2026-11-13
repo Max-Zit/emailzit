@@ -63,6 +63,11 @@ type Settings struct {
 	// AllowRiskyAttachments switches off the refusal of programs, scripts
 	// and macro documents as attachments (on by default).
 	AllowRiskyAttachments bool
+	// AllowDMARCFailures switches off the refusal of mail that the sender's
+	// own domain declares forged: a domain with DMARC p=reject says that
+	// mail which passes neither SPF nor DKIM is not from it (refused by
+	// default; mailing lists and forwarded mail are left alone).
+	AllowDMARCFailures bool
 	// TLSPolicySocket is EmailZit's MTA-STS lookup for outgoing mail
 	// (socketmap, relative to the queue directory); empty = none.
 	TLSPolicySocket string

@@ -36,6 +36,41 @@ apt-get -yq install --no-install-recommends postfix postfix-pgsql dovecot-core d
 apt-get -yq install --no-install-recommends valkey-server 2>/dev/null || apt-get -yq install --no-install-recommends redis-server
 fi
 
+# ---- the server's name and its neighbours
+# A mail server needs a stable fully qualified name: it is the HELO name and
+# it ends up in every Received line. Cloud images (Contabo and others) write
+# the provider's name into /etc/hosts and the hostname at every boot, so
+# cloud-init is told to leave both alone.
+H="${HOSTNAME_ARG:-$(hostname -f)}"
+if [ -d /etc/cloud ]; then
+    printf 'preserve_hostname: true\nmanage_etc_hosts: false\n' > /etc/cloud/cloud.cfg.d/99-emailzit.cfg
+fi
+if [ -n "$HOSTNAME_ARG" ] && [ "$(hostname -f 2>/dev/null)" != "$H" ]; then
+    hostnamectl set-hostname "$H" 2>/dev/null || hostname "$H" 2>/dev/null || true
+fi
+if ! grep -qE "(^|[[:space:]])$H([[:space:]]|$)" /etc/hosts 2>/dev/null; then
+    S=${H%%.*}
+    for A in $(ip -4 -o route get 1.1.1.1 2>/dev/null | sed -n 's/.* src \([0-9.]*\).*/\1/p') \
+             $(ip -6 -o route get 2606:4700:4700::1111 2>/dev/null | sed -n 's/.* src \([0-9a-f:]*\).*/\1/p'); do
+        printf '%s %s %s\n' "$A" "$H" "$S" >> /etc/hosts
+    done
+fi
+# Another mail server in the image (exim4 on Contabo's Debian) would fight
+# with Postfix over port 25 and over local mail.
+for M in exim4 sendmail nullmailer opensmtpd; do
+    if systemctl is-enabled "$M" >/dev/null 2>&1 || systemctl is-active --quiet "$M" 2>/dev/null; then
+        systemctl disable --now "$M" >/dev/null 2>&1 || true
+        echo "stopped and disabled $M (EmailZit uses Postfix)"
+    fi
+done
+# LLMNR and mDNS answer name questions from the local network; a server on
+# the internet has no use for them (and they are one more open port).
+if [ -d /etc/systemd/resolved.conf.d ] || systemctl list-unit-files systemd-resolved.service >/dev/null 2>&1; then
+    mkdir -p /etc/systemd/resolved.conf.d
+    printf '[Resolve]\nLLMNR=no\nMulticastDNS=no\n' > /etc/systemd/resolved.conf.d/10-emailzit.conf
+    systemctl is-active --quiet systemd-resolved 2>/dev/null && systemctl restart systemd-resolved || true
+fi
+
 # ---- users and directories
 if ! getent passwd emailzit >/dev/null; then
     useradd --system --home-dir /var/lib/emailzit --shell /usr/sbin/nologin emailzit
@@ -66,7 +101,6 @@ done
 
 # ---- first certificate (self-signed; replace with a real one or use the
 # panel's certificate page)
-H="${HOSTNAME_ARG:-$(hostname -f)}"
 if [ ! -f /etc/emailzit/tls/mail.crt ]; then
     openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -nodes -days 825 \
         -subj "/CN=$H" -addext "subjectAltName=DNS:$H" \

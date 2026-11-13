@@ -17,6 +17,7 @@
   <li>Een <b>alias</b> (bijv. <code>info@</code>) ontvangt mail en levert die af bij een of meer adressen: mailboxen van dezelfde klant of externe adressen.</li>
   <li>Een <b>doorsturing</b> is een alias op het adres van een mailbox. Om een kopie in de mailbox te houden, zet u de mailbox zelf tussen de bestemmingen.</li>
   <li><b>Verzenden als</b>: de mailboxen waar een alias naar aflevert, mogen ook verzenden met de alias als afzender.</li>
+  <li><b>postmaster@</b> en <b>abuse@</b> ontstaan met de eerste postbus van een domein en wijzen daarnaar: elk domein moet post voor hen aannemen (RFC 5321 en RFC 2142), en de TLS-rapporten van het domein gaan naar postmaster. Ze gebruiken het aliaslimiet van het pakket niet en kunnen als elk ander alias worden omgeleid of verwijderd.</li>
 </ul>
 <h2>Bescherming</h2>
 <ul>

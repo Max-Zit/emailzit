@@ -17,6 +17,7 @@
   <li>Um <b>alias</b> (por ex. <code>info@</code>) recebe correio e entrega-o a um ou mais endereços: caixas de correio do mesmo cliente ou endereços externos.</li>
   <li>Um <b>reencaminhamento</b> é um alias no endereço de uma caixa de correio. Para manter uma cópia na caixa de correio, indique a própria caixa entre os destinos.</li>
   <li><b>Enviar como</b>: as caixas de correio às quais um alias entrega também podem enviar com o alias como remetente.</li>
+  <li><b>postmaster@</b> e <b>abuse@</b> são criados com a primeira caixa de correio de um domínio e apontam para ela: todos os domínios têm de aceitar correio para eles (RFC 5321 e RFC 2142) e os relatórios TLS do domínio vão para postmaster. Não gastam o limite de aliases do pacote e podem ser reencaminhados ou apagados como qualquer alias.</li>
 </ul>
 <h2>Proteção</h2>
 <ul>

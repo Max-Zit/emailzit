@@ -17,6 +17,7 @@
   <li>Un <b>alias</b> (p. ex. <code>info@</code>) reçoit du courrier et le distribue à une ou plusieurs adresses : des boîtes du même client ou des adresses extérieures.</li>
   <li>Un <b>transfert</b> est un alias sur l'adresse d'une boîte aux lettres. Pour garder une copie dans la boîte, indiquez la boîte elle-même parmi les destinations.</li>
   <li><b>Envoyer en tant que</b> : les boîtes auxquelles un alias distribue peuvent aussi envoyer avec l'alias comme expéditeur.</li>
+  <li><b>postmaster@</b> et <b>abuse@</b> sont créés avec la première boîte aux lettres d’un domaine et pointent vers elle : chaque domaine doit accepter leur courrier (RFC 5321 et RFC 2142), et les rapports TLS du domaine vont à postmaster. Ils ne consomment pas le quota d’alias de l’offre et peuvent être redirigés ou supprimés comme n’importe quel alias.</li>
 </ul>
 <h2>Protection</h2>
 <ul>

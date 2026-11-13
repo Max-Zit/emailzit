@@ -15,7 +15,7 @@ type HelperMail struct{ C *mailhelper.Client }
 // Apply writes the server-wide configuration.
 func (h *HelperMail) Apply(ctx context.Context, m MailSettings) error {
 	req := mailhelper.Request{Action: mailhelper.ActionApply, Hostname: m.Hostname, MaxMessageMB: m.MaxMessageMB, ClamAV: m.ClamAV, IPv4Only: m.IPv4Only,
-		AllowRiskyAttachments: m.AllowRiskyAttachments, ExtraSignatures: m.ClamAV && m.ExtraSignatures}
+		AllowRiskyAttachments: m.AllowRiskyAttachments, AllowDMARCFailures: m.AllowDMARCFailures, ExtraSignatures: m.ClamAV && m.ExtraSignatures}
 	for _, o := range m.OutboundIPs {
 		req.OutboundIPs = append(req.OutboundIPs, mailconf.OutboundIP{Address: o.Address, HELO: o.HELO})
 	}
@@ -103,4 +103,10 @@ func (s *Server) installDKIM(ctx context.Context, domainID string) {
 	if err := s.Mail.DKIM(ctx, k); err != nil {
 		s.log.Error("installing the DKIM key", "domain", k.Domain, "err", err)
 	}
+}
+
+// Unban lifts a firewall block of the mail sign-in guard ("all" clears
+// every block). Minutes 0 removes the address from the nftables set.
+func (h *HelperMail) Unban(ctx context.Context, ip string) error {
+	return h.C.Call(ctx, mailhelper.Request{Action: mailhelper.ActionBan, IP: ip, Minutes: 0, By: "panel"})
 }

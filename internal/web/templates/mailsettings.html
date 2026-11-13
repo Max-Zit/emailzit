@@ -29,6 +29,8 @@
     <h2>{{template "icon" "shield"}}{{.T "Protection"}}</h2>
     <label class="check"><input type="checkbox" name="block_attachments" value="1" {{if not .Data.AllowRiskyAttachments}}checked{{end}}>{{.T "Refuse programs, scripts, shortcuts, disk images and Office files with macros as attachments (also inside archives)"}}</label>
     <small class="muted">{{.T "For example .exe, .js, .vbs, .bat, .lnk, .iso, .docm and .xlsm: the usual way ransomware arrives. The sender is told to share such files by link."}}</small>
+    <label class="check"><input type="checkbox" name="block_dmarc_failures" value="1" {{if not .Data.AllowDMARCFailures}}checked{{end}}>{{.T "Refuse mail that the sender's own domain declares forged (DMARC p=reject), and treat p=quarantine mail as spam"}}</label>
+    <small class="muted">{{.T "A domain with a strict DMARC policy says that mail which passes neither SPF nor DKIM does not come from it; the large providers refuse it. Mailing lists and forwarded mail break DMARC by nature and are left to the spam score."}}</small>
     <p class="small">{{.T "Always on: messages with known phishing links (PhishTank) and messages whose sender poses as someone of this server in the name get \"[Phishing?]\" in front of the subject; spam sent by signed-in users is refused, and a mailbox whose mail is refused as spam or virus 3 times within an hour can no longer send (the administrators and the mailbox are told); unknown servers on DNS block lists or talking before the greeting are turned away at port 25."}}</p>
   </section>
   <section class="panel" id="notices">

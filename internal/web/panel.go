@@ -83,6 +83,9 @@ type MailSettings struct {
 	// AllowRiskyAttachments: programs, scripts and macro documents are not
 	// refused (they are by default).
 	AllowRiskyAttachments bool `json:"allow_risky_attachments,omitempty"`
+	// AllowDMARCFailures: mail that the sender's own domain declares forged
+	// (DMARC p=reject) is accepted anyway (it is refused by default).
+	AllowDMARCFailures bool `json:"allow_dmarc_failures,omitempty"`
 	// ExtraSignatures adds Sanesecurity's free signatures to the virus scan.
 	ExtraSignatures bool `json:"extra_signatures,omitempty"`
 	// OutboundIPs are extra sending addresses customers can be given.
@@ -154,7 +157,8 @@ func (s *Server) handleMailSettingsSave(w http.ResponseWriter, r *http.Request) 
 	m := MailSettings{Hostname: r.FormValue("hostname"), RequireVerification: r.FormValue("require_verification") == "1",
 		Dedicated: r.FormValue("dedicated") == "1", MaxMessageMB: formInt(r, "max_message_mb"), AllowPrivateImports: r.FormValue("allow_private_imports") == "1", ClamAV: r.FormValue("clamav") == "1", IPv4Only: r.FormValue("ipv4_only") == "1",
 		RelayHost: r.FormValue("relay_host"), RelayUser: r.FormValue("relay_user"),
-		AllowRiskyAttachments: r.FormValue("block_attachments") != "1", ExtraSignatures: r.FormValue("extra_signatures") == "1", NoticeTo: r.FormValue("notice_to")}
+		AllowRiskyAttachments: r.FormValue("block_attachments") != "1", AllowDMARCFailures: r.FormValue("block_dmarc_failures") != "1",
+		ExtraSignatures: r.FormValue("extra_signatures") == "1", NoticeTo: r.FormValue("notice_to")}
 	if err := m.parseOutboundIPs(r.FormValue("outbound_ips")); err != nil {
 		s.showMailSettings(w, r, http.StatusBadRequest, m, err.Error())
 		return
@@ -187,7 +191,7 @@ func (s *Server) handleMailSettingsSave(w http.ResponseWriter, r *http.Request) 
 	} else if n > 0 {
 		s.audit(r, "customer.outbound_ip", "settings", "%d customers send from the server's address again (their address was removed)", n)
 	}
-	s.audit(r, "settings.mail", "settings", "host name %q, verification %v, dedicated %v, max message %d MB, smart host %q (login %q), virus scan %v, IPv4 only %v, risky attachments allowed %v, extra signatures %v, outbound addresses %d, notices to %q", m.Hostname, m.RequireVerification, m.Dedicated, m.MaxMessageMB, m.RelayHost, m.RelayUser, m.ClamAV, m.IPv4Only, m.AllowRiskyAttachments, m.ExtraSignatures, len(m.OutboundIPs), m.NoticeTo)
+	s.audit(r, "settings.mail", "settings", "host name %q, verification %v, dedicated %v, max message %d MB, smart host %q (login %q), virus scan %v, IPv4 only %v, risky attachments allowed %v, DMARC failures allowed %v, extra signatures %v, outbound addresses %d, notices to %q", m.Hostname, m.RequireVerification, m.Dedicated, m.MaxMessageMB, m.RelayHost, m.RelayUser, m.ClamAV, m.IPv4Only, m.AllowRiskyAttachments, m.AllowDMARCFailures, m.ExtraSignatures, len(m.OutboundIPs), m.NoticeTo)
 	s.applyMail(r)
 	go s.publishAllDNS(context.WithoutCancel(r.Context()))
 	s.redirect(w, r, "/settings/mail", "Saved.")

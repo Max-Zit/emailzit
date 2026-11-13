@@ -57,10 +57,17 @@ func (s *Store) BlockIP(ctx context.Context, ip string, d func(strikes int) time
 	return b, err
 }
 
-// BlockedUntil returns the end of an active block of ip, or zero.
+// MailBlockReason marks a block that the mail sign-in guard made: the
+// address loses the mail ports through the firewall, but not the panel (a
+// mail program with an old password must not lock its owner out of the
+// panel). Such a block is listed and lifted like any other.
+const MailBlockReason = "mail sign-in"
+
+// BlockedUntil returns the end of an active block of ip, or zero. Blocks of
+// the mail sign-in guard do not count: they stop mail programs, not people.
 func (s *Store) BlockedUntil(ctx context.Context, ip string) (time.Time, error) {
 	var t time.Time
-	err := s.db.QueryRow(ctx, `SELECT until FROM login_blocks WHERE ip=$1 AND until > $2`, ip, s.now()).Scan(&t)
+	err := s.db.QueryRow(ctx, `SELECT until FROM login_blocks WHERE ip=$1 AND until > $2 AND reason <> $3`, ip, s.now(), MailBlockReason).Scan(&t)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return time.Time{}, nil
 	}

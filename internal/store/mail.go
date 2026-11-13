@@ -829,6 +829,10 @@ func (s *Store) CreateMailbox(ctx context.Context, sc Scope, n NewMailbox) (*Mai
 	if taken > 0 {
 		return nil, ErrConflict
 	}
+	var inDomain int
+	if err := tx.QueryRow(ctx, `SELECT count(*) FROM mailboxes WHERE domain_id=$1`, d.ID).Scan(&inDomain); err != nil {
+		return nil, err
+	}
 	id := NewID()
 	_, err = tx.Exec(ctx, `INSERT INTO mailboxes(id, domain_id, customer_id, local_part, address, display_name, web_password_hash, quota_mb)
 		VALUES($1,$2,$3,$4,$5,$6,$7,$8)`, id, d.ID, d.CustomerID, n.LocalPart, addr, strings.TrimSpace(n.DisplayName), hash, n.QuotaMB)
@@ -837,6 +841,22 @@ func (s *Store) CreateMailbox(ctx context.Context, sc Scope, n NewMailbox) (*Mai
 	}
 	if err != nil {
 		return nil, err
+	}
+	if inDomain == 0 {
+		// Every domain must take mail for postmaster (RFC 5321) and abuse
+		// (RFC 2142); the TLS reports of the domain are addressed to
+		// postmaster too. The first mailbox of the domain gets them, unless
+		// the address is already in use. They do not count against the
+		// package's alias limit.
+		for _, name := range []string{"postmaster", "abuse"} {
+			a := name + "@" + d.Name
+			if _, err := tx.Exec(ctx, `INSERT INTO aliases(id, domain_id, customer_id, address, destinations, send_as)
+				SELECT $1,$2,$3,$4,$5,false
+				WHERE NOT EXISTS (SELECT 1 FROM aliases WHERE address=$4) AND NOT EXISTS (SELECT 1 FROM mailboxes WHERE address=$4)`,
+				NewID(), d.ID, d.CustomerID, a, []string{addr}); err != nil {
+				return nil, err
+			}
+		}
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return nil, err
@@ -1137,10 +1157,14 @@ func (s *Store) CreateAlias(ctx context.Context, sc Scope, domainID, local strin
 		return nil, err
 	}
 	var n int
-	if err := tx.QueryRow(ctx, `SELECT count(*) FROM aliases WHERE customer_id=$1`, d.CustomerID).Scan(&n); err != nil {
+	// postmaster and abuse are required addresses (RFC 5321, RFC 2142);
+	// EmailZit creates them with the first mailbox of a domain and they do
+	// not count against the package's alias limit
+	if err := tx.QueryRow(ctx, `SELECT count(*) FROM aliases
+		WHERE customer_id=$1 AND split_part(address, '@', 1) NOT IN ('postmaster', 'abuse')`, d.CustomerID).Scan(&n); err != nil {
 		return nil, err
 	}
-	if n >= p.MaxAliases {
+	if n >= p.MaxAliases && local != "postmaster" && local != "abuse" {
 		return nil, ErrLimit
 	}
 	list, err := s.checkDestinations(ctx, d.CustomerID, dest)

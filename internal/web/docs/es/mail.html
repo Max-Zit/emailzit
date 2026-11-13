@@ -17,6 +17,7 @@
   <li>Un <b>alias</b> (p. ej. <code>info@</code>) recibe correo y lo entrega a una o varias direcciones: buzones del mismo cliente o direcciones externas.</li>
   <li>Un <b>reenvío</b> es un alias sobre la dirección de un buzón. Para conservar una copia en el buzón, incluya el propio buzón entre los destinos.</li>
   <li><b>Enviar como</b>: los buzones a los que entrega un alias también pueden enviar con el alias como remitente.</li>
+  <li><b>postmaster@</b> y <b>abuse@</b> se crean con el primer buzón de un dominio y apuntan a él: todo dominio debe aceptar su correo (RFC 5321 y RFC 2142) y los informes TLS del dominio van a postmaster. No consumen el límite de alias del paquete y pueden redirigirse o borrarse como cualquier alias.</li>
 </ul>
 <h2>Protección</h2>
 <ul>

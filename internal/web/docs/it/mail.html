@@ -17,6 +17,7 @@
   <li>Un <b>alias</b> (ad es. <code>info@</code>) riceve posta e la consegna a uno o più indirizzi: caselle dello stesso cliente o indirizzi esterni.</li>
   <li>Un <b>inoltro</b> è un alias sull'indirizzo di una casella. Per conservare una copia nella casella, indicate la casella stessa tra le destinazioni.</li>
   <li><b>Invia come</b>: le caselle a cui un alias consegna possono anche inviare con l'alias come mittente.</li>
+  <li><b>postmaster@</b> e <b>abuse@</b> nascono con la prima casella di un dominio e puntano a essa: ogni dominio deve accettare la loro posta (RFC 5321 e RFC 2142) e i rapporti TLS del dominio vanno a postmaster. Non consumano il limite di alias del pacchetto e si possono reindirizzare o eliminare come ogni altro alias.</li>
 </ul>
 <h2>Protezione</h2>
 <ul>

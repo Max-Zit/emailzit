@@ -291,3 +291,40 @@ func TestNormalize(t *testing.T) {
 		}
 	}
 }
+
+// The first mailbox of a domain gets the required addresses postmaster and
+// abuse (RFC 5321, RFC 2142), and they do not use up the alias limit.
+func TestRequiredAliases(t *testing.T) {
+	ctx := context.Background()
+	f := setup(t)
+	list, err := f.st.Aliases(ctx, Scope{CustomerID: f.a.ID}, "", f.da.ID)
+	must(t, err)
+	found := map[string][]string{}
+	for _, a := range list {
+		found[a.Address] = a.Destinations
+	}
+	for _, name := range []string{"postmaster", "abuse"} {
+		d := found[name+"@a.test"]
+		if len(d) != 1 || d[0] != "ana@a.test" {
+			t.Fatalf("%s@a.test points to %v", name, d)
+		}
+	}
+	// the package allows 3 aliases; the two required ones are extra
+	for _, n := range []string{"info", "sales", "jobs"} {
+		if _, err := f.st.CreateAlias(ctx, Scope{CustomerID: f.a.ID}, f.da.ID, n, []string{"ana@a.test"}, false); err != nil {
+			t.Fatalf("alias %s: %v", n, err)
+		}
+	}
+	if _, err := f.st.CreateAlias(ctx, Scope{CustomerID: f.a.ID}, f.da.ID, "more", []string{"ana@a.test"}, false); !errors.Is(err, ErrLimit) {
+		t.Fatalf("alias limit not enforced: %v", err)
+	}
+	// a second mailbox does not create them again
+	if _, err := f.st.CreateMailbox(ctx, Scope{CustomerID: f.a.ID}, NewMailbox{DomainID: f.da.ID, LocalPart: "nikola", Password: pw}); err != nil {
+		t.Fatal(err)
+	}
+	var n int
+	must(t, f.st.Pool().QueryRow(ctx, `SELECT count(*) FROM aliases WHERE address='postmaster@a.test'`).Scan(&n))
+	if n != 1 {
+		t.Fatalf("postmaster@a.test exists %d times", n)
+	}
+}

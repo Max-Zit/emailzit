@@ -243,7 +243,7 @@ func (s *Server) apply(ctx context.Context, r Request) error {
 	sysResolver := s.systemResolverPossible(ctx)
 	files, err := mailconf.Render(mailconf.Settings{Hostname: host, MaxMessageMB: r.MaxMessageMB, DBName: s.DBName,
 		CertFile: s.CertFile, KeyFile: s.KeyFile, Relay: relay, RelayUser: relayUser, RelayPassword: relayPass, ClamAV: clam, IPv4Only: r.IPv4Only, PolicySocket: s.policySocket(), Rspamd: rspamdInstalled(),
-		AuthPolicyToken: s.authPolicyToken(), Unbound: unboundInstalled(), SystemResolver: sysResolver, AllowRiskyAttachments: r.AllowRiskyAttachments,
+		AuthPolicyToken: s.authPolicyToken(), Unbound: unboundInstalled(), SystemResolver: sysResolver, AllowRiskyAttachments: r.AllowRiskyAttachments, AllowDMARCFailures: r.AllowDMARCFailures,
 		TLSPolicySocket: s.tlsPolicySocket(), OutboundIPs: presentAddrs(r.OutboundIPs)})
 	if err != nil {
 		return err
@@ -816,10 +816,28 @@ func (s *Server) prepareFirewall(ctx context.Context) {
 
 // ban adds an address to the blocked set for a while.
 func (s *Server) ban(ctx context.Context, r Request) error {
-	a, _ := netip.ParseAddr(r.IP)
+	if r.IP == "all" { // lift every block
+		for _, set := range []string{"banned4", "banned6"} {
+			if out, err := s.Run(ctx, "nft", "flush", "set", "inet", "emailzit", set); err != nil {
+				return fmt.Errorf("nft: %s", firstLine(out, err))
+			}
+		}
+		return nil
+	}
+	a, err := netip.ParseAddr(r.IP)
+	if err != nil {
+		return fmt.Errorf("not an address: %q", r.IP)
+	}
 	set := "banned4"
 	if a.Is6() && !a.Is4In6() {
 		set = "banned6"
+	}
+	if r.Minutes <= 0 { // lift the block; it may not be there
+		out, err := s.Run(ctx, "nft", "delete", "element", "inet", "emailzit", set, fmt.Sprintf("{ %s }", a.Unmap().String()))
+		if err != nil && !strings.Contains(string(out), "No such file or directory") {
+			return fmt.Errorf("nft: %s", firstLine(out, err))
+		}
+		return nil
 	}
 	elem := fmt.Sprintf("{ %s timeout %dm }", a.Unmap().String(), r.Minutes)
 	if out, err := s.Run(ctx, "nft", "add", "element", "inet", "emailzit", set, elem); err != nil {

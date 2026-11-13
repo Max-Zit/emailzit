@@ -116,6 +116,12 @@ func (s *Server) handleUnblock(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 		return
 	}
+	if s.Mail != nil {
+		// a block of the mail sign-in guard also sits in the firewall
+		if err := s.Mail.Unban(r.Context(), ip); err != nil {
+			s.log.Warn("lifting the firewall block", "ip", ip, "err", err)
+		}
+	}
 	s.audit(r, "login.unblock", "ip:"+ip, "sign-in block lifted")
 	s.redirect(w, r, "/settings/security", "Block lifted.")
 }

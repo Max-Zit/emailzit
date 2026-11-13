@@ -15,6 +15,7 @@ import (
 	"net/netip"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/max-zit/emailzit/internal/netacl"
@@ -32,6 +33,12 @@ type Server struct {
 	approvalHandlers map[string]http.HandlerFunc
 	// jobs are running and recent exports.
 	jobs jobList
+	// testMail remembers when a domain last sent a test message (one a
+	// minute, so the page cannot be used to send more).
+	testMail struct {
+		sync.Mutex
+		last map[string]time.Time
+	}
 
 	// MgmtACL guards the panel listener.
 	MgmtACL *netacl.List
@@ -305,6 +312,7 @@ func (s *Server) Handler() http.Handler {
 	write("POST /domains/{id}", s.handleDomainUpdate)
 	write("POST /domains/{id}/verify", s.handleDomainVerify)
 	app("POST /domains/{id}/check", s.handleDomain)
+	write("POST /domains/{id}/test", s.handleDomainTest)
 	write("POST /domains/{id}/dkim", s.handleDomainDKIM)
 	write("POST /domains/{id}/delete", s.fourEyes("domain.delete", s.handleDomainDelete))
 	write("POST /domains/{id}/mailboxes", s.handleMailboxCreate)

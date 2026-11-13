@@ -105,8 +105,11 @@ func noticeAddresses(s string) ([]string, error) {
 	return out, nil
 }
 
-// SystemMailer sends a notice of the server (set by main; nil = none).
-type SystemMailer func(ctx context.Context, to []string, subject, body string) error
+// SystemMailer sends a notice or a test message of the server (set by
+// main; nil = none). With a domain the sender is postmaster of that
+// domain, so the receiver sees its SPF, DKIM and DMARC; empty sends as
+// the server itself.
+type SystemMailer func(ctx context.Context, domain string, to []string, subject, body string) error
 
 // notifyAdmins mails the administrators (Settings -> Mail server); without
 // an address the notice is only logged.
@@ -121,7 +124,7 @@ func (s *Server) notifyAdmins(ctx context.Context, subject, body string) {
 	if host == "" {
 		host = "this server"
 	}
-	if err := s.SystemMail(ctx, to, "EmailZit "+host+": "+subject, body); err != nil {
+	if err := s.SystemMail(ctx, "", to, "EmailZit "+host+": "+subject, body); err != nil {
 		s.log.Warn("notice for the administrators", "subject", subject, "err", err)
 	}
 }

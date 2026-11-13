@@ -5,6 +5,8 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"net"
+	"net/http"
+	"net/mail"
 	"os"
 	"path/filepath"
 	"strings"
@@ -201,4 +203,54 @@ func lookupIPs(ctx context.Context, res *net.Resolver, name string) []string {
 		out = append(out, ip.String())
 	}
 	return out
+}
+
+// handleDomainTest sends a fixed test message from the domain's postmaster
+// to an address the administrator types: the last step of the set-up, where
+// the receiver's own verdict on SPF, DKIM and DMARC becomes visible. The
+// text cannot be chosen, so the page cannot be used to send anything else.
+func (s *Server) handleDomainTest(w http.ResponseWriter, r *http.Request) {
+	dom := s.loadDomain(w, r)
+	if dom == nil {
+		return
+	}
+	to := "/domains/" + dom.ID + "#records"
+	addr := strings.ToLower(strings.TrimSpace(r.FormValue("to")))
+	if _, err := mail.ParseAddress(addr); err != nil || strings.ContainsAny(addr, " ,<>") {
+		s.redirectErr(w, r, to, "That is not an e-mail address.")
+		return
+	}
+	if s.SystemMail == nil {
+		s.redirectErr(w, r, to, "This server cannot send mail yet.")
+		return
+	}
+	if !s.testMailAllowed(dom.ID) {
+		s.redirectErr(w, r, to, "A test message for this domain was just sent; try again in a minute.")
+		return
+	}
+	host := s.MailConfig(r.Context()).Hostname
+	body := "This is a test message of the mail server " + host + " for the domain " + dom.Name + ".\n\n" +
+		"It was sent from the panel to see that mail of this domain arrives and that the receiver accepts its signature (SPF, DKIM, DMARC).\n"
+	if err := s.SystemMail(r.Context(), dom.Name, []string{addr}, "Test message from "+dom.Name, body); err != nil {
+		s.log.Warn("test message", "domain", dom.Name, "err", err)
+		s.redirectErr(w, r, to, "The test message could not be sent; the mail log says why.")
+		return
+	}
+	s.audit(r, "domain.test", "domain:"+dom.Name, "test message to %s", addr)
+	s.redirect(w, r, to, "The test message was sent.")
+}
+
+// testMailAllowed lets one test message per domain and minute through.
+func (s *Server) testMailAllowed(domainID string) bool {
+	s.testMail.Lock()
+	defer s.testMail.Unlock()
+	if s.testMail.last == nil {
+		s.testMail.last = map[string]time.Time{}
+	}
+	now := s.now()
+	if t, ok := s.testMail.last[domainID]; ok && now.Sub(t) < time.Minute {
+		return false
+	}
+	s.testMail.last[domainID] = now
+	return true
 }

@@ -100,6 +100,10 @@
   </table></div>
   <details class="mt"><summary>{{.T "All records as lines of a zone file"}}</summary>
     <pre class="mono small wrap" data-copy-text>{{.Data.Zone}}</pre></details>
+  {{if .User.CanWrite}}<form method="post" action="/domains/{{$d.ID}}/test" class="row mt">
+    <label class="grow">{{.T "Send a test message to"}}<input type="email" name="to" required placeholder="you@example.com" autocomplete="off" spellcheck="false" class="mono"><small>{{.T "The server sends a short message from postmaster@ of this domain; look at it with the receiver to see that it arrives and that SPF, DKIM and DMARC pass."}}</small></label>
+    <button class="secondary">{{template "icon" "mail"}}{{.T "Send"}}</button>
+  </form>{{end}}
   <div class="row mt">
     <form method="post" action="/domains/{{$d.ID}}/check"><button class="secondary">{{template "icon" "refresh"}}{{.T "Check DNS"}}</button></form>
     {{if .User.CanWrite}}<form method="post" action="/domains/{{$d.ID}}/dkim" data-confirm="{{.T "Create a new DKIM key? Mail is signed with it at once; put the new DKIM record at the DNS provider right away."}}"><button class="ghost">{{template "icon" "key"}}{{.T "New DKIM key"}}</button></form>{{end}}

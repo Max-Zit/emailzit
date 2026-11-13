@@ -77,7 +77,7 @@ func startSubmit(ctx context.Context, st *store.Store, srv *web.Server, log *slo
 // systemMailer sends the server's notices through Postfix (the same
 // service as mail from websites).
 func systemMailer(srv *web.Server) web.SystemMailer {
-	return func(ctx context.Context, to []string, subject, body string) error {
+	return func(ctx context.Context, domain string, to []string, subject, body string) error {
 		dial := func(ctx context.Context) (net.Conn, error) {
 			var d net.Dialer
 			return d.DialContext(ctx, "unix", submit.PostfixService)
@@ -87,6 +87,6 @@ func systemMailer(srv *web.Server) web.SystemMailer {
 			h, _ := os.Hostname()
 			host = strings.ToLower(h)
 		}
-		return submit.SendSystem(ctx, dial, host, to, subject, body)
+		return submit.SendAs(ctx, dial, host, domain, to, subject, body)
 	}
 }

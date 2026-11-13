@@ -534,6 +534,8 @@ type domainData struct {
 	Mail      MailSettings
 	Staff     bool
 	DMARC     *store.DMARCSummary // reports of the last 30 days
+	Setup     *DomainSetup        // guided set-up: which step the domain is on
+	Zone      string              // all records as lines of a zone file
 }
 
 func (s *Server) loadDomain(w http.ResponseWriter, r *http.Request) *store.Domain {
@@ -571,11 +573,13 @@ func (s *Server) handleDomain(w http.ResponseWriter, r *http.Request) {
 		d.Records = withOutboundSPF(d.Records, c.OutboundIP)
 	}
 	if r.Method == http.MethodPost {
-		d.Checked = s.checkRecords(r.Context(), d.Records)
+		d.Checked = s.checkRecords(r.Context(), dom.Name, d.Records)
 	}
 	if d.DMARC, err = s.store.DMARCSummary(r.Context(), dom.ID, s.now().Add(-30*24*time.Hour)); err != nil {
 		s.log.Warn("dmarc summary", "domain", dom.Name, "err", err)
 	}
+	d.Setup = s.domainSetup(r.Context(), d, dom.Name)
+	d.Zone = zoneSnippet(d.Records)
 	s.render(w, r, http.StatusOK, "domain", &Page{Title: dom.Unicode(), Nav: "domains", Data: d})
 }
 

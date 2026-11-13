@@ -3,6 +3,23 @@
 {{$d := .Data.D}}
 <p class="back"><a href="/domains">{{.T "Domains"}}</a>{{if .Data.Staff}} · <a href="/customers/{{$d.CustomerID}}">{{$d.CustomerName}}</a>{{end}}</p>
 <h1>{{$d.Unicode}} {{if $d.Disabled}}<span class="badge bad"><i></i>{{.T "Disabled"}}</span>{{else if $d.Verified}}<span class="badge ok"><i></i>{{.T "Receives mail"}}</span>{{else}}<span class="badge warn"><i></i>{{.T "Not verified"}}</span>{{end}}</h1>
+{{with .Data.Setup}}
+<section class="panel{{if .Done}}{{else}} notice-warn{{end}}">
+  <div class="panelhead">
+    <h2>{{template "icon" "check"}}{{$.T "Setting the domain up"}}</h2>
+    <span class="muted small">{{if .Done}}{{$.T "Everything is in place"}}{{else}}{{$.T "Step %d of %d" .Step .Steps}}{{end}}</span>
+  </div>
+  <ol class="setup">
+    <li>{{if gt .Step 1}}<span class="badge ok"><i></i>{{$.T "Done"}}</span>{{else}}<span class="badge warn">{{$.T "Now"}}</span>{{end}} {{$.T "Prove that the domain is yours (TXT record below)."}}</li>
+    <li>{{if gt .Step 2}}<span class="badge ok"><i></i>{{$.T "Done"}}</span>{{else if eq .Step 2}}<span class="badge warn">{{$.T "Now"}}</span>{{else}}<span class="badge">{{$.T "Later"}}</span>{{end}} {{$.T "Make the first mailbox, so mail has somewhere to land. postmaster@ and abuse@ are created with it."}}</li>
+    <li>{{if gt .Step 3}}<span class="badge ok"><i></i>{{$.T "Done"}}</span>{{else if eq .Step 3}}<span class="badge warn">{{$.T "Now"}}</span>{{else}}<span class="badge">{{$.T "Later"}}</span>{{end}} {{$.T "Point autoconfig, autodiscover and mta-sts at this server, and let its certificate cover them."}}</li>
+    <li>{{if gt .Step 4}}<span class="badge ok"><i></i>{{$.T "Done"}}</span>{{else if eq .Step 4}}<span class="badge warn">{{$.T "Now"}}</span>{{else}}<span class="badge">{{$.T "Later"}}</span>{{end}} {{$.T "Put the records below at the DNS provider of the domain, then check them here."}}{{if .Required}} <span class="muted">{{$.T "%d of %d required records are in the DNS." .RequiredOK .Required}}</span>{{end}}</li>
+  </ol>
+  {{if .CertMissing}}<p class="small"><b>{{$.T "The certificate of this server does not cover yet:"}}</b> <span class="mono">{{range $i, $n := .CertMissing}}{{if $i}}, {{end}}{{$n}}{{end}}</span>. {{$.T "Until it does, Outlook and Thunderbird cannot set themselves up by themselves and other mail servers cannot read the TLS policy of the domain — so publish the _mta-sts record only afterwards."}}</p>{{end}}
+  {{if .NotHere}}<p class="small"><b>{{$.T "Does not point to this server:"}}</b> <span class="mono">{{range $i, $n := .NotHere}}{{if $i}}, {{end}}{{$n}}{{end}}</span>. {{$.T "A proxy in front of the DNS (Cloudflare's orange cloud, for example) answers instead of the server; switch those names to \"DNS only\"."}}</p>{{end}}
+  {{if .ForeignMX}}<p class="small"><b>{{$.T "The domain still receives its mail elsewhere:"}}</b> <span class="mono">{{.ForeignMX}}</span>. {{$.T "Bring the mail over first (on the mailbox's page), and change the MX record last — then nothing is lost."}}</p>{{end}}
+</section>
+{{end}}
 {{if not $d.Verified}}
 <section class="panel notice-warn">
   <h2>{{template "icon" "shield"}}{{.T "Verify the domain"}}</h2>
@@ -81,6 +98,8 @@
       {{if $.Data.Checked}}<td>{{with index $.Data.Checked $i}}{{if eq . "ok"}}<span class="badge ok"><i></i>{{$.T "OK"}}</span>{{else if eq . "different"}}<span class="badge warn"><i></i>{{$.T "Different"}}</span>{{else}}<span class="badge bad"><i></i>{{$.T "Missing"}}</span>{{end}}{{end}}</td>{{end}}
     </tr>{{end}}{{end}}</tbody>
   </table></div>
+  <details class="mt"><summary>{{.T "All records as lines of a zone file"}}</summary>
+    <pre class="mono small wrap" data-copy-text>{{.Data.Zone}}</pre></details>
   <div class="row mt">
     <form method="post" action="/domains/{{$d.ID}}/check"><button class="secondary">{{template "icon" "refresh"}}{{.T "Check DNS"}}</button></form>
     {{if .User.CanWrite}}<form method="post" action="/domains/{{$d.ID}}/dkim" data-confirm="{{.T "Create a new DKIM key? Mail is signed with it at once; put the new DKIM record at the DNS provider right away."}}"><button class="ghost">{{template "icon" "key"}}{{.T "New DKIM key"}}</button></form>{{end}}

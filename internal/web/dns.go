@@ -106,11 +106,41 @@ const (
 	CheckDifferent = "different"
 )
 
-// checkRecords looks the records up in the public DNS.
-func (s *Server) checkRecords(ctx context.Context, list []DNSRecord) map[int]string {
+// checkResolver returns the resolver the check uses for a domain: the name
+// servers of the domain itself, so a change is seen at once and an answer
+// the server's own resolver remembered (a name looked up before it existed
+// is remembered as missing) cannot fool the check. Without reachable name
+// servers the system resolver is used.
+var checkResolver = func(ctx context.Context, domain string) *net.Resolver {
+	sys := net.DefaultResolver
+	ns, err := sys.LookupNS(ctx, domain)
+	if err != nil {
+		return sys
+	}
+	for _, n := range ns {
+		ips, err := sys.LookupIP(ctx, "ip", strings.TrimSuffix(n.Host, "."))
+		if err != nil || len(ips) == 0 {
+			continue
+		}
+		addr := net.JoinHostPort(ips[0].String(), "53")
+		r := &net.Resolver{PreferGo: true, Dial: func(ctx context.Context, network, _ string) (net.Conn, error) {
+			var d net.Dialer
+			return d.DialContext(ctx, network, addr)
+		}}
+		// one question to see that we may talk to it at all (a network that
+		// allows no DNS of its own would make every record look missing)
+		if _, err := r.LookupNS(ctx, domain); err == nil {
+			return r
+		}
+	}
+	return sys
+}
+
+// checkRecords looks the records up at the name servers of the domain.
+func (s *Server) checkRecords(ctx context.Context, domain string, list []DNSRecord) map[int]string {
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
-	res := net.DefaultResolver
+	res := checkResolver(ctx, domain)
 	out := map[int]string{}
 	norm := func(v string) string { return strings.TrimSuffix(strings.ToLower(strings.TrimSpace(v)), ".") }
 	for i, rec := range list {
@@ -209,4 +239,35 @@ func spfHasOwnIP(want, found string) bool {
 		}
 	}
 	return true
+}
+
+// zoneSnippet renders the records as lines of a zone file, so everything
+// can be pasted at a DNS provider at once. Long TXT values (DKIM) are split
+// into quoted pieces, as a zone file needs.
+func zoneSnippet(list []DNSRecord) string {
+	var b strings.Builder
+	for _, r := range list {
+		value := r.Value
+		if r.Type == "TXT" {
+			value = quoteTXT(value)
+		} else if r.Type != "MX" && r.Type != "SRV" && !strings.HasSuffix(value, ".") {
+			value += "."
+		}
+		b.WriteString(r.Name + ". 300 IN " + r.Type + " " + value + "\n")
+	}
+	return b.String()
+}
+
+// quoteTXT puts a TXT value in quotes, in pieces of at most 255 bytes.
+func quoteTXT(v string) string {
+	if len(v) <= 255 {
+		return `"` + v + `"`
+	}
+	var parts []string
+	for len(v) > 0 {
+		n := min(255, len(v))
+		parts = append(parts, `"`+v[:n]+`"`)
+		v = v[n:]
+	}
+	return "(" + strings.Join(parts, " ") + ")"
 }

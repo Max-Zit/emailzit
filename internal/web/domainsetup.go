@@ -136,7 +136,9 @@ func (s *Server) domainSetup(ctx context.Context, d *domainData, domain string) 
 	switch {
 	case len(x.CertMissing) > 0 || len(x.NotHere) > 0:
 		x.Step = StepHosts
-	case x.Required > 0 && x.RequiredOK < x.Required:
+	case x.Required > 0 && x.RequiredOK < x.Required && !(d.D != nil && d.D.DNSManaged):
+		// with HostZit as the DNS, EmailZit writes the records itself; the
+		// step is not something the administrator has to do
 		x.Step = StepRecords
 	default:
 		x.Step = StepDone

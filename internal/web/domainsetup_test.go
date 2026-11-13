@@ -101,3 +101,30 @@ func TestDomainSetupSteps(t *testing.T) {
 		t.Errorf("everything in place: step %d, %d of %d required", x.Step, x.RequiredOK, x.Required)
 	}
 }
+
+// With HostZit as the DNS, EmailZit writes the records itself, so a
+// missing record is not a step for the administrator.
+func TestDomainSetupWithHostZitDNS(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	s := &Server{DataDir: dir}
+	old := checkResolver
+	checkResolver = func(context.Context, string) *net.Resolver { return &net.Resolver{} }
+	t.Cleanup(func() { checkResolver = old })
+	writeCert(t, dir, "mail.example.test", "autoconfig.a.test", "autodiscover.a.test", "mta-sts.a.test")
+
+	d := &domainData{
+		D:         &store.Domain{Name: "a.test", Verified: true, DNSManaged: true},
+		Mailboxes: []*store.Mailbox{{Address: "ana@a.test"}},
+		Mail:      MailSettings{Hostname: "mail.example.test"},
+		Records:   []DNSRecord{{Name: "a.test", Type: "MX", Value: "10 mail.example.test.", Required: true}},
+		Checked:   map[int]string{0: CheckMissing},
+	}
+	if x := s.domainSetup(ctx, d, "a.test"); !x.Done() {
+		t.Errorf("HostZit keeps the DNS: step %d, want done", x.Step)
+	}
+	d.D.DNSManaged = false
+	if x := s.domainSetup(ctx, d, "a.test"); x.Step != StepRecords {
+		t.Errorf("own DNS provider: step %d, want %d", x.Step, StepRecords)
+	}
+}

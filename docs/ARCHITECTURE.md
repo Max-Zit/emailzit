@@ -110,6 +110,10 @@ queue IDs — never free text into a shell or file).
   revoke one device.
 - Websites on the same server (HostZit) send through EmailZit with limits
   per hosting account (to agree, see INTEGRATION).
+- Websites of a HostZit on ANOTHER server send over SMTP to EmailZit's own
+  submission server (port 2587, STARTTLS, the relay login the pairing
+  handed over): only for that HostZit's addresses, only for sender domains
+  of this server or of its customers, From must use the sender domain.
 - Blacklist checks of the server IPs (and later WatchZit alerts).
 
 ## 5. Deliverability and DNS

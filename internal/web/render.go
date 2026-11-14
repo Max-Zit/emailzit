@@ -262,7 +262,7 @@ func (s *Server) render(w http.ResponseWriter, r *http.Request, status int, name
 	p.Path = r.URL.RequestURI()
 	p.Host = r.Host
 	if p.User != nil {
-		p.HostZit = s.hostzitLink(r.Context()).URL
+		p.HostZit = s.switchURL(r.Context(), p.User.CustomerID)
 		if p.User.IsStaff() && s.fourEyesOn(r.Context()) {
 			p.Approvals, _ = s.store.PendingApprovals(r.Context())
 			if p.Approvals == 0 {

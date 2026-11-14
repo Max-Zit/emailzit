@@ -685,6 +685,10 @@ func (s *Server) dkim(ctx context.Context, r Request) error {
 	if n == 0 {
 		return errors.New("unknown domain")
 	}
+	if r.Selector == "" {
+		// the record is not in the DNS: stop signing and drop the keys
+		return s.setSelector(r.Domain, "")
+	}
 	if err := os.MkdirAll(mailconf.RspamdDKIM, 0o750); err != nil {
 		return err
 	}

@@ -55,7 +55,7 @@ const (
 
 // RelayStore is what the relay needs from the database.
 type RelayStore interface {
-	CheckRelayLogin(ctx context.Context, username, password string) (string, error)
+	CheckRelayLogin(ctx context.Context, username, password string) (id string, linkID int64, err error)
 	TouchRelayLogin(ctx context.Context, id string) error
 	DomainCustomer(ctx context.Context, domain string) (string, error)
 	RelayLimits(ctx context.Context, customerID string) (*store.SendLimits, error)
@@ -77,7 +77,11 @@ type RelayServer struct {
 	Dial func(ctx context.Context) (net.Conn, error)
 	// Hosted asks HostZit whether the domain belongs to one of its
 	// customers. temp: HostZit could not be asked, try again later.
-	Hosted func(ctx context.Context, domain string) (customerID string, ok, temp bool)
+	Hosted func(ctx context.Context, linkID int64, domain string) (customerID string, ok, temp bool)
+	// Serves tells whether the link of the login may carry the mail of
+	// this customer: a link that serves only the customers assigned to it
+	// never carries another customer's mail (E13). nil = every customer.
+	Serves func(ctx context.Context, linkID int64, customerID string) bool
 	// Now is the clock (tests).
 	Now func() time.Time
 }
@@ -120,13 +124,14 @@ type relaySession struct {
 	br  *bufio.Reader
 	tr  *textproto.Reader
 
-	host  string
-	ip    string
-	max   int64
-	tlsOn bool
-	login string // the ID of the relay login after AUTH
-	user  string
-	tries int
+	host   string
+	ip     string
+	max    int64
+	tlsOn  bool
+	login  string // the ID of the relay login after AUTH
+	linkID int64  // the HostZit link that login belongs to (E8)
+	user   string
+	tries  int
 
 	// the message being taken
 	from    string
@@ -259,7 +264,7 @@ func (z *relaySession) starttls() error {
 	}
 	z.c = c
 	z.tlsOn = true
-	z.login, z.user = "", ""
+	z.login, z.user, z.linkID = "", "", 0
 	z.reset()
 	z.bind(c)
 	return nil
@@ -324,14 +329,14 @@ func (z *relaySession) auth(arg string) error {
 	default:
 		return z.say(504, "5.5.4 Only PLAIN and LOGIN")
 	}
-	id, err := z.s.Store.CheckRelayLogin(z.ctx, user, pass)
+	id, linkID, err := z.s.Store.CheckRelayLogin(z.ctx, user, pass)
 	if err != nil {
 		z.tries++
 		z.s.Log.Warn("relay: sign-in refused", "ip", z.ip, "user", user, "try", z.tries)
 		time.Sleep(time.Second)
 		return z.say(535, "5.7.8 The login is not right")
 	}
-	z.login, z.user, z.tries = id, user, 0
+	z.login, z.user, z.linkID, z.tries = id, user, linkID, 0
 	if err := z.s.Store.TouchRelayLogin(z.ctx, id); err != nil {
 		z.s.Log.Error("relay: last use", "err", err)
 	}
@@ -395,6 +400,9 @@ func (z *relaySession) allowed(domain string) (cust string, ok, temp bool) {
 	}
 	switch id, err := z.s.Store.DomainCustomer(z.ctx, domain); {
 	case err == nil:
+		if z.s.Serves != nil && !z.s.Serves(z.ctx, z.linkID, id) {
+			return "", false, false // not a customer of this link (E13)
+		}
 		return id, true, false
 	case !errors.Is(err, store.ErrNotFound):
 		z.s.Log.Error("relay: domain", "domain", domain, "err", err)
@@ -403,7 +411,7 @@ func (z *relaySession) allowed(domain string) (cust string, ok, temp bool) {
 	if z.s.Hosted == nil {
 		return "", false, false
 	}
-	return z.s.Hosted(z.ctx, domain)
+	return z.s.Hosted(z.ctx, z.linkID, domain)
 }
 
 func (z *relaySession) rcpt(arg string) error {

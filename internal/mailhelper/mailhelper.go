@@ -141,7 +141,13 @@ func (r *Request) Validate() error {
 		}
 		return nil
 	case ActionDKIM:
-		if !domainRE.MatchString(r.Domain) || len(r.Domain) > 253 || !selRE.MatchString(r.Selector) {
+		if !domainRE.MatchString(r.Domain) || len(r.Domain) > 253 {
+			return errors.New("invalid domain or selector")
+		}
+		if r.Selector == "" && r.Key == "" {
+			return nil // stop signing this domain (the record is not in the DNS)
+		}
+		if !selRE.MatchString(r.Selector) {
 			return errors.New("invalid domain or selector")
 		}
 		blk, rest := pem.Decode([]byte(r.Key))

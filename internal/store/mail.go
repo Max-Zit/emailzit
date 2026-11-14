@@ -491,19 +491,20 @@ func lockCustomer(ctx context.Context, tx pgx.Tx, id string) (*Package, error) {
 
 // Domain is a mail domain of a customer.
 type Domain struct {
-	ID           string
-	CustomerID   string
-	CustomerName string
-	Name         string // ASCII (Punycode) form
-	Verified     bool
-	VerifyToken  string
-	CatchAll     string
-	DNSManaged   bool // the records are kept in HostZit's DNS
-	DNSNote      string
-	Disabled     bool
-	CreatedAt    time.Time
-	Mailboxes    int
-	Aliases      int
+	ID            string
+	CustomerID    string
+	CustomerName  string
+	Name          string // ASCII (Punycode) form
+	Verified      bool
+	VerifyToken   string
+	CatchAll      string
+	DNSManaged    bool // the records are kept in HostZit's DNS
+	DKIMPublished bool // the DKIM record is in the DNS, so the domain is signed
+	DNSNote       string
+	Disabled      bool
+	CreatedAt     time.Time
+	Mailboxes     int
+	Aliases       int
 }
 
 // Unicode is the domain name as people write it.
@@ -546,12 +547,12 @@ func NormalizeDomain(name string) (string, error) {
 	return a, nil
 }
 
-const domainCols = `d.id, d.customer_id, c.name, d.name, d.verified, d.verify_token, d.catch_all, d.dns_managed, d.dns_note, d.disabled, d.created_at,
+const domainCols = `d.id, d.customer_id, c.name, d.name, d.verified, d.verify_token, d.catch_all, d.dns_managed, d.dns_note, d.disabled, d.dkim_published, d.created_at,
 	(SELECT count(*) FROM mailboxes m WHERE m.domain_id=d.id), (SELECT count(*) FROM aliases a WHERE a.domain_id=d.id)`
 
 func scanDomain(row pgx.Row) (*Domain, error) {
 	d := &Domain{}
-	err := row.Scan(&d.ID, &d.CustomerID, &d.CustomerName, &d.Name, &d.Verified, &d.VerifyToken, &d.CatchAll, &d.DNSManaged, &d.DNSNote, &d.Disabled, &d.CreatedAt,
+	err := row.Scan(&d.ID, &d.CustomerID, &d.CustomerName, &d.Name, &d.Verified, &d.VerifyToken, &d.CatchAll, &d.DNSManaged, &d.DNSNote, &d.Disabled, &d.DKIMPublished, &d.CreatedAt,
 		&d.Mailboxes, &d.Aliases)
 	return d, err
 }

@@ -114,6 +114,11 @@ func (s *Server) installDKIM(ctx context.Context, domainID string) {
 	if s.Mail == nil {
 		return
 	}
+	// A key that is not in the DNS yet makes every signature fail at the
+	// receiver, so it waits until the record is published (dkimcheck.go).
+	if d, err := s.store.DomainByID(ctx, store.Staff, domainID); err == nil && !d.DKIMPublished {
+		return
+	}
 	if err := s.Mail.DKIM(ctx, k); err != nil {
 		s.log.Error("installing the DKIM key", "domain", k.Domain, "err", err)
 	}
@@ -133,3 +138,9 @@ const ApplyMailMark = "apply-mail-settings"
 // helperStartWait is how long SyncMail waits between two attempts to reach
 // the mail helper at start (a variable so tests do not wait).
 var helperStartWait = 2 * time.Second
+
+// DKIMOff stops signing a domain: the helper removes its key and its line
+// in the selector map (the DKIM record is not in the DNS).
+func (h *HelperMail) DKIMOff(ctx context.Context, domain string) error {
+	return h.C.Call(ctx, mailhelper.Request{Action: mailhelper.ActionDKIM, Domain: domain})
+}

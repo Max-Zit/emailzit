@@ -31,11 +31,11 @@ type fakeRelayStore struct {
 	noLimits bool
 }
 
-func (f *fakeRelayStore) CheckRelayLogin(ctx context.Context, user, pass string) (string, error) {
+func (f *fakeRelayStore) CheckRelayLogin(ctx context.Context, user, pass string) (string, int64, error) {
 	if user != "hostzit-relay@mail.test" || pass != f.pass {
-		return "", store.ErrNotFound
+		return "", 0, store.ErrNotFound
 	}
-	return "relay-1", nil
+	return "relay-1", 7, nil
 }
 
 func (f *fakeRelayStore) TouchRelayLogin(ctx context.Context, id string) error {
@@ -46,8 +46,11 @@ func (f *fakeRelayStore) TouchRelayLogin(ctx context.Context, id string) error {
 }
 
 func (f *fakeRelayStore) DomainCustomer(ctx context.Context, domain string) (string, error) {
-	if domain == "acme.test" {
+	switch domain {
+	case "acme.test":
 		return "cust-1", nil
+	case "other-customer.test": // a mail domain of a customer this link does not serve
+		return "other-customer", nil
 	}
 	return "", store.ErrNotFound
 }
@@ -112,7 +115,10 @@ func startRelayWith(t *testing.T, f *fakeRelayStore, got chan<- string, max int6
 		Hostname: func(context.Context) string { return "mail.test" },
 		MaxBytes: func(context.Context) int64 { return max },
 		Dial:     fakePostfix(got),
-		Hosted: func(_ context.Context, domain string) (string, bool, bool) {
+		Hosted: func(_ context.Context, linkID int64, domain string) (string, bool, bool) {
+			if linkID != 7 {
+				return "", false, false // only the link of the login asks
+			}
 			switch domain {
 			case "shop.test":
 				return "", true, false // hosted, but the customer is not in EmailZit
@@ -120,6 +126,10 @@ func startRelayWith(t *testing.T, f *fakeRelayStore, got chan<- string, max int6
 				return "", false, true // HostZit cannot be asked
 			}
 			return "", false, false
+		},
+		// the link serves every customer except the one of other.test
+		Serves: func(_ context.Context, linkID int64, customerID string) bool {
+			return linkID == 7 && customerID != "other-customer"
 		},
 	}
 	go func() { _ = s.Serve(ctx, l) }()
@@ -373,5 +383,18 @@ func TestRelayRefusesATooLargeMessage(t *testing.T) {
 	_ = c2.Quit()
 	if e := f.entries(); len(e) != 1 || e[0].Reason != "the message is too large" {
 		t.Errorf("the relay log holds %+v", e)
+	}
+}
+
+// A link that serves only its own customers never carries the mail of
+// another customer's mail domain, even though the domain is here
+// (INTEGRATION.md E13).
+func TestRelayRefusesADomainOfAnotherCustomer(t *testing.T) {
+	f := &fakeRelayStore{pass: "s3cret", limits: store.SendLimits{CustomerPerHour: 100, RcptPerMsg: 10}}
+	addr := startRelay(t, f, make(chan string, 2))
+	c := signedIn(t, addr, "s3cret")
+	defer func() { _ = c.Quit() }()
+	if err := c.Mail("web@other-customer.test"); err == nil || !strings.Contains(err.Error(), "550") {
+		t.Fatalf("a mail domain of another customer was answered with %v", err)
 	}
 }

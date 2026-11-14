@@ -259,3 +259,11 @@ func (s *Store) DeliveryLog(ctx context.Context, sc Scope, f LogFilter) ([]LogEn
 	}
 	return out, rows.Err()
 }
+
+// SetDKIMPublished records whether the DKIM record of a domain is in the
+// DNS. EmailZit signs a domain only while it is (an unpublished key makes
+// every signature fail at the receiver).
+func (s *Store) SetDKIMPublished(ctx context.Context, domainID string, v bool) error {
+	_, err := s.db.Exec(ctx, `UPDATE domains SET dkim_published=$2 WHERE id=$1`, domainID, v)
+	return err
+}

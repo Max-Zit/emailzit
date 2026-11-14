@@ -23,9 +23,24 @@ import (
 
 type apiCtxKey struct{}
 
+type apiLinkKey struct{}
+
 func apiToken(r *http.Request) *store.APIToken {
 	t, _ := r.Context().Value(apiCtxKey{}).(*store.APIToken)
 	return t
+}
+
+// apiLink is the HostZit link the token of this call belongs to, or nil
+// for every other token (the billing system's). An "assigned" link only
+// ever sees its own customers (INTEGRATION.md E13).
+func (s *Server) apiLink(r *http.Request) *store.HostZitLink {
+	l, _ := r.Context().Value(apiLinkKey{}).(*store.HostZitLink)
+	return l
+}
+
+// apiServes reports whether the token of this call may see a customer.
+func (s *Server) apiServes(r *http.Request, customerID string) bool {
+	return s.store.LinkServes(r.Context(), s.apiLink(r), customerID)
 }
 
 // apiError writes an error answer.
@@ -138,7 +153,11 @@ func (s *Server) apiAuth(scope string, next http.HandlerFunc) http.Handler {
 			apiError(w, http.StatusTooManyRequests, "rate_limited", "too many calls; try again in a minute", "")
 			return
 		}
-		next(w, r.WithContext(context.WithValue(r.Context(), apiCtxKey{}, t)))
+		ctx := context.WithValue(r.Context(), apiCtxKey{}, t)
+		if l, err := s.store.HostZitLinkByToken(r.Context(), t.ID); err == nil {
+			ctx = context.WithValue(ctx, apiLinkKey{}, l)
+		}
+		next(w, r.WithContext(ctx))
 	})
 }
 
@@ -243,7 +262,9 @@ func (s *Server) apiLoadCustomer(w http.ResponseWriter, r *http.Request) *store.
 	} else {
 		c, err = s.store.CustomerByID(r.Context(), strings.ToLower(id))
 	}
-	if err != nil {
+	// A link that serves only its own customers is told nothing about the
+	// others: they answer as if they did not exist (E13).
+	if err != nil || !s.apiServes(r, c.ID) {
 		apiError(w, http.StatusNotFound, "customer_not_found", "no such customer", "")
 		return nil
 	}
@@ -266,6 +287,9 @@ func (s *Server) apiCustomers(w http.ResponseWriter, r *http.Request) {
 	}
 	out := []apiCustomer{}
 	for _, c := range list {
+		if !s.apiServes(r, c.ID) {
+			continue // an assigned link sees only its own customers (E13)
+		}
 		out = append(out, s.toAPICustomer(r.Context(), c))
 	}
 	res := map[string]any{"items": out}
@@ -360,6 +384,13 @@ func (s *Server) apiCustomerCreate(w http.ResponseWriter, r *http.Request) {
 	if s.Mail != nil {
 		if err := s.Mail.CustomerCreated(r.Context(), c); err != nil {
 			s.log.Error("customer mail directory", "customer", c.ID, "err", err)
+		}
+	}
+	// a customer created by a link that serves only its own customers
+	// belongs to that link (E13), otherwise it could not see it
+	if l := s.apiLink(r); l != nil && !l.ScopeAll {
+		if err := s.store.AssignCustomerToLink(r.Context(), l.ID, c.ID); err != nil {
+			s.log.Error("assigning the customer to the HostZit link", "customer", c.ID, "err", err)
 		}
 	}
 	s.apiAudit(r, "customer.create", "customer:"+c.ID, "%s (package %s) via API", c.Name, p.Slug)

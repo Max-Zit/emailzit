@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"crypto/tls"
-	"errors"
 	"log/slog"
 	"net"
 	"net/netip"
@@ -43,14 +42,18 @@ func (p *relayPort) watch(ctx context.Context, st *store.Store, srv *web.Server,
 	t := time.NewTicker(30 * time.Second)
 	defer t.Stop()
 	for {
-		login, err := st.RelayLoginOf(ctx)
+		logins, err := st.RelayLogins(ctx)
 		switch {
-		case err != nil && !errors.Is(err, store.ErrNotFound):
-			log.Error("relay: the login cannot be read", "err", err)
-		case err != nil: // no link with a relay login
+		case err != nil:
+			log.Error("relay: the logins cannot be read", "err", err)
+		case len(logins) == 0: // no link with a relay login
 			p.close(log)
 		default:
-			p.open(ctx, st, srv, cert, login.Username, log)
+			users := make([]string, 0, len(logins))
+			for _, l := range logins {
+				users = append(users, l.Username)
+			}
+			p.open(ctx, st, srv, cert, strings.Join(users, ", "), log)
 		}
 		select {
 		case <-ctx.Done():
@@ -97,6 +100,7 @@ func (p *relayPort) open(ctx context.Context, st *store.Store, srv *web.Server, 
 		MaxBytes: func(ctx context.Context) int64 { return int64(srv.MailConfig(ctx).MaxMessageMB) << 20 },
 		Dial:     postfixDial,
 		Hosted:   srv.HostedDomain,
+		Serves:   srv.RelayCustomer,
 	}
 	l := p.l
 	go func() {

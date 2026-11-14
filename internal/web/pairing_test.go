@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -205,12 +206,18 @@ func TestPairingGivesTokenAndRelay(t *testing.T) {
 	if len(out.Addresses) != 1 || out.Addresses[0] != "213.136.66.211" {
 		t.Errorf("EmailZit's addresses are %v, want the one HostZit reached", out.Addresses)
 	}
-	if out.Relay.Host != "mail.example.net" || out.Relay.Port != submit.RelayPort || !out.Relay.STARTTLS ||
-		out.Relay.Username != relayUser+"@mail.example.net" || len(out.Relay.Password) < 20 {
-		t.Errorf("the relay login is %+v", out.Relay)
+	links, err := st.HostZitLinks(ctx)
+	if err != nil || len(links) != 1 {
+		t.Fatalf("the links are %+v (%v)", links, err)
 	}
-	if _, err := st.CheckRelayLogin(ctx, out.Relay.Username, out.Relay.Password); err != nil {
-		t.Errorf("the relay login does not work: %v", err)
+	wantUser := fmt.Sprintf("%s-%d@mail.example.net", relayUser, links[0].ID)
+	if out.Relay.Host != "mail.example.net" || out.Relay.Port != submit.RelayPort || !out.Relay.STARTTLS ||
+		out.Relay.Username != wantUser || len(out.Relay.Password) < 20 {
+		t.Errorf("the relay login is %+v, want the user %s", out.Relay, wantUser)
+	}
+	// every link has its own relay login, and the check says which link
+	if _, linkID, err := st.CheckRelayLogin(ctx, out.Relay.Username, out.Relay.Password); err != nil || linkID != links[0].ID {
+		t.Errorf("the relay login does not work: link %d, %v", linkID, err)
 	}
 	// the token EmailZit gave works only from HostZit's addresses
 	tok, err2 := st.APITokenBySecret(ctx, out.Token, "144.91.79.144")
@@ -223,7 +230,7 @@ func TestPairingGivesTokenAndRelay(t *testing.T) {
 	if tok.AllowsIP("203.0.113.9") {
 		t.Error("the token works from another address")
 	}
-	link := s.hostzitLink(ctx)
+	link := links[0]
 	if !link.Paired() || link.ServerName != "h1" || link.URL != "https://h1.example.net:8442" {
 		t.Errorf("the link is %+v", link)
 	}
@@ -237,10 +244,10 @@ func TestPairingGivesTokenAndRelay(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("the unlink answered %d: %s", w.Code, w.Body.String())
 	}
-	if s.hostzitLink(ctx).URL != "" {
-		t.Error("the link is still there")
+	if left, _ := st.HostZitLinks(ctx); len(left) != 0 {
+		t.Errorf("the link is still there: %+v", left)
 	}
-	if _, err := st.RelayLoginOf(ctx); !errors.Is(err, store.ErrNotFound) {
+	if _, err := st.RelayLoginOfLink(ctx, link.ID); !errors.Is(err, store.ErrNotFound) {
 		t.Errorf("the relay login is still there: %v", err)
 	}
 	if _, err := st.APITokenBySecret(ctx, out.Token, "144.91.79.144"); err == nil {

@@ -10,11 +10,13 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -164,11 +166,14 @@ func (s *Server) handleLinkHostZit(w http.ResponseWriter, r *http.Request) {
 		apiError(w, http.StatusBadRequest, "invalid_address", err.Error(), "addresses")
 		return
 	}
-	// a second pairing replaces the link: the old token of the other side
-	// goes first
-	old := s.hostzitLink(r.Context())
-	if old.TokenID != "" {
-		_ = s.store.DeleteAPIToken(r.Context(), old.TokenID)
+	// Pairing again with the same server replaces only THAT link: its old
+	// token and relay login go, everything of the other links stays (E7).
+	link := &store.HostZitLink{URL: u, ScopeAll: true}
+	if old, err := s.store.HostZitLinkByURL(r.Context(), u); err == nil {
+		link = old
+		if old.TokenID != "" {
+			_ = s.store.DeleteAPIToken(r.Context(), old.TokenID)
+		}
 	}
 	tok, rec, err := s.store.CreateAPIToken(r.Context(), linkTokenName,
 		[]string{store.ScopeCustomersRead, store.ScopeCustomersWrite, store.ScopeSSO}, addrs, 0, "pairing")
@@ -176,9 +181,8 @@ func (s *Server) handleLinkHostZit(w http.ResponseWriter, r *http.Request) {
 		s.apiInternal(w, r, err)
 		return
 	}
-	link := HostZitLink{URL: u, Insecure: old.Insecure, ServerName: strings.TrimSpace(in.Name),
-		Addresses: addrs, Pin: strings.TrimSpace(in.Pin), TokenID: rec.ID, LinkedAt: s.now().UTC()}
-	if err := s.store.SetSetting(r.Context(), settingHostZit, link); err != nil {
+	link.ServerName, link.Addresses, link.Pin, link.TokenID = strings.TrimSpace(in.Name), addrs, strings.TrimSpace(in.Pin), rec.ID
+	if err := s.store.SaveHostZitLink(r.Context(), link); err != nil {
 		_ = s.store.DeleteAPIToken(r.Context(), rec.ID)
 		s.apiInternal(w, r, err)
 		return
@@ -191,7 +195,7 @@ func (s *Server) handleLinkHostZit(w http.ResponseWriter, r *http.Request) {
 		"emailzit_addresses": s.ownAddresses(r.Context(), r),
 		"emailzit_url":       s.PublicPanelURL(r.Context()),
 		"emailzit_mail_host": s.MailConfig(r.Context()).Hostname,
-		"relay":              s.newRelay(r.Context(), ip),
+		"relay":              s.newRelay(r.Context(), link.ID, ip),
 	})
 }
 
@@ -209,19 +213,19 @@ func (s *Server) handleLinkDNSToken(w http.ResponseWriter, r *http.Request) {
 		apiError(w, http.StatusBadRequest, "invalid_token", "a HostZit API token starts with hzt_", "token")
 		return
 	}
-	l := s.hostzitLink(r.Context())
-	if l.URL == "" {
+	l := s.apiLink(r) // the link of the token this call carries
+	if l == nil {
 		apiError(w, http.StatusConflict, "not_paired", "pair the servers first", "")
 		return
 	}
 	l.Token = s.store.SealSecret("hostzit.token", t)
-	if err := s.store.SetSetting(r.Context(), settingHostZit, l); err != nil {
+	if err := s.store.SaveHostZitLink(r.Context(), l); err != nil {
 		s.apiInternal(w, r, err)
 		return
 	}
-	if st, _, err := s.hostzitCall(r.Context(), http.MethodGet, "/api/v1/zit/info", nil); err != nil || st >= 300 {
+	if st, _, err := s.hostzitCall(r.Context(), l, http.MethodGet, "/api/v1/zit/info", nil); err != nil || st >= 300 {
 		l.Token = ""
-		_ = s.store.SetSetting(r.Context(), settingHostZit, l)
+		_ = s.store.SaveHostZitLink(r.Context(), l)
 		apiError(w, http.StatusBadGateway, "token_refused", "HostZit did not accept the token", "token")
 		return
 	}
@@ -230,22 +234,21 @@ func (s *Server) handleLinkDNSToken(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 
-// handleLinkDelete ends the link from HostZit's side: the stored HostZit
-// token goes, and so does the token EmailZit gave HostZit.
+// handleLinkDelete ends ONE link from HostZit's side: the link of the
+// token this call carries (E9). Every other link stays as it is.
 func (s *Server) handleLinkDelete(w http.ResponseWriter, r *http.Request) {
-	l := s.hostzitLink(r.Context())
-	if l.URL == "" {
+	l := s.apiLink(r)
+	if l == nil {
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 		return
 	}
-	if err := s.store.SetSetting(r.Context(), settingHostZit, HostZitLink{}); err != nil {
+	if err := s.store.DeleteHostZitLink(r.Context(), l.ID); err != nil {
 		s.apiInternal(w, r, err)
 		return
 	}
 	if l.TokenID != "" {
 		_ = s.store.DeleteAPIToken(r.Context(), l.TokenID)
 	}
-	s.dropRelay(r.Context())
 	s.ForgetHostedDomains()
 	_ = s.store.Audit(r.Context(), "-", clientIP(r), "hostzit.unlinked", "settings", "unlinked by HostZit ("+l.URL+")")
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
@@ -369,37 +372,38 @@ func (s *Server) handleHostZitCode(w http.ResponseWriter, r *http.Request) {
 	s.render(w, r, http.StatusOK, "hostzit", &Page{Title: "HostZit", Nav: "settings", Data: d})
 }
 
-// handleHostZitUnlink ends the link from this side: EmailZit tells HostZit
-// to drop its token, then forgets everything of the link.
+// handleHostZitUnlink ends ONE link from this side: EmailZit tells that
+// HostZit to drop its token, then forgets everything of that link (E9).
 func (s *Server) handleHostZitUnlink(w http.ResponseWriter, r *http.Request) {
-	l := s.hostzitLink(r.Context())
-	if l.URL == "" {
+	id, _ := strconv.ParseInt(r.FormValue("link"), 10, 64)
+	l, err := s.store.HostZitLinkByID(r.Context(), id)
+	if err != nil {
 		s.redirect(w, r, "/settings/hostzit", "Not linked.")
 		return
 	}
 	msg := "The link is ended."
 	if l.Token != "" {
-		if st, _, err := s.hostzitCall(r.Context(), http.MethodDelete, "/api/v1/link/emailzit", nil); err != nil || (st >= 300 && st != 404) {
+		if st, _, err := s.hostzitCall(r.Context(), l, http.MethodDelete, "/api/v1/link/emailzit", nil); err != nil || (st >= 300 && st != 404) {
 			msg = "The link is ended here; HostZit could not be reached, so remove the link there as well."
 		}
 	}
-	if err := s.store.SetSetting(r.Context(), settingHostZit, HostZitLink{}); err != nil {
+	if err := s.store.DeleteHostZitLink(r.Context(), l.ID); err != nil {
 		s.serverError(w, r, err)
 		return
 	}
 	if l.TokenID != "" {
 		_ = s.store.DeleteAPIToken(r.Context(), l.TokenID)
 	}
-	s.dropRelay(r.Context())
 	s.ForgetHostedDomains()
 	s.audit(r, "hostzit.unlink", "settings", "link with %s ended", l.URL)
 	s.redirect(w, r, "/settings/hostzit", msg)
 }
 
-// newRelay makes the relay login of the link and returns it for the
-// pairing answer: the websites of a HostZit on another server send their
-// mail with it (INTEGRATION.md E3). nil when this server takes no mail.
-func (s *Server) newRelay(ctx context.Context, ip string) any {
+// newRelay makes the relay login of one link and returns it for the
+// pairing answer: the websites of that HostZit send their mail with it
+// (INTEGRATION.md E3, E8). Every link has its own user name, allowed only
+// from its own addresses. nil when this server takes no mail.
+func (s *Server) newRelay(ctx context.Context, linkID int64, ip string) any {
 	if s.Mail == nil {
 		return nil
 	}
@@ -408,9 +412,9 @@ func (s *Server) newRelay(ctx context.Context, ip string) any {
 		s.log.Warn("no relay login for HostZit: the mail host name is not set yet")
 		return nil
 	}
-	user := relayUser + "@" + strings.ToLower(host)
+	user := fmt.Sprintf("%s-%d@%s", relayUser, linkID, strings.ToLower(host))
 	pass := auth.RandomToken(24)
-	if _, err := s.store.SetRelayLogin(ctx, user, pass); err != nil {
+	if _, err := s.store.SetRelayLogin(ctx, linkID, user, pass); err != nil {
 		s.log.Error("relay login", "err", err)
 		return nil
 	}
@@ -421,12 +425,5 @@ func (s *Server) newRelay(ctx context.Context, ip string) any {
 		"username": user,
 		"password": pass,
 		"starttls": true,
-	}
-}
-
-// dropRelay removes the relay login (the link ended).
-func (s *Server) dropRelay(ctx context.Context) {
-	if err := s.store.DeleteRelayLogins(ctx); err != nil {
-		s.log.Error("relay login", "err", err)
 	}
 }

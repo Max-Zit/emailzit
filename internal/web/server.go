@@ -61,6 +61,8 @@ type Server struct {
 	DataDir string
 	// HelperAvailable replaces the check for the root helper (tests).
 	HelperAvailable func() bool
+	// DKIMTXT replaces the DNS lookup of the DKIM records (tests).
+	DKIMTXT func(ctx context.Context, domain, name string) ([]string, error)
 	// Mail applies mail changes that need root (customer directories, DKIM
 	// keys); nil = nothing to apply (development without a mail stack).
 	Mail MailApplier
@@ -85,6 +87,8 @@ type MailApplier interface {
 	MailboxDeleted(ctx context.Context, m *store.Mailbox) error
 	// DKIM installs the signing key of a domain.
 	DKIM(ctx context.Context, k *store.DKIMKey) error
+	// DKIMOff stops signing a domain (its record is not in the DNS).
+	DKIMOff(ctx context.Context, domain string) error
 	// Spam rewrites the spam scripts of a customer's mailboxes (or one).
 	Spam(ctx context.Context, customerID, address string) error
 	// Unban lifts a firewall block of the mail sign-in guard ("all": every one).
@@ -373,6 +377,7 @@ func (s *Server) Handler() http.Handler {
 	admin("GET /settings/hostzit", s.handleHostZit)
 	admin("POST /settings/hostzit", s.handleHostZitSave)
 	admin("POST /settings/hostzit/code", s.handleHostZitCode)
+	admin("POST /settings/hostzit/scope", s.handleHostZitScope)
 	admin("POST /settings/hostzit/unlink", s.handleHostZitUnlink)
 	admin("GET /settings/api", s.handleAPITokens)
 	admin("POST /settings/api", s.handleAPITokenCreate)

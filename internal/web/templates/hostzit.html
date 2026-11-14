@@ -7,28 +7,46 @@
 <section class="panel">
   <h2>{{template "icon" "link"}}HostZit</h2>
   <p class="muted">{{.T "When HostZit hosts the websites and the DNS of the same customers, EmailZit writes the mail records (MX, SPF, DKIM, DMARC, MTA-STS, autoconfig) of every domain into HostZit's DNS by itself, and a domain whose zone is in HostZit for the same customer needs no verification. HostZit needs an API token of EmailZit (Settings → REST API) to tell EmailZit the user IDs of the hosting accounts."}}</p>
-  {{if .Data.L.URL}}
-  <p>{{if .Data.L.Paired}}<span class="badge ok"><i></i>{{.T "Linked"}}</span>{{else}}<span class="badge warn"><i></i>{{.T "Linked by hand"}}</span>{{end}}
-    <span class="mono">{{if .Data.L.ServerName}}{{.Data.L.ServerName}} · {{end}}{{.Data.L.URL}}</span>
-    {{if not .Data.L.LinkedAt.IsZero}}<span class="muted small">{{.T "since"}} {{.Time .Data.L.LinkedAt}}</span>{{end}}</p>
-  {{if .Data.L.Addresses}}<p class="small muted">{{.T "The token of HostZit works only from:"}} <span class="mono">{{range $i, $a := .Data.L.Addresses}}{{if $i}}, {{end}}{{$a}}{{end}}</span></p>{{end}}
-  {{if .User.CanWrite}}<form method="post" action="/settings/hostzit/unlink" data-confirm="{{.T "End the link with HostZit? Both servers lose the token of the other, and EmailZit stops writing the DNS records."}}"><button class="danger">{{.T "Unlink"}}</button></form>{{end}}
-  {{else}}
-  <p class="muted">{{.T "Not linked."}}</p>
-  {{end}}
+  <p class="muted">{{.T "Several HostZit servers can be linked at once. Every link has its own token and its own relay login, and a link serves either all customers or only the ones chosen for it."}}</p>
+  {{if not .Data.Links}}<p class="muted">{{.T "Not linked."}}</p>{{end}}
 </section>
 
-{{with .Data.Relay}}
+{{range .Data.Links}}
+{{$l := .L}}
 <section class="panel">
-  <h2>{{template "icon" "mail"}}{{$.T "Mail of the websites on the hosting server"}}</h2>
-  <p class="muted">{{$.T "HostZit runs on another server, so its websites send their mail to this server with a login of their own. The pairing handed it over; it cannot be used for a mailbox, the webmail or a mail program, and only the addresses of that HostZit reach the port."}}</p>
+  <div class="panelhead">
+    <h2>{{template "icon" "link"}}{{if $l.ServerName}}{{$l.ServerName}}{{else}}HostZit{{end}}</h2>
+    {{if $l.Paired}}<span class="badge ok"><i></i>{{$.T "Linked"}}</span>{{else}}<span class="badge warn"><i></i>{{$.T "Linked by hand"}}</span>{{end}}
+  </div>
   <dl class="facts">
-    <div><dt>{{$.T "Server"}}</dt><dd class="mono">{{$.Data.RelayHost}}</dd></div>
-    <div><dt>{{$.T "Port"}}</dt><dd class="mono">{{$.Data.RelayPort}} (STARTTLS)</dd></div>
-    <div><dt>{{$.T "User name"}}</dt><dd class="mono">{{.Username}}</dd></div>
-    <div><dt>{{$.T "Last used"}}</dt><dd>{{if .LastUsed.IsZero}}<span class="muted">{{$.T "never"}}</span>{{else}}{{$.Time .LastUsed}}{{end}}</dd></div>
+    <div><dt>{{$.T "Address of HostZit's admin panel"}}</dt><dd class="mono small">{{$l.URL}}</dd></div>
+    <div><dt>{{$.T "since"}}</dt><dd>{{$.Time $l.CreatedAt}}</dd></div>
+    {{if $l.Addresses}}<div><dt>{{$.T "The token of HostZit works only from:"}}</dt><dd class="mono small">{{range $i, $a := $l.Addresses}}{{if $i}}, {{end}}{{$a}}{{end}}</dd></div>{{end}}
+    <div><dt>{{$.T "Last contact"}}</dt><dd>{{if $l.LastCall}}{{$.Time $l.LastCall}}{{else}}<span class="muted">{{$.T "never"}}</span>{{end}}{{with $l.TokenUsed}} · {{$.T "HostZit was here %s" ($.Ago .)}}{{end}}</dd></div>
+    {{if $l.RelayUser}}
+    <div><dt>{{$.T "Mail of the websites on the hosting server"}}</dt><dd class="mono small">{{$l.RelayUser}}</dd></div>
+    <div><dt>{{$.T "Last used"}}</dt><dd>{{if $l.RelayUsed}}{{$.Time $l.RelayUsed}}{{else}}<span class="muted">{{$.T "never"}}</span>{{end}}</dd></div>
+    {{end}}
   </dl>
-  <p class="small muted">{{$.T "The password is only known to HostZit. A new pairing gives a new one."}}</p>
+  {{if $l.RelayUser}}<p class="small muted">{{$.T "The websites of that HostZit send their mail to %s on port %d (STARTTLS) with this login. The password is only known to HostZit; a new pairing gives a new one." $.Data.RelayHost $.Data.RelayPort}}</p>{{end}}
+  {{if $.User.CanWrite}}
+  <form method="post" action="/settings/hostzit/scope" class="stack mt">
+    <input type="hidden" name="link" value="{{$l.ID}}">
+    <fieldset>
+      <legend>{{$.T "Which customers this link serves"}}</legend>
+      <label class="check"><input type="radio" name="scope" value="all" {{if $l.ScopeAll}}checked{{end}}>{{$.T "All customers of this server"}}</label>
+      <label class="check"><input type="radio" name="scope" value="assigned" {{if not $l.ScopeAll}}checked{{end}}>{{$.T "Only the customers chosen here (a HostZit of one client)"}}</label>
+      {{$assigned := .Assigned}}
+      <label>{{$.T "Customers"}}<select name="customer" multiple size="6">{{range $.Data.All}}<option value="{{.ID}}" {{if index $assigned .ID}}selected{{end}}>{{.Name}}</option>{{end}}</select>
+        <small>{{$.T "With \"only the customers chosen here\" its token reads, changes and opens one-time links only for them, its relay takes only their domains, and DNS is written only for them. Everything else answers as if it did not exist."}}</small></label>
+    </fieldset>
+    <div><button class="secondary">{{$.T "Save"}}</button></div>
+  </form>
+  <form method="post" action="/settings/hostzit/unlink" class="mt" data-confirm="{{$.T "End the link with HostZit? Both servers lose the token of the other, and EmailZit stops writing the DNS records."}}">
+    <input type="hidden" name="link" value="{{$l.ID}}">
+    <button class="danger">{{$.T "Unlink"}}</button>
+  </form>
+  {{end}}
 </section>
 {{end}}
 
@@ -48,9 +66,9 @@
 <details class="panel">
   <summary>{{.T "Link by hand (old way)"}}</summary>
   <form method="post" action="/settings/hostzit" class="stack wide mt">
-    <label>{{.T "Address of HostZit's admin panel"}}<input name="url" value="{{.Data.L.URL}}" spellcheck="false" class="mono" placeholder="https://host.example.com:8442"><small>{{.T "Empty = not linked."}}</small></label>
-    <label>{{.T "HostZit API token with the permission dns:mail"}}<input type="password" name="token" autocomplete="off" spellcheck="false" class="mono" placeholder="{{if .Data.HasToken}}{{.T "saved; leave empty to keep it"}}{{else}}hzt_…{{end}}"></label>
-    <label class="check"><input type="checkbox" name="insecure" value="1" {{if .Data.L.Insecure}}checked{{end}}>{{.T "HostZit has a self-signed certificate (do not check it)"}}</label>
+    <label>{{.T "Address of HostZit's admin panel"}}<input name="url" spellcheck="false" class="mono" placeholder="https://host.example.com:8442"><small>{{.T "The same address again changes that link."}}</small></label>
+    <label>{{.T "HostZit API token with the permission dns:mail"}}<input type="password" name="token" autocomplete="off" spellcheck="false" class="mono" placeholder="hzt_…"></label>
+    <label class="check"><input type="checkbox" name="insecure" value="1">{{.T "HostZit has a self-signed certificate (do not check it)"}}</label>
     <div><button class="secondary">{{.T "Save"}}</button></div>
   </form>
 </details>

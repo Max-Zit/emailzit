@@ -6,12 +6,14 @@ import (
 	"testing"
 )
 
-// The relay login belongs to the link: there is at most one, only its hash
+// The relay login belongs to one link: a link has at most one, only its hash
 // is kept, and a wrong password is not accepted.
 func TestRelayLogin(t *testing.T) {
 	ctx := context.Background()
 	f := setup(t)
-	l, err := f.st.SetRelayLogin(ctx, "HostZit-Relay@mail.test", "first-password")
+	link := &HostZitLink{URL: "https://host.example.test:8442", ScopeAll: true}
+	must(t, f.st.SaveHostZitLink(ctx, link))
+	l, err := f.st.SetRelayLogin(ctx, link.ID, "HostZit-Relay@mail.test", "first-password")
 	must(t, err)
 	if l.Username != "hostzit-relay@mail.test" {
 		t.Errorf("the user name is %q", l.Username)
@@ -21,35 +23,35 @@ func TestRelayLogin(t *testing.T) {
 	if hash == "first-password" {
 		t.Error("the password itself is stored")
 	}
-	if _, err := f.st.CheckRelayLogin(ctx, "hostzit-relay@mail.test", "wrong"); !errors.Is(err, ErrNotFound) {
+	if _, _, err := f.st.CheckRelayLogin(ctx, "hostzit-relay@mail.test", "wrong"); !errors.Is(err, ErrNotFound) {
 		t.Errorf("a wrong password gave %v", err)
 	}
-	id, err := f.st.CheckRelayLogin(ctx, "HostZit-Relay@MAIL.test", "first-password")
+	id, gotLink, err := f.st.CheckRelayLogin(ctx, "HostZit-Relay@MAIL.test", "first-password")
 	must(t, err)
-	if id != l.ID {
-		t.Errorf("the check found %q, want %q", id, l.ID)
+	if id != l.ID || gotLink != link.ID {
+		t.Errorf("the check found %q of link %d, want %q of %d", id, gotLink, l.ID, link.ID)
 	}
 
 	// a second pairing replaces the login
-	l2, err := f.st.SetRelayLogin(ctx, "hostzit-relay@mail.test", "second-password")
+	l2, err := f.st.SetRelayLogin(ctx, link.ID, "hostzit-relay@mail.test", "second-password")
 	must(t, err)
 	var n int
 	must(t, f.st.db.QueryRow(ctx, `SELECT count(*) FROM relay_logins`).Scan(&n))
 	if n != 1 {
 		t.Errorf("%d logins exist", n)
 	}
-	if _, err := f.st.CheckRelayLogin(ctx, "hostzit-relay@mail.test", "first-password"); !errors.Is(err, ErrNotFound) {
+	if _, _, err := f.st.CheckRelayLogin(ctx, "hostzit-relay@mail.test", "first-password"); !errors.Is(err, ErrNotFound) {
 		t.Errorf("the old password still works (%v)", err)
 	}
 	must(t, f.st.TouchRelayLogin(ctx, l2.ID))
-	got, err := f.st.RelayLoginOf(ctx)
+	got, err := f.st.RelayLoginOfLink(ctx, link.ID)
 	must(t, err)
 	if got.ID != l2.ID || got.LastUsed.IsZero() {
 		t.Errorf("the login is %+v", got)
 	}
 
-	must(t, f.st.DeleteRelayLogins(ctx))
-	if _, err := f.st.RelayLoginOf(ctx); !errors.Is(err, ErrNotFound) {
+	must(t, f.st.DeleteRelayLoginsOfLink(ctx, link.ID))
+	if _, err := f.st.RelayLoginOfLink(ctx, link.ID); !errors.Is(err, ErrNotFound) {
 		t.Errorf("after the unlink: %v", err)
 	}
 }

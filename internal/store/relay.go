@@ -9,14 +9,16 @@ import (
 	"time"
 )
 
-// The relay login of the HostZit link (INTEGRATION.md E3). There is at most
-// one: it belongs to the link, not to a customer, and the pairing hands it
-// to HostZit. Only EmailZit itself checks it (the relay submission server),
-// so the password is kept as its SHA-256 like an app password.
+// The relay login of a HostZit link (INTEGRATION.md E3, E8). Every link
+// has its own: it belongs to the link, not to a customer, the pairing
+// hands it to that HostZit, and the sender check then asks the HostZit the
+// login belongs to. Only EmailZit itself checks it (the relay submission
+// server), so the password is kept as its SHA-256 like an app password.
 
-// RelayLogin is the login of the linked HostZit.
+// RelayLogin is the login of one linked HostZit.
 type RelayLogin struct {
 	ID       string
+	LinkID   int64
 	Username string
 	Created  time.Time
 	LastUsed time.Time // zero: never used
@@ -28,32 +30,31 @@ func passHash(password string) string {
 	return hex.EncodeToString(sum[:])
 }
 
-// SetRelayLogin replaces the relay login with this one.
-func (s *Store) SetRelayLogin(ctx context.Context, username, password string) (*RelayLogin, error) {
+// SetRelayLogin replaces the relay login of one link with this one.
+func (s *Store) SetRelayLogin(ctx context.Context, linkID int64, username, password string) (*RelayLogin, error) {
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	if _, err := tx.Exec(ctx, `DELETE FROM relay_logins`); err != nil {
+	if _, err := tx.Exec(ctx, `DELETE FROM relay_logins WHERE link_id=$1`, linkID); err != nil {
 		return nil, err
 	}
-	l := &RelayLogin{Username: strings.ToLower(strings.TrimSpace(username))}
-	if err := tx.QueryRow(ctx, `INSERT INTO relay_logins(username, hash) VALUES($1,$2) RETURNING id, created_at`,
-		l.Username, passHash(password)).Scan(&l.ID, &l.Created); err != nil {
+	l := &RelayLogin{LinkID: linkID, Username: strings.ToLower(strings.TrimSpace(username))}
+	if err := tx.QueryRow(ctx, `INSERT INTO relay_logins(link_id, username, hash) VALUES($1,$2,$3) RETURNING id, created_at`,
+		linkID, l.Username, passHash(password)).Scan(&l.ID, &l.Created); err != nil {
 		return nil, err
 	}
 	return l, tx.Commit(ctx)
 }
 
-// RelayLoginOf returns the relay login, or ErrNotFound when there is none.
-func (s *Store) RelayLoginOf(ctx context.Context) (*RelayLogin, error) {
+const relayLoginCols = `id, COALESCE(link_id, 0), username, created_at, last_used, disabled`
+
+func scanRelayLogin(row interface{ Scan(...any) error }) (*RelayLogin, error) {
 	l := &RelayLogin{}
 	var used *time.Time
-	err := s.db.QueryRow(ctx, `SELECT id, username, created_at, last_used, disabled FROM relay_logins ORDER BY created_at DESC LIMIT 1`).
-		Scan(&l.ID, &l.Username, &l.Created, &used, &l.Disabled)
-	if err != nil {
-		return nil, notFound(err)
+	if err := row.Scan(&l.ID, &l.LinkID, &l.Username, &l.Created, &used, &l.Disabled); err != nil {
+		return nil, err
 	}
 	if used != nil {
 		l.LastUsed = *used
@@ -61,25 +62,53 @@ func (s *Store) RelayLoginOf(ctx context.Context) (*RelayLogin, error) {
 	return l, nil
 }
 
-// DeleteRelayLogins removes the relay login (the link ended).
-func (s *Store) DeleteRelayLogins(ctx context.Context) error {
-	_, err := s.db.Exec(ctx, `DELETE FROM relay_logins`)
+// RelayLoginOfLink returns the relay login of one link, or ErrNotFound.
+func (s *Store) RelayLoginOfLink(ctx context.Context, linkID int64) (*RelayLogin, error) {
+	l, err := scanRelayLogin(s.db.QueryRow(ctx, `SELECT `+relayLoginCols+` FROM relay_logins WHERE link_id=$1
+		ORDER BY created_at DESC LIMIT 1`, linkID))
+	return l, notFound(err)
+}
+
+// RelayLogins lists the relay logins of all links (the port is open while
+// there is at least one).
+func (s *Store) RelayLogins(ctx context.Context) ([]*RelayLogin, error) {
+	rows, err := s.db.Query(ctx, `SELECT `+relayLoginCols+` FROM relay_logins ORDER BY created_at`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []*RelayLogin
+	for rows.Next() {
+		l, err := scanRelayLogin(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, l)
+	}
+	return out, rows.Err()
+}
+
+// DeleteRelayLoginsOfLink removes the relay login of one link (that link
+// ended).
+func (s *Store) DeleteRelayLoginsOfLink(ctx context.Context, linkID int64) error {
+	_, err := s.db.Exec(ctx, `DELETE FROM relay_logins WHERE link_id=$1`, linkID)
 	return err
 }
 
-// CheckRelayLogin returns the ID of the relay login when the password is
-// right, and ErrNotFound otherwise.
-func (s *Store) CheckRelayLogin(ctx context.Context, username, password string) (string, error) {
+// CheckRelayLogin returns the ID of the relay login and the link it
+// belongs to when the password is right, and ErrNotFound otherwise.
+func (s *Store) CheckRelayLogin(ctx context.Context, username, password string) (string, int64, error) {
 	var id, hash string
-	err := s.db.QueryRow(ctx, `SELECT id, hash FROM relay_logins WHERE username=$1 AND NOT disabled`,
-		strings.ToLower(strings.TrimSpace(username))).Scan(&id, &hash)
+	var linkID int64
+	err := s.db.QueryRow(ctx, `SELECT id, COALESCE(link_id, 0), hash FROM relay_logins WHERE username=$1 AND NOT disabled`,
+		strings.ToLower(strings.TrimSpace(username))).Scan(&id, &linkID, &hash)
 	if err != nil {
-		return "", notFound(err)
+		return "", 0, notFound(err)
 	}
 	if subtle.ConstantTimeCompare([]byte(hash), []byte(passHash(password))) != 1 {
-		return "", ErrNotFound
+		return "", 0, ErrNotFound
 	}
-	return id, nil
+	return id, linkID, nil
 }
 
 // TouchRelayLogin records that the relay login was used.

@@ -289,6 +289,7 @@ func run() error {
 	if srv.Mail != nil {
 		srv.SystemMail = systemMailer(srv)
 		go srv.RunProtection(ctx)
+		go srv.RunDKIMCheck(ctx)
 	}
 	go func() {
 		t := time.NewTicker(5 * time.Minute)

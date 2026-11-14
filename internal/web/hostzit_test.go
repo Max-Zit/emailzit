@@ -54,7 +54,8 @@ func TestHostZitLink(t *testing.T) {
 		}
 	}
 	must(st.SetSetting(ctx, settingMail, MailSettings{Hostname: "mail.example.net", RequireVerification: true, MaxMessageMB: 25}))
-	must(st.SetSetting(ctx, settingHostZit, HostZitLink{URL: hz.URL, Token: st.SealSecret("hostzit.token", "hzt_test"), Insecure: true}))
+	link := &store.HostZitLink{URL: hz.URL, Token: st.SealSecret("hostzit.token", "hzt_test"), Insecure: true, ScopeAll: true}
+	must(st.SaveHostZitLink(ctx, link))
 	p := &store.Package{Slug: "p", Name: "P", MaxDomains: 3, MaxMailboxes: 3, MaxAliases: 3, StorageMB: 100, MailboxMB: 10, MaxMailboxMB: 50, SendPerHour: 1, SendPerDay: 1, CustomerPerHour: 1, RcptPerMsg: 1}
 	must(st.SavePackage(ctx, p))
 	c, err := st.CreateCustomer(ctx, store.NewCustomer{Name: "C", PackageID: p.ID})
@@ -196,50 +197,51 @@ func TestHostedDomain(t *testing.T) {
 		}
 	}))
 	defer hz.Close()
-	if err := st.SetSetting(ctx, settingHostZit, HostZitLink{URL: hz.URL, Token: st.SealSecret("hostzit.token", "hzt_test"), Insecure: true}); err != nil {
+	link := &store.HostZitLink{URL: hz.URL, Token: st.SealSecret("hostzit.token", "hzt_test"), Insecure: true, ScopeAll: true}
+	if err := st.SaveHostZitLink(ctx, link); err != nil {
 		t.Fatal(err)
 	}
 
 	// the same customer in both products (P1): its mail counts against its
 	// package here
-	if cust, ok, _ := s.HostedDomain(ctx, "known.test"); !ok || cust != known {
+	if cust, ok, _ := s.HostedDomain(ctx, link.ID, "known.test"); !ok || cust != known {
 		t.Errorf("known.test gave %q, %v; want the customer of EmailZit", cust, ok)
 	}
 	// a domain of HostZit whose customer is not in EmailZit: hosted, but
 	// no customer here (P1)
-	cust, ok, temp := s.HostedDomain(ctx, "SHOP.test")
+	cust, ok, temp := s.HostedDomain(ctx, link.ID, "SHOP.test")
 	if !ok || temp || cust != "" {
 		t.Errorf("shop.test gave %q, %v, %v", cust, ok, temp)
 	}
-	if _, ok, _ := s.HostedDomain(ctx, "shop.test"); !ok {
+	if _, ok, _ := s.HostedDomain(ctx, link.ID, "shop.test"); !ok {
 		t.Error("the second answer differs")
 	}
 	if asked["shop.test"] != 1 {
 		t.Errorf("HostZit was asked %d times", asked["shop.test"])
 	}
-	if _, ok, _ := s.HostedDomain(ctx, "paused.test"); ok {
+	if _, ok, _ := s.HostedDomain(ctx, link.ID, "paused.test"); ok {
 		t.Error("a suspended domain may send")
 	}
-	if _, ok, _ := s.HostedDomain(ctx, "nobody.test"); ok {
+	if _, ok, _ := s.HostedDomain(ctx, link.ID, "nobody.test"); ok {
 		t.Error("an unknown domain may send")
 	}
 	mu.Lock()
 	down = true
 	mu.Unlock()
 	// the known answers are still used
-	if _, ok, temp := s.HostedDomain(ctx, "shop.test"); !ok || temp {
+	if _, ok, temp := s.HostedDomain(ctx, link.ID, "shop.test"); !ok || temp {
 		t.Error("the remembered answer was dropped")
 	}
 	s.ForgetHostedDomains()
-	if _, ok, temp := s.HostedDomain(ctx, "shop.test"); ok || !temp {
+	if _, ok, temp := s.HostedDomain(ctx, link.ID, "shop.test"); ok || !temp {
 		t.Error("an unreachable HostZit must decide nothing")
 	}
 	// without a link nothing is asked at all
-	if err := st.SetSetting(ctx, settingHostZit, HostZitLink{}); err != nil {
+	if err := st.DeleteHostZitLink(ctx, link.ID); err != nil {
 		t.Fatal(err)
 	}
 	s.ForgetHostedDomains()
-	if _, ok, temp := s.HostedDomain(ctx, "shop.test"); ok || temp {
+	if _, ok, temp := s.HostedDomain(ctx, link.ID, "shop.test"); ok || temp {
 		t.Error("a domain was taken without a link")
 	}
 }

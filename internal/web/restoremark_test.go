@@ -21,6 +21,7 @@ func (m *stubMail) CustomerCreated(context.Context, *store.Customer) error { ret
 func (m *stubMail) DomainDeleted(context.Context, *store.Domain) error     { return nil }
 func (m *stubMail) MailboxDeleted(context.Context, *store.Mailbox) error   { return nil }
 func (m *stubMail) DKIM(context.Context, *store.DKIMKey) error             { return nil }
+func (m *stubMail) DKIMOff(context.Context, string) error                  { return nil }
 func (m *stubMail) Spam(context.Context, string, string) error             { return nil }
 func (m *stubMail) Unban(context.Context, string) error                    { return nil }
 func (m *stubMail) Notice(context.Context, string, string, string) error   { return nil }

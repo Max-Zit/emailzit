@@ -41,7 +41,7 @@ const (
 	// pairingPrefix marks our codes.
 	pairingPrefix = "ezlink_"
 	// linkTokenName is the name of the API token EmailZit gives HostZit.
-	linkTokenName = "HostZit (paired)"
+	linkTokenName = "HostZit (paired)" // #nosec G101 -- a name shown on the token page, not a secret
 	// relayUser is the local part of the relay login of the link.
 	relayUser = "hostzit-relay"
 )
@@ -305,6 +305,9 @@ func validLinkURL(raw string) (string, error) {
 	raw = strings.TrimRight(strings.TrimSpace(raw), "/")
 	u, err := url.Parse(raw)
 	if err != nil || u.Scheme != "https" || u.Host == "" || u.User != nil || (u.Path != "" && u.Path != "/") || u.RawQuery != "" || len(raw) > 200 {
+		// the settings page shows this message to the administrator, in
+		// their language, so it is a sentence and not an error fragment
+		//lint:ignore ST1005 a message for the page, translated as written
 		return "", errors.New("The address must look like https://host.example.com:8442")
 	}
 	return raw, nil

@@ -546,9 +546,7 @@ func envelope(arg, want string) (addr string, params []string, ok bool) {
 	if strings.ContainsAny(addr, "<>") || strings.ContainsFunc(addr, func(r rune) bool { return r < ' ' || r == 0x7f }) {
 		return "", nil, false
 	}
-	for _, p := range strings.Fields(rest[end+1:]) {
-		params = append(params, p)
-	}
+	params = append(params, strings.Fields(rest[end+1:])...)
 	if i := strings.LastIndex(addr, ":"); i >= 0 { // source route @a:user@b
 		addr = addr[i+1:]
 	}

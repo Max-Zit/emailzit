@@ -56,21 +56,29 @@ func ValidID(id string) bool { return uuidRE.MatchString(id) }
 // ---- packages
 
 // Package is a set of limits.
+// Package is the plan of one mailbox (Mail 10, Mail 100 …). A customer
+// may hold several plans at the same time (customer_packages, plans.go);
+// the fields that describe the whole customer apply when the package is
+// the customer's base package.
 type Package struct {
-	ID              int64
-	Slug, Name      string
+	ID         int64
+	Slug, Name string
+	// mailbox of this plan
+	MailboxMB    int // size of a new mailbox of the plan
+	MaxMailboxMB int // largest size a mailbox of the plan may have
+	SendPerHour  int // per mailbox of the plan
+	SendPerDay   int
+	// the whole customer, when this is the base package
 	MaxDomains      int
-	MaxMailboxes    int
+	MaxMailboxes    int // mailboxes of this plan a new customer gets
 	MaxAliases      int
 	StorageMB       int // all mailboxes together; 0 = no limit
-	MailboxMB       int // default size of a new mailbox
-	MaxMailboxMB    int
-	SendPerHour     int // per mailbox
-	SendPerDay      int
-	CustomerPerHour int // the whole customer
+	CustomerPerHour int
 	RcptPerMsg      int
 	CreatedAt       time.Time
-	Customers       int // number of customers using it (lists)
+	// counts for the lists
+	Customers int // customers whose base package it is
+	Mailboxes int // mailboxes on this plan
 }
 
 var slugRE = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,62}$`)
@@ -97,8 +105,8 @@ func (p *Package) Validate() error {
 	return nil
 }
 
-const packageCols = `id, slug, name, max_domains, max_mailboxes, max_aliases, storage_mb, mailbox_mb, max_mailbox_mb,
-	send_per_hour, send_per_day, customer_per_hour, rcpt_per_msg, created_at`
+const packageCols = `p.id, p.slug, p.name, p.max_domains, p.max_mailboxes, p.max_aliases, p.storage_mb, p.mailbox_mb, p.max_mailbox_mb,
+	p.send_per_hour, p.send_per_day, p.customer_per_hour, p.rcpt_per_msg, p.created_at`
 
 func scanPackage(row pgx.Row, extra ...any) (*Package, error) {
 	p := &Package{}
@@ -107,21 +115,24 @@ func scanPackage(row pgx.Row, extra ...any) (*Package, error) {
 	return p, row.Scan(append(dst, extra...)...)
 }
 
-// Packages lists the packages with the number of customers on each.
+// Packages lists the packages with the number of customers whose base
+// package it is and the number of mailboxes on the plan.
 func (s *Store) Packages(ctx context.Context) ([]*Package, error) {
-	rows, err := s.db.Query(ctx, `SELECT `+packageCols+`, (SELECT count(*) FROM customers c WHERE c.package_id=p.id AND c.status<>'terminated')
-		FROM packages p ORDER BY lower(name)`)
+	rows, err := s.db.Query(ctx, `SELECT `+packageCols+`, (SELECT count(*) FROM customers c WHERE c.package_id=p.id AND c.status<>'terminated'),
+			(SELECT count(*) FROM mailboxes m WHERE m.package_id=p.id)
+		FROM packages p ORDER BY p.mailbox_mb, lower(p.name)`)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	var out []*Package
 	for rows.Next() {
-		p := &Package{}
-		p, err := scanPackage(rows, &p.Customers)
+		var customers, mailboxes int
+		p, err := scanPackage(rows, &customers, &mailboxes)
 		if err != nil {
 			return nil, err
 		}
+		p.Customers, p.Mailboxes = customers, mailboxes
 		out = append(out, p)
 	}
 	return out, rows.Err()
@@ -129,13 +140,13 @@ func (s *Store) Packages(ctx context.Context) ([]*Package, error) {
 
 // PackageByID loads a package.
 func (s *Store) PackageByID(ctx context.Context, id int64) (*Package, error) {
-	p, err := scanPackage(s.db.QueryRow(ctx, `SELECT `+packageCols+` FROM packages WHERE id=$1`, id))
+	p, err := scanPackage(s.db.QueryRow(ctx, `SELECT `+packageCols+` FROM packages p WHERE p.id=$1`, id))
 	return p, notFound(err)
 }
 
 // PackageBySlug loads a package by its short name (API).
 func (s *Store) PackageBySlug(ctx context.Context, slug string) (*Package, error) {
-	p, err := scanPackage(s.db.QueryRow(ctx, `SELECT `+packageCols+` FROM packages WHERE slug=$1`, strings.ToLower(slug)))
+	p, err := scanPackage(s.db.QueryRow(ctx, `SELECT `+packageCols+` FROM packages p WHERE p.slug=$1`, strings.ToLower(slug)))
 	return p, notFound(err)
 }
 
@@ -168,11 +179,16 @@ func (s *Store) SavePackage(ctx context.Context, p *Package) error {
 
 // DeletePackage removes a package nobody uses.
 func (s *Store) DeletePackage(ctx context.Context, id int64) error {
-	var n int
-	if err := s.db.QueryRow(ctx, `SELECT count(*) FROM customers WHERE package_id=$1`, id).Scan(&n); err != nil {
+	var customers, mailboxes, plans int
+	if err := s.db.QueryRow(ctx, `SELECT (SELECT count(*) FROM customers WHERE package_id=$1),
+		(SELECT count(*) FROM mailboxes WHERE package_id=$1),
+		(SELECT count(*) FROM customer_packages WHERE package_id=$1)`, id).Scan(&customers, &mailboxes, &plans); err != nil {
 		return err
 	}
-	if n > 0 {
+	switch {
+	case mailboxes > 0:
+		return errors.New("mailboxes still use this plan")
+	case customers > 0 || plans > 0:
 		return errors.New("the package is still used by customers")
 	}
 	tag, err := s.db.Exec(ctx, `DELETE FROM packages WHERE id=$1`, id)
@@ -207,6 +223,7 @@ type Customer struct {
 	StatusAt     time.Time
 	// counts (lists and the overview)
 	Domains, Mailboxes, Aliases int
+	MailboxesPaid               int   // mailboxes of all the customer's plans together
 	QuotaMB                     int64 // sum of the mailbox sizes
 	UsedBytes                   int64
 	// OutboundIP is the customer's own sending address (empty: the server's)
@@ -224,13 +241,14 @@ const customerCols = `c.id, c.number, COALESCE(c.external_id, ''), COALESCE(c.us
 	(SELECT count(*) FROM domains d WHERE d.customer_id=c.id),
 	(SELECT count(*) FROM mailboxes m WHERE m.customer_id=c.id),
 	(SELECT count(*) FROM aliases a WHERE a.customer_id=c.id),
+	(SELECT COALESCE(sum(cp.mailboxes), 0) FROM customer_packages cp WHERE cp.customer_id=c.id),
 	(SELECT COALESCE(sum(quota_mb), 0) FROM mailboxes m WHERE m.customer_id=c.id),
 	(SELECT COALESCE(sum(used_bytes), 0) FROM mailboxes m WHERE m.customer_id=c.id), c.outbound_ip`
 
 func scanCustomer(row pgx.Row) (*Customer, error) {
 	c := &Customer{}
 	err := row.Scan(&c.ID, &c.Number, &c.ExternalID, &c.Username, &c.Name, &c.Email, &c.PackageID, &c.PackageName, &c.Status, &c.StatusReason,
-		&c.Lang, &c.CreatedAt, &c.StatusAt, &c.Domains, &c.Mailboxes, &c.Aliases, &c.QuotaMB, &c.UsedBytes, &c.OutboundIP)
+		&c.Lang, &c.CreatedAt, &c.StatusAt, &c.Domains, &c.Mailboxes, &c.Aliases, &c.MailboxesPaid, &c.QuotaMB, &c.UsedBytes, &c.OutboundIP)
 	return c, err
 }
 
@@ -267,7 +285,12 @@ func (s *Store) CreateCustomer(ctx context.Context, n NewCustomer) (*Customer, e
 	if n.ExternalID != "" {
 		ext = n.ExternalID
 	}
-	_, err := s.db.Exec(ctx, `INSERT INTO customers(id, external_id, name, email, package_id) VALUES($1,$2,$3,$4,$5)`,
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	_, err = tx.Exec(ctx, `INSERT INTO customers(id, external_id, name, email, package_id) VALUES($1,$2,$3,$4,$5)`,
 		n.ID, ext, n.Name, n.Email, n.PackageID)
 	if isUnique(err) {
 		return nil, ErrConflict
@@ -276,6 +299,16 @@ func (s *Store) CreateCustomer(ctx context.Context, n NewCustomer) (*Customer, e
 		return nil, errors.New("unknown package")
 	}
 	if err != nil {
+		return nil, err
+	}
+	// The customer starts with the mailboxes the base package includes;
+	// the billing system then sets what was really ordered, per plan
+	// (ReplaceCustomerPackages).
+	if _, err := tx.Exec(ctx, `INSERT INTO customer_packages(customer_id, package_id, mailboxes)
+		SELECT $1, p.id, p.max_mailboxes FROM packages p WHERE p.id=$2 AND p.max_mailboxes > 0`, n.ID, n.PackageID); err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(ctx); err != nil {
 		return nil, err
 	}
 	return s.CustomerByID(ctx, n.ID)
@@ -375,14 +408,30 @@ func (s *Store) UpdateCustomer(ctx context.Context, id, name, email, ext string)
 // SetCustomerPackage moves a customer to another package. Usage above the
 // new limits is kept (nothing is deleted), but nothing new can be added.
 func (s *Store) SetCustomerPackage(ctx context.Context, id string, pkg int64) error {
-	tag, err := s.db.Exec(ctx, `UPDATE customers SET package_id=$2 WHERE id=$1`, id, pkg)
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	tag, err := tx.Exec(ctx, `UPDATE customers SET package_id=$2 WHERE id=$1`, id, pkg)
 	if isFK(err) {
 		return errors.New("unknown package")
 	}
-	if err == nil && tag.RowsAffected() == 0 {
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
 		return ErrNotFound
 	}
-	return err
+	// The plans the customer holds stay as they are; a customer with no
+	// plan at all gets the mailboxes the new base package includes, so
+	// the first mailbox can be made without another step.
+	if _, err := tx.Exec(ctx, `INSERT INTO customer_packages(customer_id, package_id, mailboxes)
+		SELECT $1, p.id, p.max_mailboxes FROM packages p
+		WHERE p.id=$2 AND p.max_mailboxes > 0 AND NOT EXISTS (SELECT 1 FROM customer_packages WHERE customer_id=$1)`, id, pkg); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
 
 // SetCustomerStatus suspends, re-activates or terminates a customer. A
@@ -423,8 +472,8 @@ func (s *Store) SetCustomerStatus(ctx context.Context, id, status, reason string
 }
 
 // lockCustomer locks the customer row for a change that counts against
-// the package and returns the customer's package; it fails for customers
-// that are not active.
+// the package and returns the customer's base package; it fails for
+// customers that are not active.
 func lockCustomer(ctx context.Context, tx pgx.Tx, id string) (*Package, error) {
 	var status string
 	var pkg int64
@@ -435,7 +484,7 @@ func lockCustomer(ctx context.Context, tx pgx.Tx, id string) (*Package, error) {
 	if status != CustomerActive {
 		return nil, ErrInactive
 	}
-	return scanPackage(tx.QueryRow(ctx, `SELECT `+packageCols+` FROM packages WHERE id=$1`, pkg))
+	return scanPackage(tx.QueryRow(ctx, `SELECT `+packageCols+` FROM packages p WHERE p.id=$1`, pkg))
 }
 
 // ---- domains
@@ -731,6 +780,8 @@ type Mailbox struct {
 	ID           string
 	DomainID     string
 	CustomerID   string
+	PackageID    int64  // the mailbox's plan (Mail 10, Mail 100 …)
+	PackageName  string
 	LocalPart    string
 	Address      string
 	DisplayName  string
@@ -747,6 +798,10 @@ type Mailbox struct {
 	CreatedAt    time.Time
 	LastLoginAt  *time.Time
 	AppPasswords int
+	// StaffOpened* is the last time a server administrator opened the
+	// mailbox to help the customer (the mail user sees it too).
+	StaffOpenedAt *time.Time
+	StaffOpenedBy string
 }
 
 // UsedPercent is the share of the quota in use.
@@ -758,15 +813,28 @@ func (m *Mailbox) UsedPercent() int {
 	return min(p, 100)
 }
 
-const mailboxCols = `m.id, m.domain_id, m.customer_id, m.local_part, m.address, m.display_name, m.quota_mb, m.disabled, m.send_blocked,
+const mailboxCols = `m.id, m.domain_id, m.customer_id, m.package_id,
+	(SELECT name FROM packages mp WHERE mp.id=m.package_id),
+	m.local_part, m.address, m.display_name, m.quota_mb, m.disabled, m.send_blocked,
 	m.send_per_hour, m.send_per_day, m.totp_enabled, m.web_password_hash <> '', m.lang, m.used_bytes, m.used_at, m.created_at, m.last_login_at,
-	(SELECT count(*) FROM app_passwords p WHERE p.mailbox_id=m.id AND p.kind='app')`
+	(SELECT count(*) FROM app_passwords p WHERE p.mailbox_id=m.id AND p.kind='app'), m.staff_opened_at, m.staff_opened_by`
 
 func scanMailbox(row pgx.Row) (*Mailbox, error) {
 	m := &Mailbox{}
-	err := row.Scan(&m.ID, &m.DomainID, &m.CustomerID, &m.LocalPart, &m.Address, &m.DisplayName, &m.QuotaMB, &m.Disabled, &m.SendBlocked,
-		&m.SendPerHour, &m.SendPerDay, &m.TOTPEnabled, &m.HasWebPass, &m.Lang, &m.UsedBytes, &m.UsedAt, &m.CreatedAt, &m.LastLoginAt, &m.AppPasswords)
+	err := row.Scan(&m.ID, &m.DomainID, &m.CustomerID, &m.PackageID, &m.PackageName,
+		&m.LocalPart, &m.Address, &m.DisplayName, &m.QuotaMB, &m.Disabled, &m.SendBlocked,
+		&m.SendPerHour, &m.SendPerDay, &m.TOTPEnabled, &m.HasWebPass, &m.Lang, &m.UsedBytes, &m.UsedAt, &m.CreatedAt, &m.LastLoginAt, &m.AppPasswords,
+		&m.StaffOpenedAt, &m.StaffOpenedBy)
 	return m, err
+}
+
+// MarkStaffOpened records that a server administrator opened the mailbox.
+func (s *Store) MarkStaffOpened(ctx context.Context, mailboxID, who string) error {
+	if len(who) > 100 {
+		who = who[:100]
+	}
+	_, err := s.db.Exec(ctx, `UPDATE mailboxes SET staff_opened_at=now(), staff_opened_by=$2 WHERE id=$1`, mailboxID, who)
+	return err
 }
 
 // NewMailbox describes a mailbox to create.
@@ -775,7 +843,8 @@ type NewMailbox struct {
 	LocalPart   string
 	DisplayName string
 	Password    string // web password (webmail and own settings, with 2FA)
-	QuotaMB     int    // 0 = the package default
+	QuotaMB     int    // 0 = the size of the plan
+	PackageID   int64  // the plan of the mailbox; 0 = the customer's base package
 }
 
 // CreateMailbox adds a mailbox to a domain of the scope.
@@ -800,7 +869,12 @@ func (s *Store) CreateMailbox(ctx context.Context, sc Scope, n NewMailbox) (*Mai
 		return nil, err
 	}
 	defer tx.Rollback(ctx)
-	p, err := lockCustomer(ctx, tx, d.CustomerID)
+	base, err := lockCustomer(ctx, tx, d.CustomerID)
+	if err != nil {
+		return nil, err
+	}
+	// the plan of the mailbox: the customer must have a free mailbox of it
+	p, err := mailboxPlan(ctx, tx, d.CustomerID, base, n.PackageID, "")
 	if err != nil {
 		return nil, err
 	}
@@ -810,16 +884,12 @@ func (s *Store) CreateMailbox(ctx context.Context, sc Scope, n NewMailbox) (*Mai
 	if n.QuotaMB < 1 || n.QuotaMB > p.MaxMailboxMB {
 		return nil, fmt.Errorf("the mailbox size must be 1–%d MB", p.MaxMailboxMB)
 	}
-	var count int
 	var sum int64
-	if err := tx.QueryRow(ctx, `SELECT count(*), COALESCE(sum(quota_mb), 0) FROM mailboxes WHERE customer_id=$1`, d.CustomerID).Scan(&count, &sum); err != nil {
+	if err := tx.QueryRow(ctx, `SELECT COALESCE(sum(quota_mb), 0) FROM mailboxes WHERE customer_id=$1`, d.CustomerID).Scan(&sum); err != nil {
 		return nil, err
 	}
-	if count >= p.MaxMailboxes {
-		return nil, ErrLimit
-	}
-	if p.StorageMB > 0 && sum+int64(n.QuotaMB) > int64(p.StorageMB) {
-		return nil, fmt.Errorf("%w: only %d MB of storage are left", ErrLimit, max(int64(p.StorageMB)-sum, 0))
+	if base.StorageMB > 0 && sum+int64(n.QuotaMB) > int64(base.StorageMB) {
+		return nil, fmt.Errorf("%w: only %d MB of storage are left", ErrLimit, max(int64(base.StorageMB)-sum, 0))
 	}
 	addr := n.LocalPart + "@" + d.Name
 	var taken int
@@ -834,8 +904,8 @@ func (s *Store) CreateMailbox(ctx context.Context, sc Scope, n NewMailbox) (*Mai
 		return nil, err
 	}
 	id := NewID()
-	_, err = tx.Exec(ctx, `INSERT INTO mailboxes(id, domain_id, customer_id, local_part, address, display_name, web_password_hash, quota_mb)
-		VALUES($1,$2,$3,$4,$5,$6,$7,$8)`, id, d.ID, d.CustomerID, n.LocalPart, addr, strings.TrimSpace(n.DisplayName), hash, n.QuotaMB)
+	_, err = tx.Exec(ctx, `INSERT INTO mailboxes(id, domain_id, customer_id, package_id, local_part, address, display_name, web_password_hash, quota_mb)
+		VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)`, id, d.ID, d.CustomerID, p.ID, n.LocalPart, addr, strings.TrimSpace(n.DisplayName), hash, n.QuotaMB)
 	if isUnique(err) {
 		return nil, ErrConflict
 	}
@@ -935,10 +1005,13 @@ type MailboxUpdate struct {
 	SendBlocked bool
 	SendPerHour *int
 	SendPerDay  *int
+	PackageID   int64 // another plan for the mailbox; 0 = the one it has
 }
 
-// UpdateMailbox changes a mailbox. Customers cannot change the sending
-// limits or lift a sending block set by staff.
+// UpdateMailbox changes a mailbox. Customers cannot change the plan, the
+// sending limits, or lift a sending block set by staff. A mailbox moved
+// to another plan gets that plan's size, unless another size is asked
+// for.
 func (s *Store) UpdateMailbox(ctx context.Context, sc Scope, id string, u MailboxUpdate) error {
 	m, err := s.MailboxByID(ctx, sc, id)
 	if err != nil {
@@ -952,11 +1025,24 @@ func (s *Store) UpdateMailbox(ctx context.Context, sc Scope, id string, u Mailbo
 		return err
 	}
 	defer tx.Rollback(ctx)
-	p, err := lockCustomer(ctx, tx, m.CustomerID)
+	base, err := lockCustomer(ctx, tx, m.CustomerID)
 	if err != nil {
 		return err
 	}
-	if u.QuotaMB != m.QuotaMB {
+	if sc.IsCustomer() {
+		u.SendBlocked, u.SendPerHour, u.SendPerDay, u.PackageID = m.SendBlocked, m.SendPerHour, m.SendPerDay, m.PackageID
+	}
+	if u.PackageID == 0 {
+		u.PackageID = m.PackageID
+	}
+	p, err := mailboxPlan(ctx, tx, m.CustomerID, base, u.PackageID, m.ID)
+	if err != nil {
+		return err
+	}
+	if u.PackageID != m.PackageID && u.QuotaMB == m.QuotaMB {
+		u.QuotaMB = p.MailboxMB // another plan, so its size
+	}
+	if u.QuotaMB != m.QuotaMB || u.PackageID != m.PackageID {
 		if u.QuotaMB < 1 || u.QuotaMB > p.MaxMailboxMB {
 			return fmt.Errorf("the mailbox size must be 1–%d MB", p.MaxMailboxMB)
 		}
@@ -964,15 +1050,13 @@ func (s *Store) UpdateMailbox(ctx context.Context, sc Scope, id string, u Mailbo
 		if err := tx.QueryRow(ctx, `SELECT COALESCE(sum(quota_mb), 0) FROM mailboxes WHERE customer_id=$1 AND id<>$2`, m.CustomerID, id).Scan(&sum); err != nil {
 			return err
 		}
-		if p.StorageMB > 0 && sum+int64(u.QuotaMB) > int64(p.StorageMB) {
-			return fmt.Errorf("%w: only %d MB of storage are left", ErrLimit, max(int64(p.StorageMB)-sum, 0))
+		if base.StorageMB > 0 && sum+int64(u.QuotaMB) > int64(base.StorageMB) {
+			return fmt.Errorf("%w: only %d MB of storage are left", ErrLimit, max(int64(base.StorageMB)-sum, 0))
 		}
 	}
-	if sc.IsCustomer() {
-		u.SendBlocked, u.SendPerHour, u.SendPerDay = m.SendBlocked, m.SendPerHour, m.SendPerDay
-	}
-	if _, err := tx.Exec(ctx, `UPDATE mailboxes SET display_name=$2, quota_mb=$3, disabled=$4, send_blocked=$5, send_per_hour=$6, send_per_day=$7
-		WHERE id=$1`, id, strings.TrimSpace(u.DisplayName), u.QuotaMB, u.Disabled, u.SendBlocked, u.SendPerHour, u.SendPerDay); err != nil {
+	if _, err := tx.Exec(ctx, `UPDATE mailboxes SET display_name=$2, quota_mb=$3, disabled=$4, send_blocked=$5, send_per_hour=$6, send_per_day=$7,
+			package_id=$8 WHERE id=$1`, id, strings.TrimSpace(u.DisplayName), u.QuotaMB, u.Disabled, u.SendBlocked, u.SendPerHour, u.SendPerDay,
+		u.PackageID); err != nil {
 		return err
 	}
 	if u.Disabled {

@@ -7,31 +7,33 @@
   <section class="panel">
     <h2>{{template "icon" "package"}}{{.T "Name"}}</h2>
     <div class="cols">
-      <label>{{.T "Name"}}<input name="name" value="{{$p.Name}}" required maxlength="100" placeholder="{{.T "for example Business 10"}}"></label>
-      <label>{{.T "Short name"}}<input name="slug" value="{{$p.Slug}}" required maxlength="63" pattern="[a-z0-9][a-z0-9-]*" spellcheck="false" class="mono" placeholder="business-10"><small>{{.T "Lower-case letters, digits and dashes; the billing system uses it."}}</small></label>
+      <label>{{.T "Name"}}<input name="name" value="{{$p.Name}}" required maxlength="100" placeholder="{{.T "for example Mail 10"}}"></label>
+      <label>{{.T "Short name"}}<input name="slug" value="{{$p.Slug}}" required maxlength="63" pattern="[a-z0-9][a-z0-9-]*" spellcheck="false" class="mono" placeholder="mail-10"><small>{{.T "Lower-case letters, digits and dashes; the billing system uses it."}}</small></label>
     </div>
   </section>
   <section class="panel">
-    <h2>{{template "icon" "mail"}}{{.T "Limits"}}</h2>
+    <h2>{{template "icon" "mail"}}{{.T "The mailbox of this plan"}}</h2>
+    <p class="muted">{{.T "A package is the plan of one mailbox, so these apply to every mailbox on it."}}</p>
     <div class="cols">
-      <label>{{.T "Domains"}}<input type="number" name="max_domains" value="{{$p.MaxDomains}}" min="0" max="100000" required></label>
-      <label>{{.T "Mailboxes"}}<input type="number" name="max_mailboxes" value="{{$p.MaxMailboxes}}" min="0" max="1000000" required></label>
-      <label>{{.T "Aliases and forwarders"}}<input type="number" name="max_aliases" value="{{$p.MaxAliases}}" min="0" max="1000000" required></label>
-    </div>
-    <div class="cols">
-      <label>{{.T "Storage of all mailboxes (MB)"}}<input type="number" name="storage_mb" value="{{$p.StorageMB}}" min="0" required><small>{{.T "0 = no limit"}}</small></label>
-      <label>{{.T "Size of a new mailbox (MB)"}}<input type="number" name="mailbox_mb" value="{{$p.MailboxMB}}" min="1" required></label>
+      <label>{{.T "Size of a new mailbox (MB)"}}<input type="number" name="mailbox_mb" value="{{$p.MailboxMB}}" min="1" required><small>{{.T "10240 MB = 10 GB"}}</small></label>
       <label>{{.T "Largest mailbox (MB)"}}<input type="number" name="max_mailbox_mb" value="{{$p.MaxMailboxMB}}" min="1" required></label>
     </div>
-  </section>
-  <section class="panel">
-    <h2>{{template "icon" "shield"}}{{.T "Sending limits"}}</h2>
-    <p class="muted">{{.T "They protect the reputation of the server's address: a mailbox whose password was stolen cannot send thousands of spam messages. Messages over the limit wait in the queue and are sent later."}}</p>
     <div class="cols">
       <label>{{.T "Messages per hour (per mailbox)"}}<input type="number" name="send_per_hour" value="{{$p.SendPerHour}}" min="0" required></label>
       <label>{{.T "Messages per day (per mailbox)"}}<input type="number" name="send_per_day" value="{{$p.SendPerDay}}" min="0" required></label>
     </div>
+    <p class="muted small">{{.T "The sending limits protect the reputation of the server's address: a mailbox whose password was stolen cannot send thousands of spam messages. Messages over the limit wait in the queue and are sent later."}}</p>
+  </section>
+  <section class="panel">
+    <h2>{{template "icon" "customers"}}{{.T "The customer"}}</h2>
+    <p class="muted">{{.T "These apply to the whole customer, and only while this is the customer's base package."}}</p>
     <div class="cols">
+      <label>{{.T "Domains"}}<input type="number" name="max_domains" value="{{$p.MaxDomains}}" min="0" max="100000" required></label>
+      <label>{{.T "Aliases and forwarders"}}<input type="number" name="max_aliases" value="{{$p.MaxAliases}}" min="0" max="1000000" required></label>
+      <label>{{.T "Mailboxes included"}}<input type="number" name="max_mailboxes" value="{{$p.MaxMailboxes}}" min="0" max="100000" required><small>{{.T "A new customer with this base package starts with this many mailboxes of it; the billing system sets what was ordered."}}</small></label>
+    </div>
+    <div class="cols">
+      <label>{{.T "Storage of all mailboxes (MB)"}}<input type="number" name="storage_mb" value="{{$p.StorageMB}}" min="0" required><small>{{.T "0 = no limit"}}</small></label>
       <label>{{.T "Messages per hour (whole customer)"}}<input type="number" name="customer_per_hour" value="{{$p.CustomerPerHour}}" min="0" required></label>
       <label>{{.T "Recipients per message"}}<input type="number" name="rcpt_per_msg" value="{{$p.RcptPerMsg}}" min="1" max="1000" required></label>
     </div>
@@ -39,6 +41,6 @@
   {{if .User.CanWrite}}<div><button class="primary">{{.T "Save"}}</button></div>{{end}}
 </form>
 {{if and (not .Data.New) .User.CanWrite}}
-<form method="post" action="/packages/{{$p.ID}}/delete" class="mt" data-confirm="{{.T "Delete the package %s?" $p.Name}}"><button class="danger">{{template "icon" "trash"}}{{.T "Delete package"}}</button> <small class="muted">{{.T "Only packages without customers can be deleted."}}</small></form>
+<form method="post" action="/packages/{{$p.ID}}/delete" class="mt" data-confirm="{{.T "Delete the package %s?" $p.Name}}"><button class="danger">{{template "icon" "trash"}}{{.T "Delete package"}}</button> <small class="muted">{{.T "Only a package without customers and without mailboxes can be deleted."}}</small></form>
 {{end}}
 {{end}}

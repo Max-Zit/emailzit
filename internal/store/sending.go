@@ -28,15 +28,18 @@ type SendLimits struct {
 }
 
 // SendLimitsFor loads the limits and the current counts of a signed-in
-// mailbox (the SASL user name is its address).
+// mailbox (the SASL user name is its address). What a mailbox may send
+// comes from its own plan (or its own override); what the whole customer
+// may send comes from the customer's base package.
 func (s *Store) SendLimitsFor(ctx context.Context, address string) (*SendLimits, error) {
 	l := &SendLimits{}
 	err := s.db.QueryRow(ctx, `SELECT m.id, m.customer_id, m.send_blocked OR c.status <> 'active' OR m.disabled,
-			COALESCE(m.send_per_hour, p.send_per_hour), COALESCE(m.send_per_day, p.send_per_day), p.customer_per_hour, p.rcpt_per_msg,
+			COALESCE(m.send_per_hour, mp.send_per_hour), COALESCE(m.send_per_day, mp.send_per_day), p.customer_per_hour, p.rcpt_per_msg,
 			(SELECT COALESCE(sum(rcpts), 0) FROM send_log l WHERE l.mailbox_id = m.id AND l.at > now() - interval '1 hour'),
 			(SELECT COALESCE(sum(rcpts), 0) FROM send_log l WHERE l.mailbox_id = m.id AND l.at > now() - interval '1 day'),
 			(SELECT COALESCE(sum(rcpts), 0) FROM send_log l WHERE l.customer_id = m.customer_id AND l.at > now() - interval '1 hour')
 		FROM mailboxes m JOIN customers c ON c.id = m.customer_id JOIN packages p ON p.id = c.package_id
+			JOIN packages mp ON mp.id = m.package_id
 		WHERE m.address = $1`, strings.ToLower(address)).
 		Scan(&l.MailboxID, &l.CustomerID, &l.Blocked, &l.PerHour, &l.PerDay, &l.CustomerPerHour, &l.RcptPerMsg, &l.SentHour, &l.SentDay, &l.CustomerHour)
 	if err != nil {

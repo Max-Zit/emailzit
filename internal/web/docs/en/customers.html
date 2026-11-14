@@ -1,10 +1,12 @@
 <h1>Customers and packages</h1>
-<h2>Packages</h2>
-<p>A package holds the limits a customer gets: how many domains, mailboxes and aliases, how much storage all mailboxes may use together, the size of a new mailbox and the largest one, and the <b>sending limits</b>. Billing systems refer to a package by its short name (for example <code>business-10</code>).</p>
+<h2>Packages are mailbox plans</h2>
+<p>A package is the plan of <b>one mailbox</b> (Mail 10, Mail 100 …): the size of a new mailbox, the largest size it may have, and how much it may send per hour and per day. Mail is sold per mailbox, so a customer can hold several plans at the same time — for example three Mail 10, two Mail 100 and one Mail 25. Billing systems refer to a package by its short name (for example <code>mail-10</code>).</p>
+<p>Every customer also has a <b>base package</b>. It holds what belongs to the whole customer: how many domains and aliases, how much storage all mailboxes may use together, how much the customer may send per hour and how many recipients one message may have. A new customer starts with as many mailboxes of the base package as that package includes.</p>
 <ul>
-  <li><b>Messages per hour / per day (per mailbox)</b> and <b>per hour for the whole customer</b> protect the reputation of the server's address: a mailbox whose password was stolen cannot send thousands of spam messages. Messages over the limit wait in the queue.</li>
+  <li><b>Mail plans</b> on the customer's page say how many mailboxes of each plan the customer has and how many are in use. A new mailbox can be made while a plan still has a free one, and it gets that plan's size and sending limits; staff can move a mailbox to another plan later. The REST API sets what was ordered with <code>PUT /api/v1/customers/{id}/mailbox-packages</code>.</li>
+  <li><b>Messages per hour and per day</b> come from the mailbox's own plan, <b>per hour for the whole customer</b> from the base package. They protect the reputation of the server's address: a mailbox whose password was stolen cannot send thousands of spam messages. Messages over the limit wait in the queue.</li>
   <li><b>Recipients per message</b> stops one message from going to thousands of addresses.</li>
-  <li>Changing a customer to a smaller package deletes nothing; nothing new can be added above the new limits.</li>
+  <li>A plan can be taken away only when no mailbox of it is left, and a package with mailboxes cannot be deleted.</li>
 </ul>
 <h2>Customers</h2>
 <p>A customer owns domains and mailboxes. Every customer's mail is stored under its <b>own system user</b>, so even a fault in the mail software cannot let one customer read another customer's mail. A customer can never route mail into another customer's mailboxes, send as their addresses or see their domains.</p>

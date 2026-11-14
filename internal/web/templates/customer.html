@@ -6,7 +6,7 @@
 {{if ne $c.Status "active"}}<div class="flash warn" role="status">{{template "icon" "alert"}}<span>{{if eq $c.Status "suspended"}}{{.T "Suspended since %s: mail is still received, but nobody of this customer can sign in or send." (.Time $c.StatusAt)}}{{else}}{{.T "Terminated since %s: mail for the customer's domains is refused; the data is kept until it is deleted." (.Time $c.StatusAt)}}{{end}}{{with $c.StatusReason}} {{$.T "Reason:"}} {{.}}{{end}}</span></div>{{end}}
 <div class="tiles">
   <div class="tile"><span class="tile-label">{{template "icon" "globe"}}{{.T "Domains"}}</span><b>{{$c.Domains}}</b><small>{{.T "of %d" .Data.Package.MaxDomains}}</small></div>
-  <div class="tile"><span class="tile-label">{{template "icon" "mail"}}{{.T "Mailboxes"}}</span><b>{{$c.Mailboxes}}</b><small>{{.T "of %d" .Data.Package.MaxMailboxes}}</small></div>
+  <div class="tile"><span class="tile-label">{{template "icon" "mail"}}{{.T "Mailboxes"}}</span><b>{{$c.Mailboxes}}</b><small>{{.T "of %d" $c.MailboxesPaid}}</small></div>
   <div class="tile"><span class="tile-label">{{template "icon" "route"}}{{.T "Aliases and forwarders"}}</span><b>{{$c.Aliases}}</b><small>{{.T "of %d" .Data.Package.MaxAliases}}</small></div>
   <div class="tile"><span class="tile-label">{{template "icon" "disk"}}{{.T "Storage given to mailboxes"}}</span><b>{{mb $c.QuotaMB}}</b><small>{{.T "%s used" (bytes $c.UsedBytes)}}</small></div>
 </div>
@@ -18,12 +18,35 @@
       <label>{{.T "Contact e-mail"}}<input type="email" name="email" value="{{$c.Email}}" maxlength="200"></label>
     </div>
     <div class="cols">
-      <label>{{.T "Package"}}<select name="package">{{range .Data.Packages}}<option value="{{.ID}}" {{if eq .ID $c.PackageID}}selected{{end}}>{{.Name}}</option>{{end}}</select><small>{{.T "With a smaller package nothing is deleted, but nothing new can be added above the limits."}}</small></label>
+      <label>{{.T "Base package"}}<select name="package">{{range .Data.Packages}}<option value="{{.ID}}" {{if eq .ID $c.PackageID}}selected{{end}}>{{.Name}}</option>{{end}}</select><small>{{.T "It holds the limits of the whole customer (domains, forwarders, storage) and is the plan a new mailbox gets. The mailboxes themselves are counted per plan below."}}</small></label>
       <label>{{.T "Billing ID"}}<input name="external_id" value="{{$c.ExternalID}}" maxlength="100" spellcheck="false" class="mono"></label>
     </div>
     <dl class="facts"><dt>{{.T "Customer ID"}}</dt><dd class="mono small">{{$c.ID}}</dd><dt>{{.T "Added"}}</dt><dd>{{.Time $c.CreatedAt}}</dd></dl>
     {{if .User.CanWrite}}<div><button class="primary">{{.T "Save"}}</button></div>{{end}}
   </form>
+</section>
+<section class="panel">
+  <div class="panelhead"><h2>{{template "icon" "package"}}{{.T "Mail plans"}}</h2><span class="muted small">{{.T "%d of %d mailboxes in use" $c.Mailboxes $c.MailboxesPaid}}</span></div>
+  <p class="muted">{{.T "Mail is sold per mailbox, so a customer can hold several plans at once: for example three Mail 10, two Mail 100 and one Mail 25. Every mailbox has the size and the sending limits of its own plan."}}</p>
+  {{if .Data.Plans}}
+  <div class="table-wrap"><table>
+    <thead><tr><th>{{.T "Plan"}}</th><th class="hide-sm">{{.T "Mailbox size"}}</th><th class="num">{{.T "Mailboxes"}}</th><th class="num">{{.T "In use"}}</th></tr></thead>
+    <tbody>{{range .Data.Plans}}<tr>
+      <td><a href="/packages/{{.Package.ID}}">{{.Package.Name}}</a></td>
+      <td class="hide-sm">{{mb (i64 .Package.MailboxMB)}}</td>
+      <td class="num">{{if $.User.CanWrite}}<form method="post" action="/customers/{{$c.ID}}/plans" class="row tight"><input type="hidden" name="package" value="{{.Package.ID}}"><input type="number" name="mailboxes" value="{{.Mailboxes}}" min="0" max="100000" class="num-sm" aria-label="{{$.T "Mailboxes"}}"><button class="ghost sm">{{$.T "Save"}}</button></form>{{else}}{{.Mailboxes}}{{end}}</td>
+      <td class="num">{{.Used}}</td>
+    </tr>{{end}}</tbody>
+  </table></div>
+  <p class="muted small">{{.T "0 mailboxes removes the plan; a plan whose mailboxes exist stays until they are deleted."}}</p>
+  {{else}}<p class="muted">{{.T "No plan yet. Add one, then mailboxes can be made."}}</p>{{end}}
+  {{if .User.CanWrite}}
+  <form method="post" action="/customers/{{$c.ID}}/plans" class="row mt">
+    <label class="inline">{{.T "Plan"}}<select name="package">{{range .Data.Packages}}<option value="{{.ID}}">{{.Name}} · {{mb (i64 .MailboxMB)}}</option>{{end}}</select></label>
+    <label class="inline">{{.T "Mailboxes"}}<input type="number" name="mailboxes" value="1" min="0" max="100000" class="num-sm"></label>
+    <div><button class="primary">{{template "icon" "plus"}}{{.T "Add plan"}}</button></div>
+  </form>
+  {{end}}
 </section>
 <section class="panel">
   <h2>{{template "icon" "globe"}}{{.T "Domains"}}</h2>

@@ -1,10 +1,12 @@
 <h1>Clients et forfaits</h1>
-<h2>Forfaits</h2>
-<p>Un forfait contient les limites qu'obtient un client : combien de domaines, de boîtes aux lettres et d'alias, combien de stockage toutes les boîtes peuvent utiliser ensemble, la taille d'une nouvelle boîte et celle de la plus grande, ainsi que les <b>limites d'envoi</b>. Les systèmes de facturation désignent un forfait par son nom court (par exemple <code>business-10</code>).</p>
+<h2>Un forfait vaut pour une boîte</h2>
+<p>Un forfait est celui d'<b>une seule boîte</b> (Mail 10, Mail 100 …) : la taille d'une nouvelle boîte, la taille maximale et ce qu'elle peut envoyer par heure et par jour. Le courrier se vend par boîte, donc un client peut avoir plusieurs forfaits en même temps — par exemple trois Mail 10, deux Mail 100 et un Mail 25. Les systèmes de facturation désignent un forfait par son nom court (par exemple <code>mail-10</code>).</p>
+<p>Chaque client a en plus un <b>forfait de base</b>. Il contient ce qui vaut pour tout le client : combien de domaines et d'alias, combien de stockage toutes les boîtes peuvent utiliser ensemble, ce que le client peut envoyer par heure et combien de destinataires un message peut avoir. Un nouveau client commence avec autant de boîtes du forfait de base que ce forfait en comprend.</p>
 <ul>
-  <li><b>Messages par heure / par jour (par boîte)</b> et <b>par heure pour tout le client</b> protègent la réputation de l'adresse du serveur : une boîte dont le mot de passe a été volé ne peut pas envoyer des milliers de messages de spam. Les messages au-delà de la limite attendent dans la file d'attente.</li>
+  <li><b>Forfaits de messagerie</b> sur la page du client indique combien de boîtes de chaque forfait le client a et combien sont utilisées. Une nouvelle boîte peut être créée tant qu'un forfait en a une de libre, et elle reçoit la taille et les limites d'envoi de ce forfait ; le personnel peut déplacer une boîte vers un autre forfait plus tard. L'API REST inscrit la commande avec <code>PUT /api/v1/customers/{id}/mailbox-packages</code>.</li>
+  <li><b>Messages par heure et par jour</b> viennent du forfait de la boîte elle-même, <b>par heure pour tout le client</b> du forfait de base. Ils protègent la réputation de l'adresse du serveur : une boîte dont le mot de passe a été volé ne peut pas envoyer des milliers de messages de spam. Les messages au-delà de la limite attendent dans la file.</li>
   <li><b>Destinataires par message</b> empêche un message de partir vers des milliers d'adresses.</li>
-  <li>Passer un client à un forfait plus petit ne supprime rien ; simplement, rien de nouveau ne peut être ajouté au-delà des nouvelles limites.</li>
+  <li>Un forfait ne peut être retiré que lorsqu'il ne reste aucune de ses boîtes, et un forfait avec des boîtes ne peut pas être supprimé.</li>
 </ul>
 <h2>Clients</h2>
 <p>Un client possède des domaines et des boîtes aux lettres. Le courrier de chaque client est stocké sous son <b>propre utilisateur système</b>, de sorte que même un défaut du logiciel de messagerie ne peut pas permettre à un client de lire le courrier d'un autre client. Un client ne peut jamais acheminer du courrier vers les boîtes d'un autre client, envoyer avec ses adresses ni voir ses domaines.</p>

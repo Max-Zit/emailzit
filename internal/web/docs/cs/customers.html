@@ -1,10 +1,12 @@
 <h1>Zákazníci a balíčky</h1>
-<h2>Balíčky</h2>
-<p>Balíček obsahuje limity, které zákazník dostane: kolik domén, schránek a aliasů, kolik úložiště smějí všechny schránky dohromady použít, velikost nové schránky a největší schránky a <b>limity odesílání</b>. Fakturační systémy odkazují na balíček jeho krátkým názvem (například <code>business-10</code>).</p>
+<h2>Balíček platí pro jednu schránku</h2>
+<p>Balíček je balíčkem <b>jedné schránky</b> (Mail 10, Mail 100 …): velikost nové schránky, největší možná velikost a kolik smí poslat za hodinu a za den. Pošta se prodává po schránkách, takže jeden zákazník může mít několik balíčků současně — například tři Mail 10, dva Mail 100 a jeden Mail 25. Fakturační systémy odkazují na balíček jeho krátkým názvem (například <code>mail-10</code>).</p>
+<p>Každý zákazník má navíc <b>základní balíček</b>. Obsahuje to, co platí pro celého zákazníka: kolik domén a aliasů, kolik úložiště smějí všechny schránky dohromady zabrat, kolik smí zákazník poslat za hodinu a kolik příjemců může mít jedna zpráva. Nový zákazník začíná s tolika schránkami základního balíčku, kolik jich tento balíček obsahuje.</p>
 <ul>
-  <li><b>Zpráv za hodinu / za den (na schránku)</b> a <b>za hodinu pro celého zákazníka</b> chrání pověst adresy serveru: schránka, jejíž heslo bylo ukradeno, nemůže odeslat tisíce spamových zpráv. Zprávy nad limit čekají ve frontě.</li>
-  <li><b>Příjemců na zprávu</b> zabraňuje tomu, aby jedna zpráva šla na tisíce adres.</li>
-  <li>Převedení zákazníka na menší balíček nic nesmaže; nad nové limity jen nelze přidat nic nového.</li>
+  <li><b>Poštovní tarify</b> na stránce zákazníka říkají, kolik schránek každého balíčku zákazník má a kolik je jich obsazeno. Novou schránku lze vytvořit, dokud má balíček volnou, a dostane velikost a limity odesílání tohoto balíčku; personál může schránku později přesunout do jiného balíčku. REST API zapisuje objednávku voláním <code>PUT /api/v1/customers/{id}/mailbox-packages</code>.</li>
+  <li><b>Zpráv za hodinu a za den</b> pochází z balíčku samotné schránky, <b>za hodinu pro celého zákazníka</b> ze základního balíčku. Chrání reputaci adresy serveru: schránka s ukradeným heslem nepošle tisíce spamových zpráv. Zprávy nad limit čekají ve frontě.</li>
+  <li><b>Příjemců na zprávu</b> zabrání tomu, aby jedna zpráva šla na tisíce adres.</li>
+  <li>Balíček lze zákazníkovi odebrat jen tehdy, když nezůstala žádná jeho schránka, a balíček se schránkami nelze smazat.</li>
 </ul>
 <h2>Zákazníci</h2>
 <p>Zákazník vlastní domény a schránky. Pošta každého zákazníka je uložena pod jeho <b>vlastním systémovým uživatelem</b>, takže ani chyba v poštovním softwaru nemůže jednomu zákazníkovi umožnit číst poštu jiného zákazníka. Zákazník nikdy nemůže směrovat poštu do schránek jiného zákazníka, odesílat jako jeho adresy ani vidět jeho domény.</p>

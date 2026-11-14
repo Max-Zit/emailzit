@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -83,6 +84,7 @@ func (s *Server) apiHandler() http.Handler {
 	need("POST /api/v1/customers/{id}/unsuspend", store.ScopeCustomersWrite, s.apiCustomerStatus(store.CustomerActive))
 	need("POST /api/v1/customers/{id}/terminate", store.ScopeCustomersWrite, s.apiCustomerStatus(store.CustomerTerminated))
 	need("PUT /api/v1/customers/{id}/package", store.ScopeCustomersWrite, s.apiCustomerPackage)
+	need("PUT /api/v1/customers/{id}/mailbox-packages", store.ScopeCustomersWrite, s.apiCustomerMailboxPackages)
 	need("GET /api/v1/customers/{id}/usage", store.ScopeUsage, s.apiCustomerUsage)
 	need("PUT /api/v1/customers/{id}/web-uids", store.ScopeCustomersWrite, s.apiWebUIDs)
 	need("POST /api/v1/customers/{id}/export", store.ScopeCustomersWrite, s.apiExport)
@@ -175,10 +177,19 @@ type apiCustomer struct {
 	Name       string    `json:"name"`
 	Email      string    `json:"email,omitempty"`
 	Package    string    `json:"package"`
+	Plans      []apiPlan `json:"mailbox_packages"`
 	Status     string    `json:"status"`
 	Reason     string    `json:"status_reason,omitempty"`
 	CreatedAt  time.Time `json:"created_at"`
 	StatusAt   time.Time `json:"status_at"`
+}
+
+// apiPlan is one mail plan of a customer: a package is the plan of one
+// mailbox, so a customer holds as many of each as were ordered.
+type apiPlan struct {
+	Package   string `json:"package"`
+	Mailboxes int    `json:"mailboxes"`
+	Used      int    `json:"used"`
 }
 
 func (s *Server) toAPICustomer(ctx context.Context, c *store.Customer) apiCustomer {
@@ -187,7 +198,21 @@ func (s *Server) toAPICustomer(ctx context.Context, c *store.Customer) apiCustom
 		slug = p.Slug
 	}
 	return apiCustomer{ID: c.ID, ExternalID: c.ExternalID, Username: c.Username, Name: c.Name, Email: c.Email, Package: slug,
-		Status: c.Status, Reason: c.StatusReason, CreatedAt: c.CreatedAt.UTC(), StatusAt: c.StatusAt.UTC()}
+		Plans: s.customerPlans(ctx, c.ID), Status: c.Status, Reason: c.StatusReason, CreatedAt: c.CreatedAt.UTC(), StatusAt: c.StatusAt.UTC()}
+}
+
+// customerPlans lists the customer's mail plans for the API.
+func (s *Server) customerPlans(ctx context.Context, id string) []apiPlan {
+	out := []apiPlan{}
+	list, err := s.store.CustomerPackages(ctx, store.Staff, id)
+	if err != nil {
+		s.log.Warn("api: the mail plans of a customer cannot be read", "customer", id, "err", err)
+		return out
+	}
+	for _, p := range list {
+		out = append(out, apiPlan{Package: p.Package.Slug, Mailboxes: p.Mailboxes, Used: p.Used})
+	}
+	return out
 }
 
 func (s *Server) apiPackages(w http.ResponseWriter, r *http.Request) {
@@ -432,6 +457,44 @@ func (s *Server) apiCustomerPackage(w http.ResponseWriter, r *http.Request) {
 	s.apiAudit(r, "customer.package", "customer:"+c.ID, "package %s via API", p.Slug)
 	c, _ = s.store.CustomerByID(r.Context(), c.ID)
 	writeJSON(w, http.StatusOK, s.toAPICustomer(r.Context(), c))
+}
+
+// apiCustomerMailboxPackages replaces the customer's mail plans: how many
+// mailboxes of each package the customer has. Mail is sold per mailbox,
+// so the billing system sends what was ordered, for example
+// {"packages":[{"package":"mail-10","mailboxes":3},{"package":"mail-100","mailboxes":2}]}.
+// A plan that is left out is removed, which works while no mailbox uses
+// it.
+func (s *Server) apiCustomerMailboxPackages(w http.ResponseWriter, r *http.Request) {
+	c := s.apiLoadCustomer(w, r)
+	if c == nil {
+		return
+	}
+	var in struct {
+		Packages []struct {
+			Package   string `json:"package"`
+			Mailboxes int    `json:"mailboxes"`
+		} `json:"packages"`
+	}
+	if !decodeJSON(w, r, &in) {
+		return
+	}
+	counts, detail := map[int64]int{}, make([]string, 0, len(in.Packages))
+	for _, p := range in.Packages {
+		pkg, err := s.store.PackageBySlug(r.Context(), p.Package)
+		if err != nil {
+			apiError(w, http.StatusBadRequest, "invalid", "unknown package", "packages")
+			return
+		}
+		counts[pkg.ID] += p.Mailboxes
+		detail = append(detail, fmt.Sprintf("%s=%d", pkg.Slug, p.Mailboxes))
+	}
+	if err := s.store.ReplaceCustomerPackages(r.Context(), c.ID, counts); err != nil {
+		storeAPIError(w, err)
+		return
+	}
+	s.apiAudit(r, "customer.plans", "customer:"+c.ID, "mail plans via API: %s", strings.Join(detail, ", "))
+	writeJSON(w, http.StatusOK, map[string]any{"customer_id": c.ID, "mailbox_packages": s.customerPlans(r.Context(), c.ID)})
 }
 
 func (s *Server) apiCustomerUsage(w http.ResponseWriter, r *http.Request) {

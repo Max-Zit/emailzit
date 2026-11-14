@@ -7,10 +7,11 @@
 <p><b>Catch-all</b> (Mail an unbekannte Adressen) ist standardmäßig aus: Unbekannte Adressen werden schon während des SMTP-Dialogs abgewiesen, was Spam und Backscatter fernhält. Schalten Sie es nur ein, wenn es wirklich nötig ist.</p>
 <h2>Postfächer</h2>
 <ul>
-  <li>Ein Postfach hat eine Größe (Quota) innerhalb des Pakets; die Belegung wird alle zehn Minuten aktualisiert. Wenn ein Postfach 80 % und erneut 95 % seiner Quota erreicht, legt der Server eine Warnung in seinen Posteingang (in der Sprache des Postfachs); nachdem es unter 70 % gefallen ist, kann es erneut gewarnt werden.</li>
+  <li>Ein Postfach hat eine Größe (Quota) aus seinem <b>Tarif</b> (Mail 10, Mail 100 …), der auch festlegt, wie viel es senden darf; die Belegung wird alle zehn Minuten aktualisiert. Wenn ein Postfach 80 % und erneut 95 % seiner Quota erreicht, legt der Server eine Warnung in seinen Posteingang (in der Sprache des Postfachs); nachdem es unter 70 % gefallen ist, kann es erneut gewarnt werden.</li>
   <li>Sein <b>Passwort</b> gilt nur für Webmail und die eigenen Seiten des Benutzers, immer mit Zwei-Faktor-Anmeldung.</li>
   <li>Mailprogramme verwenden <b>App-Passwörter</b>, die der Mail-Benutzer unter <code>/mail</code> erstellt — eines pro Programm oder Gerät. Ein verlorenes Telefon bedeutet, ein App-Passwort zu widerrufen, nicht alles zu ändern.</li>
   <li>Ein <b>deaktiviertes</b> Postfach empfängt weiterhin Mail, aber niemand kann sich anmelden. Das Personal kann auch <b>das Senden sperren</b> (zum Beispiel nach Missbrauch) und für ein einzelnes Postfach andere Sendegrenzen festlegen.</li>
+  <li>Das Personal kann ein <b>Postfach öffnen</b>, so wie in einem Hosting-Panel: Das Webmail dieses Postfachs öffnet sich eine halbe Stunde lang ohne dessen Passwort, und Passwort und zweiter Faktor bleiben unverändert. Gedacht für die Frage des Kunden, ob eine Nachricht angekommen ist. Jedes Mal steht im Prüfprotokoll, und die eigene Seite des Postfachbenutzers zeigt, wann es zuletzt geschehen ist.</li>
   <li>Beim Löschen eines Postfachs wird seine Mail für 7 Tage in einen Papierkorb-Ordner auf dem Server verschoben, danach ist sie weg.</li>
 </ul>
 <h2>Aliase und Weiterleitungen</h2>

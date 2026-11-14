@@ -7,10 +7,11 @@
 <p>Le <b>catch-all</b> (courrier pour les adresses inconnues) est désactivé par défaut : les adresses inconnues sont refusées pendant le dialogue SMTP, ce qui tient à l'écart le spam et le backscatter. Ne l'activez que si c'est vraiment nécessaire.</p>
 <h2>Boîtes aux lettres</h2>
 <ul>
-  <li>Une boîte aux lettres a une taille (quota) dans le cadre du forfait ; l'occupation est mise à jour toutes les dix minutes. Lorsqu'une boîte atteint 80 % puis 95 % de son quota, le serveur dépose un avertissement dans sa boîte de réception (dans la langue de la boîte) ; après être redescendue sous 70 %, elle peut être avertie à nouveau.</li>
+  <li>Une boîte a une taille (quota) venant de son <b>forfait</b> (Mail 10, Mail 100 …), qui fixe aussi ce qu'elle peut envoyer ; l'utilisation est mise à jour toutes les dix minutes. Quand une boîte atteint 80 % puis 95 % de son quota, le serveur met un avertissement dans sa boîte de réception (dans la langue de la boîte) ; une fois redescendue sous 70 %, elle peut être avertie de nouveau.</li>
   <li>Son <b>mot de passe</b> sert uniquement au webmail et aux pages personnelles de l'utilisateur, toujours avec la connexion à deux facteurs.</li>
   <li>Les logiciels de messagerie utilisent des <b>mots de passe d'application</b> que l'utilisateur crée sur <code>/mail</code> — un par logiciel ou appareil. Un téléphone perdu signifie révoquer un mot de passe d'application, pas tout changer.</li>
   <li>Une boîte <b>désactivée</b> continue de recevoir du courrier, mais personne ne peut s'y connecter. Le personnel peut aussi <b>bloquer l'envoi</b> (par exemple après un abus) et définir d'autres limites d'envoi pour une seule boîte.</li>
+  <li>Le personnel peut <b>ouvrir une boîte</b> depuis sa page, comme dans un panneau d'hébergement : le webmail de cette boîte s'ouvre pour une demi-heure sans son mot de passe, et le mot de passe comme le deuxième facteur restent intacts. C'est pour la question du client « est-ce que le message est arrivé ? ». Chaque fois est inscrit au journal d'audit, et la page de l'utilisateur indique quand cela s'est produit la dernière fois.</li>
   <li>La suppression d'une boîte déplace son courrier dans un dossier corbeille sur le serveur pendant 7 jours, puis il disparaît.</li>
 </ul>
 <h2>Alias et transferts</h2>

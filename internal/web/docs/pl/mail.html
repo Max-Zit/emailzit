@@ -7,10 +7,11 @@
 <p><b>Catch-all</b> (poczta dla nieznanych adresów) jest domyślnie wyłączony: nieznane adresy są odrzucane podczas dialogu SMTP, co trzyma z dala spam i backscatter. Włączaj go tylko wtedy, gdy naprawdę jest potrzebny.</p>
 <h2>Skrzynki</h2>
 <ul>
-  <li>Skrzynka ma rozmiar (limit miejsca) w ramach pakietu; zajętość jest aktualizowana co dziesięć minut. Gdy skrzynka osiągnie 80 % i ponownie 95 % swojego limitu, serwer umieszcza ostrzeżenie w jej Inbox (w języku skrzynki); gdy zajętość spadnie poniżej 70 %, skrzynka może zostać ostrzeżona ponownie.</li>
+  <li>Skrzynka ma rozmiar (limit) ze swojego <b>pakietu</b> (Mail 10, Mail 100 …), który ustala też, ile może wysłać; zajętość odświeża się co dziesięć minut. Gdy skrzynka osiągnie 80 %, a potem 95 % limitu, serwer wstawia ostrzeżenie do jej skrzynki odbiorczej (w języku skrzynki); po spadku poniżej 70 % może zostać ostrzeżona ponownie.</li>
   <li>Jej <b>hasło</b> służy tylko do webmaila i własnych stron użytkownika, zawsze z logowaniem dwuskładnikowym.</li>
   <li>Programy pocztowe używają <b>haseł aplikacji</b>, które użytkownik poczty tworzy na <code>/mail</code> — jedno na program lub urządzenie. Zgubiony telefon oznacza unieważnienie jednego hasła aplikacji, a nie zmianę wszystkiego.</li>
   <li><b>Wyłączona</b> skrzynka nadal odbiera pocztę, ale nikt nie może się zalogować. Personel może też <b>zablokować wysyłanie</b> (na przykład po nadużyciu) i ustawić inne limity wysyłania dla jednej skrzynki.</li>
+  <li>Personel może <b>otworzyć skrzynkę</b> z jej strony, tak jak w panelu hostingowym: webmail tej skrzynki otwiera się na pół godziny bez jej hasła, a hasło i drugi składnik pozostają nietknięte. Służy to pytaniu klienta, czy wiadomość dotarła. Każdy raz jest w dzienniku audytu, a własna strona użytkownika pokazuje, kiedy zdarzyło się to ostatnio.</li>
   <li>Usunięcie skrzynki przenosi jej pocztę do folderu kosza na serwerze na 7 dni, potem poczta znika.</li>
 </ul>
 <h2>Aliasy i przekierowania</h2>

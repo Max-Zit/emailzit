@@ -7,10 +7,11 @@
 <p>El <b>catch-all</b> (correo para direcciones desconocidas) está desactivado de forma predeterminada: las direcciones desconocidas se rechazan durante el diálogo SMTP, lo que mantiene alejados el spam y el backscatter. Actívelo solo cuando sea realmente necesario.</p>
 <h2>Buzones</h2>
 <ul>
-  <li>Un buzón tiene un tamaño (cuota) dentro del plan; el uso se actualiza cada diez minutos. Cuando un buzón alcanza el 80 % y de nuevo el 95 % de su cuota, el servidor deja un aviso en su bandeja de entrada (en el idioma del buzón); después de bajar del 70 % puede volver a ser avisado.</li>
+  <li>Un buzón tiene un tamaño (cuota) de su <b>plan</b> (Mail 10, Mail 100 …), que también fija cuánto puede enviar; el uso se actualiza cada diez minutos. Cuando un buzón llega al 80 % y de nuevo al 95 % de su cuota, el servidor pone un aviso en su bandeja de entrada (en el idioma del buzón); cuando baja del 70 % puede avisarse otra vez.</li>
   <li>Su <b>contraseña</b> sirve solo para el webmail y las páginas propias del usuario, siempre con inicio de sesión en dos pasos.</li>
   <li>Los programas de correo usan <b>contraseñas de aplicación</b> que el usuario de correo crea en <code>/mail</code>, una por programa o dispositivo. Perder un teléfono significa revocar una contraseña de aplicación, no cambiarlo todo.</li>
   <li>Un buzón <b>desactivado</b> sigue recibiendo correo, pero nadie puede iniciar sesión. El personal también puede <b>bloquear el envío</b> (por ejemplo, tras un abuso) y fijar otros límites de envío para un solo buzón.</li>
+  <li>El personal puede <b>abrir un buzón</b> desde su página, como en un panel de hosting: el webmail de ese buzón se abre durante media hora sin su contraseña, y la contraseña y el segundo factor quedan intactos. Es para cuando el cliente pregunta si llegó un mensaje. Cada vez queda en el registro de auditoría, y la página del propio usuario dice cuándo ocurrió la última vez.</li>
   <li>Al eliminar un buzón, su correo se mueve a una carpeta de papelera en el servidor durante 7 días; después desaparece.</li>
 </ul>
 <h2>Alias y reenvíos</h2>

@@ -1,10 +1,12 @@
 <h1>Kunden und Pakete</h1>
-<h2>Pakete</h2>
-<p>Ein Paket enthält die Grenzen, die ein Kunde bekommt: wie viele Domains, Postfächer und Aliase, wie viel Speicher alle Postfächer zusammen belegen dürfen, die Größe eines neuen Postfachs und des größten, und die <b>Sendegrenzen</b>. Abrechnungssysteme verweisen auf ein Paket über seinen Kurznamen (zum Beispiel <code>business-10</code>).</p>
+<h2>Pakete sind Postfachtarife</h2>
+<p>Ein Paket ist der Tarif <b>eines Postfachs</b> (Mail 10, Mail 100 …): die Größe eines neuen Postfachs, die größtmögliche Größe und wie viel es pro Stunde und pro Tag senden darf. E-Mail wird pro Postfach verkauft, deshalb kann ein Kunde mehrere Tarife gleichzeitig haben — zum Beispiel drei Mail 10, zwei Mail 100 und ein Mail 25. Abrechnungssysteme verweisen auf ein Paket über seinen Kurznamen (zum Beispiel <code>mail-10</code>).</p>
+<p>Jeder Kunde hat außerdem ein <b>Basispaket</b>. Es enthält, was für den ganzen Kunden gilt: wie viele Domains und Aliase, wie viel Speicher alle Postfächer zusammen belegen dürfen, wie viel der Kunde pro Stunde senden darf und wie viele Empfänger eine Nachricht haben darf. Ein neuer Kunde beginnt mit so vielen Postfächern des Basispakets, wie dieses Paket enthält.</p>
 <ul>
-  <li><b>Nachrichten pro Stunde / pro Tag (pro Postfach)</b> und <b>pro Stunde für den ganzen Kunden</b> schützen den Ruf der Adresse des Servers: Ein Postfach, dessen Passwort gestohlen wurde, kann keine Tausende Spam-Nachrichten senden. Nachrichten über der Grenze warten in der Warteschlange.</li>
+  <li><b>E-Mail-Tarife</b> auf der Kundenseite sagen, wie viele Postfächer jedes Tarifs der Kunde hat und wie viele davon belegt sind. Ein neues Postfach lässt sich anlegen, solange ein Tarif noch ein freies hat, und es bekommt die Größe und die Sendegrenzen dieses Tarifs; das Personal kann ein Postfach später in einen anderen Tarif verschieben. Die REST-API setzt die Bestellung mit <code>PUT /api/v1/customers/{id}/mailbox-packages</code>.</li>
+  <li><b>Nachrichten pro Stunde und pro Tag</b> kommen aus dem Tarif des Postfachs, <b>pro Stunde für den ganzen Kunden</b> aus dem Basispaket. Sie schützen den Ruf der Adresse des Servers: Ein Postfach, dessen Passwort gestohlen wurde, kann keine Tausende Spam-Nachrichten senden. Nachrichten über der Grenze warten in der Warteschlange.</li>
   <li><b>Empfänger pro Nachricht</b> verhindert, dass eine Nachricht an Tausende Adressen geht.</li>
-  <li>Wenn ein Kunde auf ein kleineres Paket wechselt, wird nichts gelöscht; oberhalb der neuen Grenzen kann nur nichts Neues hinzugefügt werden.</li>
+  <li>Ein Tarif lässt sich nur entfernen, wenn kein Postfach davon übrig ist, und ein Paket mit Postfächern kann nicht gelöscht werden.</li>
 </ul>
 <h2>Kunden</h2>
 <p>Einem Kunden gehören Domains und Postfächer. Die Mail jedes Kunden wird unter seinem <b>eigenen Systembenutzer</b> gespeichert, sodass selbst ein Fehler in der Mailsoftware einen Kunden nicht die Mail eines anderen Kunden lesen lässt. Ein Kunde kann nie Mail in die Postfächer eines anderen Kunden leiten, als dessen Adressen senden oder dessen Domains sehen.</p>

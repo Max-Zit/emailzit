@@ -1,10 +1,12 @@
 <h1>Müşteriler ve paketler</h1>
-<h2>Paketler</h2>
-<p>Bir paket, müşterinin aldığı sınırları içerir: kaç alan adı, posta kutusu ve takma ad, tüm posta kutularının birlikte ne kadar depolama kullanabileceği, yeni bir posta kutusunun ve en büyüğünün boyutu ve <b>gönderim sınırları</b>. Faturalama sistemleri bir pakete kısa adıyla başvurur (örneğin <code>business-10</code>).</p>
+<h2>Bir paket tek bir posta kutusu içindir</h2>
+<p>Paket, <b>tek bir posta kutusunun</b> paketidir (Mail 10, Mail 100 …): yeni bir posta kutusunun boyutu, izin verilen en büyük boyut ve saatte ile günde ne kadar gönderebileceği. Posta, posta kutusu başına satılır; bu yüzden bir müşteride aynı anda birkaç paket olabilir — örneğin üç Mail 10, iki Mail 100 ve bir Mail 25. Faturalama sistemleri bir pakete kısa adıyla başvurur (örneğin <code>mail-10</code>).</p>
+<p>Her müşterinin ayrıca bir <b>temel paketi</b> vardır. İçinde tüm müşteri için geçerli olanlar bulunur: kaç alan adı ve takma ad, tüm posta kutularının birlikte ne kadar yer kullanabileceği, müşterinin saatte ne kadar gönderebileceği ve bir iletinin kaç alıcısı olabileceği. Yeni bir müşteri, temel paketin içerdiği kadar posta kutusuyla başlar.</p>
 <ul>
-  <li><b>Saatlik / günlük ileti (posta kutusu başına)</b> ve <b>tüm müşteri için saatlik</b> sınırlar sunucu adresinin itibarını korur: parolası çalınmış bir posta kutusu binlerce spam ileti gönderemez. Sınırı aşan iletiler kuyrukta bekler.</li>
-  <li><b>İleti başına alıcı</b>, tek bir iletinin binlerce adrese gitmesini önler.</li>
-  <li>Bir müşteriyi daha küçük bir pakete geçirmek hiçbir şeyi silmez; yalnızca yeni sınırların üzerinde yeni bir şey eklenemez.</li>
+  <li>Müşteri sayfasındaki <b>Posta planları</b>, müşterinin her paketten kaç posta kutusu olduğunu ve kaçının kullanıldığını söyler. Bir pakette boş kutu kaldığı sürece yeni posta kutusu açılabilir ve o paketin boyutunu ile gönderim sınırlarını alır; personel bir posta kutusunu sonradan başka bir pakete taşıyabilir. REST API, siparişi <code>PUT /api/v1/customers/{id}/mailbox-packages</code> ile yazar.</li>
+  <li><b>Saatte ve günde ileti</b> posta kutusunun kendi paketinden, <b>tüm müşteri için saatte</b> temel paketten gelir. Sunucu adresinin itibarını korurlar: parolası çalınan bir posta kutusu binlerce istenmeyen ileti gönderemez. Sınırın üzerindeki iletiler kuyrukta bekler.</li>
+  <li><b>İleti başına alıcı</b>, bir iletinin binlerce adrese gitmesini engeller.</li>
+  <li>Bir paket müşteriden ancak o pakete ait posta kutusu kalmadığında kaldırılabilir; posta kutusu olan bir paket silinemez.</li>
 </ul>
 <h2>Müşteriler</h2>
 <p>Bir müşterinin alan adları ve posta kutuları vardır. Her müşterinin postası kendi <b>sistem kullanıcısı</b> altında saklanır; böylece posta yazılımındaki bir hata bile bir müşterinin başka bir müşterinin postasını okumasına izin veremez. Bir müşteri, başka bir müşterinin posta kutularına asla posta yönlendiremez, onun adresleri olarak gönderemez veya alan adlarını göremez.</p>

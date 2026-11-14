@@ -7,10 +7,11 @@
 <p><b>Catch-all</b> (mail voor onbekende adressen) staat standaard uit: onbekende adressen worden tijdens de SMTP-dialoog geweigerd, wat spam en backscatter buiten houdt. Zet hem alleen aan als het echt nodig is.</p>
 <h2>Mailboxen</h2>
 <ul>
-  <li>Een mailbox heeft een grootte (quotum) binnen het pakket; het gebruik wordt elke tien minuten bijgewerkt. Wanneer een mailbox 80 % en opnieuw 95 % van zijn quotum bereikt, zet de server een waarschuwing in zijn Inbox (in de taal van de mailbox); nadat het gebruik onder 70 % is gezakt, kan er opnieuw worden gewaarschuwd.</li>
+  <li>Een mailbox heeft een grootte (quota) uit zijn <b>pakket</b> (Mail 10, Mail 100 …), dat ook bepaalt hoeveel die mag verzenden; het gebruik wordt elke tien minuten bijgewerkt. Als een mailbox 80 % en daarna 95 % van zijn quota bereikt, zet de server een waarschuwing in het Postvak IN (in de taal van de mailbox); na een daling onder 70 % kan hij opnieuw worden gewaarschuwd.</li>
   <li>Het <b>wachtwoord</b> is alleen voor webmail en de eigen pagina's van de gebruiker, altijd met aanmelden in twee stappen.</li>
   <li>Mailprogramma's gebruiken <b>app-wachtwoorden</b> die de mailgebruiker op <code>/mail</code> aanmaakt — één per programma of apparaat. Een verloren telefoon betekent één app-wachtwoord intrekken, niet alles wijzigen.</li>
   <li>Een <b>uitgeschakelde</b> mailbox blijft mail ontvangen, maar niemand kan zich aanmelden. Personeel kan ook <b>verzenden blokkeren</b> (bijvoorbeeld na misbruik) en voor één mailbox andere verzendlimieten instellen.</li>
+  <li>Personeel kan een <b>mailbox openen</b> vanaf de pagina ervan, zoals in een hostingpaneel: de webmail van die mailbox gaat een half uur open zonder het wachtwoord ervan, en wachtwoord en tweede factor blijven onaangeroerd. Bedoeld voor de vraag van de klant of een bericht is aangekomen. Elke keer staat in het auditlogboek, en de eigen pagina van de mailboxgebruiker laat zien wanneer het de laatste keer gebeurde.</li>
   <li>Bij het verwijderen van een mailbox gaat de mail voor 7 dagen naar een prullenbakmap op de server; daarna is hij weg.</li>
 </ul>
 <h2>Aliassen en doorsturingen</h2>

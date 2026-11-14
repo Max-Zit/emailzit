@@ -7,10 +7,11 @@
 <p>O <b>catch-all</b> (correio para endereços desconhecidos) está desativado por predefinição: os endereços desconhecidos são recusados durante o diálogo SMTP, o que mantém afastados o spam e o backscatter. Ative-o só quando for realmente necessário.</p>
 <h2>Caixas de correio</h2>
 <ul>
-  <li>Uma caixa de correio tem um tamanho (quota) dentro do plano; a utilização é atualizada a cada dez minutos. Quando uma caixa de correio atinge 80 % e novamente 95 % da sua quota, o servidor coloca um aviso na sua Inbox (no idioma da caixa); depois de descer abaixo de 70 %, pode voltar a ser avisada.</li>
+  <li>Uma caixa de correio tem um tamanho (quota) do seu <b>plano</b> (Mail 10, Mail 100 …), que também define quanto pode enviar; a utilização é atualizada a cada dez minutos. Quando uma caixa chega a 80 % e de novo a 95 % da quota, o servidor coloca um aviso na sua caixa de entrada (no idioma da caixa); depois de descer abaixo de 70 % pode ser avisada outra vez.</li>
   <li>A sua <b>palavra-passe</b> serve apenas para o webmail e as páginas próprias do utilizador, sempre com início de sessão em dois passos.</li>
   <li>Os programas de correio usam <b>palavras-passe de aplicação</b> que o utilizador de correio cria em <code>/mail</code> — uma por programa ou dispositivo. Um telemóvel perdido significa revogar uma palavra-passe de aplicação, não mudar tudo.</li>
   <li>Uma caixa de correio <b>desativada</b> continua a receber correio, mas ninguém consegue iniciar sessão. O pessoal também pode <b>bloquear o envio</b> (por exemplo após abuso) e definir outros limites de envio para uma caixa de correio.</li>
+  <li>O pessoal pode <b>abrir uma caixa de correio</b> a partir da página dela, como num painel de alojamento: o webmail dessa caixa abre durante meia hora sem a senha dela, e a senha e o segundo fator ficam intactos. Serve para quando o cliente pergunta se uma mensagem chegou. Cada vez fica no registo de auditoria, e a página do próprio utilizador diz quando aconteceu a última vez.</li>
   <li>Apagar uma caixa de correio move o seu correio para uma pasta de lixo no servidor durante 7 dias; depois desaparece.</li>
 </ul>
 <h2>Aliases e reencaminhamentos</h2>

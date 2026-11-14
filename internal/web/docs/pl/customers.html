@@ -1,10 +1,12 @@
 <h1>Klienci i pakiety</h1>
-<h2>Pakiety</h2>
-<p>Pakiet zawiera limity, które dostaje klient: ile domen, skrzynek i aliasów, ile miejsca mogą łącznie zajmować wszystkie skrzynki, rozmiar nowej skrzynki i największej skrzynki oraz <b>limity wysyłania</b>. Systemy rozliczeniowe odwołują się do pakietu przez jego krótką nazwę (na przykład <code>business-10</code>).</p>
+<h2>Pakiet dotyczy jednej skrzynki</h2>
+<p>Pakiet jest pakietem <b>jednej skrzynki</b> (Mail 10, Mail 100 …): rozmiar nowej skrzynki, największy dopuszczalny rozmiar oraz ile może wysłać na godzinę i na dzień. Poczta sprzedaje się na skrzynkę, więc jeden klient może mieć kilka pakietów naraz — na przykład trzy Mail 10, dwa Mail 100 i jeden Mail 25. Systemy rozliczeniowe odwołują się do pakietu jego krótką nazwą (na przykład <code>mail-10</code>).</p>
+<p>Każdy klient ma dodatkowo <b>pakiet podstawowy</b>. Zawiera to, co dotyczy całego klienta: ile domen i aliasów, ile miejsca mogą łącznie zajmować wszystkie skrzynki, ile klient może wysłać na godzinę i ilu odbiorców może mieć jedna wiadomość. Nowy klient zaczyna z tyloma skrzynkami pakietu podstawowego, ile ten pakiet obejmuje.</p>
 <ul>
-  <li><b>Wiadomości na godzinę / dziennie (na skrzynkę)</b> i <b>na godzinę dla całego klienta</b> chronią reputację adresu serwera: skrzynka, której hasło zostało skradzione, nie może wysłać tysięcy wiadomości ze spamem. Wiadomości ponad limit czekają w kolejce.</li>
-  <li><b>Odbiorców na wiadomość</b> nie pozwala, by jedna wiadomość trafiła do tysięcy adresów.</li>
-  <li>Przeniesienie klienta do mniejszego pakietu niczego nie usuwa; ponad nowe limity nie można dodać niczego nowego.</li>
+  <li><b>Plany poczty</b> na stronie klienta mówią, ile skrzynek każdego pakietu klient ma i ile jest zajętych. Nową skrzynkę można utworzyć, dopóki pakiet ma wolną, i otrzymuje rozmiar oraz limity wysyłania tego pakietu; personel może później przenieść skrzynkę do innego pakietu. API REST wpisuje zamówienie przez <code>PUT /api/v1/customers/{id}/mailbox-packages</code>.</li>
+  <li><b>Wiadomości na godzinę i na dzień</b> pochodzą z pakietu samej skrzynki, a <b>na godzinę dla całego klienta</b> z pakietu podstawowego. Chronią reputację adresu serwera: skrzynka z ukradzionym hasłem nie wyśle tysięcy wiadomości spamu. Wiadomości powyżej limitu czekają w kolejce.</li>
+  <li><b>Odbiorcy na wiadomość</b> zapobiega wysłaniu jednej wiadomości na tysiące adresów.</li>
+  <li>Pakiet można zabrać klientowi tylko wtedy, gdy nie została żadna jego skrzynka, a pakietu ze skrzynkami nie można usunąć.</li>
 </ul>
 <h2>Klienci</h2>
 <p>Klient jest właścicielem domen i skrzynek. Poczta każdego klienta jest przechowywana pod jego <b>własnym użytkownikiem systemowym</b>, więc nawet błąd w oprogramowaniu poczty nie pozwoli jednemu klientowi czytać poczty innego klienta. Klient nigdy nie może kierować poczty do skrzynek innego klienta, wysyłać jako jego adresy ani widzieć jego domen.</p>

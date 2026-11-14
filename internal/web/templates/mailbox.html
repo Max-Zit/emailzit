@@ -5,6 +5,7 @@
 <h1>{{$m.Address}}{{if $m.Disabled}} <span class="badge bad">{{.T "Disabled"}}</span>{{end}}{{if $m.SendBlocked}} <span class="badge bad">{{.T "Sending blocked"}}</span>{{end}}</h1>
 <div class="tiles">
   <div class="tile"><span class="tile-label">{{template "icon" "disk"}}{{.T "Used"}}</span><b>{{bytes $m.UsedBytes}}</b><small>{{.T "of %s" (mb (i64 $m.QuotaMB))}}{{with $m.UsedAt}} · {{$.Ago .}}{{end}}</small></div>
+  <div class="tile"><span class="tile-label">{{template "icon" "package"}}{{.T "Plan"}}</span><b>{{$m.PackageName}}</b><small>{{.T "at most %s" (mb (i64 .Data.Package.MaxMailboxMB))}}</small></div>
   <div class="tile"><span class="tile-label">{{template "icon" "key"}}{{.T "App passwords"}}</span><b>{{$m.AppPasswords}}</b></div>
   <div class="tile"><span class="tile-label">{{template "icon" "upload"}}{{.T "Sent in the last hour"}}</span><b>{{.Data.Sent.Hour}}</b><small>{{.T "%d today" .Data.Sent.Day}}{{if .Data.Sent.RefusedHour}} · <span class="warn">{{.T "%d refused by the limit" .Data.Sent.RefusedHour}}</span>{{end}}</small></div>
   <div class="tile"><span class="tile-label">{{template "icon" "lock"}}{{.T "Two-factor"}}</span><b>{{if $m.TOTPEnabled}}{{.T "On"}}{{else}}{{.T "Not yet"}}{{end}}</b><small>{{.T "Last sign-in"}}: {{.Time $m.LastLoginAt}}</small></div>
@@ -16,6 +17,7 @@
       <label>{{.T "Name"}}<input name="display_name" value="{{$m.DisplayName}}" maxlength="100"></label>
       <label>{{.T "Size (MB)"}}<input type="number" name="quota_mb" value="{{$m.QuotaMB}}" min="1" max="{{.Data.Package.MaxMailboxMB}}"><small>{{.T "At most %d MB." .Data.Package.MaxMailboxMB}}</small></label>
     </div>
+    {{if .Data.Staff}}<label>{{.T "Plan"}}<select name="package">{{range .Data.Plans}}<option value="{{.Package.ID}}" {{if eq .Package.ID $m.PackageID}}selected{{end}}>{{.Package.Name}} · {{mb (i64 .Package.MailboxMB)}}{{if ne .Package.ID $m.PackageID}} · {{$.T "%d free" .Free}}{{end}}</option>{{end}}</select><small>{{.T "Another plan gives the mailbox that plan's size and sending limits; the customer needs a free mailbox of it."}}</small></label>{{end}}
     <label class="check"><input type="checkbox" name="disabled" value="1" {{if $m.Disabled}}checked{{end}}>{{.T "Disabled: nobody can sign in; mail is still received"}}</label>
     {{if .Data.Staff}}
     <fieldset><legend>{{.T "Sending (staff only)"}}</legend>
@@ -29,6 +31,14 @@
     {{if .User.CanWrite}}<div><button class="primary">{{.T "Save"}}</button></div>{{end}}
   </form>
 </section>
+{{if .Data.Staff}}
+<section class="panel">
+  <h2>{{template "icon" "mail"}}{{.T "Open the mailbox"}}</h2>
+  <p class="muted">{{.T "Opens this mailbox in the webmail as its owner, to check whether a message arrived or to help with a filter. The password and the second factor of the mailbox are not needed and stay as they are; the sign-in lasts half an hour. Every time is written to the audit log and shown to the user on their own page, so open a mailbox only when the customer asked for it."}}</p>
+  {{with $m.StaffOpenedAt}}<p class="small">{{$.T "Last opened by staff: %s" ($.Time .)}}{{with $m.StaffOpenedBy}} · {{.}}{{end}}</p>{{end}}
+  {{if .User.CanWrite}}<form method="post" action="/mailboxes/{{$m.ID}}/open" data-confirm="{{.T "Open the mailbox %s and read its mail?" $m.Address}}"><button class="secondary">{{template "icon" "mail"}}{{.T "Open the mailbox"}}</button></form>{{end}}
+</section>
+{{end}}
 <section class="panel">
   <h2>{{template "icon" "key"}}{{.T "Sign-in"}}</h2>
   <p class="muted">{{.T "The mail user signs in at %s with this address, the password and a second factor, and creates app passwords for mail programs there." (printf "https://%s/mail" .Host)}}</p>

@@ -32,19 +32,22 @@
 </section>
 {{end}}
 <section class="panel">
-  <div class="panelhead"><h2>{{template "icon" "mail"}}{{.T "Mailboxes"}}</h2><span class="muted small">{{.T "%d of %d in the package" $d.Mailboxes .Data.Package.MaxMailboxes}}</span></div>
+  {{$free := false}}{{range .Data.Plans}}{{if .Free}}{{$free = true}}{{end}}{{end}}
+  <div class="panelhead"><h2>{{template "icon" "mail"}}{{.T "Mailboxes"}}</h2><span class="muted small">{{.T "%d of %d mailboxes in use" $d.Mailboxes .Data.Paid}}</span></div>
   {{if .Data.Mailboxes}}
   <div class="table-wrap"><table>
-    <thead><tr><th>{{.T "Address"}}</th><th class="hide-sm">{{.T "Name"}}</th><th>{{.T "Used"}}</th><th class="hide-sm">{{.T "Two-factor"}}</th></tr></thead>
+    <thead><tr><th>{{.T "Address"}}</th><th class="hide-sm">{{.T "Name"}}</th><th class="hide-sm">{{.T "Plan"}}</th><th>{{.T "Used"}}</th><th class="hide-sm">{{.T "Two-factor"}}</th></tr></thead>
     <tbody>{{range .Data.Mailboxes}}<tr>
       <td><a href="/mailboxes/{{.ID}}">{{.Address}}</a>{{if .Disabled}} <span class="badge bad">{{$.T "Disabled"}}</span>{{end}}{{if .SendBlocked}} <span class="badge bad">{{$.T "Sending blocked"}}</span>{{end}}</td>
       <td class="hide-sm">{{.DisplayName}}</td>
+      <td class="hide-sm small">{{.PackageName}}</td>
       <td>{{template "usage" (usage .UsedBytes (i64 .QuotaMB))}}</td>
       <td class="hide-sm">{{if .TOTPEnabled}}<span class="badge ok"><i></i>{{$.T "On"}}</span>{{else}}<span class="badge warn">{{$.T "At next sign-in"}}</span>{{end}}</td>
     </tr>{{end}}</tbody>
   </table></div>
   {{else}}<p class="muted">{{.T "No mailboxes yet."}}</p>{{end}}
   {{if .User.CanWrite}}
+  {{if $free}}
   <details class="mt" {{if not .Data.Mailboxes}}open{{end}}><summary>{{template "icon" "plus"}}{{.T "New mailbox"}}</summary>
   <form method="post" action="/domains/{{$d.ID}}/mailboxes" class="stack mt">
     <div class="cols">
@@ -55,10 +58,14 @@
       <label>{{.T "Password"}}<input type="password" name="password" required minlength="12" autocomplete="new-password"><small>{{.T "For webmail and the user's own settings (always with two-factor sign-in). Mail programs get app passwords."}}</small></label>
       <label>{{.T "Repeat the password"}}<input type="password" name="password2" required minlength="12" autocomplete="new-password"></label>
     </div>
-    <label>{{.T "Size (MB)"}}<input type="number" name="quota_mb" value="{{.Data.Package.MailboxMB}}" min="1" max="{{.Data.Package.MaxMailboxMB}}" class="num-sm"><small>{{.T "At most %d MB." .Data.Package.MaxMailboxMB}}</small></label>
+    <div class="cols">
+      <label>{{.T "Plan"}}<select name="package">{{range .Data.Plans}}{{if .Free}}<option value="{{.Package.ID}}">{{.Package.Name}} · {{mb (i64 .Package.MailboxMB)}} · {{$.T "%d free" .Free}}</option>{{end}}{{end}}</select><small>{{.T "The plan gives the mailbox its size and its sending limits."}}</small></label>
+      <label>{{.T "Size (MB)"}} <small>{{.T "optional"}}</small><input type="number" name="quota_mb" min="1" class="num-sm" placeholder="{{.T "from the plan"}}"><small>{{.T "Empty = the size of the plan; more than the plan allows is refused."}}</small></label>
+    </div>
     <div><button class="primary">{{template "icon" "plus"}}{{.T "Create mailbox"}}</button></div>
   </form>
   </details>
+  {{else}}<p class="muted mt">{{if .Data.Staff}}{{.T "Every mailbox of the customer's plans is in use. Add a plan, or more mailboxes of a plan, on the customer's page."}}{{else}}{{.T "Every mailbox of your plans is in use. Ask us for another mailbox and it can be made here."}}{{end}}</p>{{end}}
   {{end}}
 </section>
 <section class="panel">

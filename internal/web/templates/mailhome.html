@@ -2,6 +2,7 @@
 {{define "content"}}
 {{$m := .Data.M}}
 <h1>{{$m.Address}}</h1>
+{{with $m.StaffOpenedAt}}<div class="flash warn" role="status">{{template "icon" "alert"}}<span>{{$.T "An administrator of the mail server opened this mailbox on %s to help with a question." ($.Time .)}}</span></div>{{end}}
 <div class="tiles">
   <div class="tile"><span class="tile-label">{{template "icon" "disk"}}{{.T "Used"}}</span><b>{{bytes $m.UsedBytes}}</b><small>{{.T "of %s" (mb (i64 $m.QuotaMB))}}</small></div>
   <div class="tile"><span class="tile-label">{{template "icon" "key"}}{{.T "App passwords"}}</span><b>{{len .Data.AppPasswords}}</b></div>

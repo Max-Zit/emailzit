@@ -7,10 +7,11 @@
 <p>Il <b>catch-all</b> (posta per indirizzi sconosciuti) è disattivato per impostazione predefinita: gli indirizzi sconosciuti vengono rifiutati durante il dialogo SMTP, il che tiene lontani spam e backscatter. Attivatelo solo quando serve davvero.</p>
 <h2>Caselle</h2>
 <ul>
-  <li>Una casella ha una dimensione (quota) entro il pacchetto; l'utilizzo viene aggiornato ogni dieci minuti. Quando una casella raggiunge l'80 % e poi il 95 % della sua quota, il server mette un avviso nella sua Inbox (nella lingua della casella); dopo che scende sotto il 70 % può essere avvisata di nuovo.</li>
+  <li>Una casella ha una dimensione (quota) dal suo <b>pacchetto</b> (Mail 10, Mail 100 …), che stabilisce anche quanto può inviare; l'uso si aggiorna ogni dieci minuti. Quando una casella raggiunge l'80 % e poi il 95 % della sua quota, il server mette un avviso nella sua posta in arrivo (nella lingua della casella); dopo che scende sotto il 70 % può essere avvisata di nuovo.</li>
   <li>La sua <b>password</b> serve solo per la webmail e le pagine personali dell'utente, sempre con accesso a due fattori.</li>
   <li>I programmi di posta usano <b>password per app</b> che l'utente di posta crea su <code>/mail</code> — una per programma o dispositivo. Un telefono perso significa revocare una password per app, non cambiare tutto.</li>
   <li>Una casella <b>disattivata</b> continua a ricevere posta, ma nessuno può accedere. Il personale può anche <b>bloccare l'invio</b> (per esempio dopo un abuso) e impostare altri limiti di invio per una singola casella.</li>
+  <li>Il personale può <b>aprire una casella</b> dalla sua pagina, come in un pannello di hosting: la webmail di quella casella si apre per mezz'ora senza la sua password, e password e secondo fattore restano intatti. Serve quando il cliente chiede se un messaggio è arrivato. Ogni volta finisce nel registro di controllo, e la pagina dell'utente dice quando è avvenuto l'ultima volta.</li>
   <li>Eliminando una casella, la sua posta viene spostata in una cartella cestino sul server per 7 giorni, poi sparisce.</li>
 </ul>
 <h2>Alias e inoltri</h2>

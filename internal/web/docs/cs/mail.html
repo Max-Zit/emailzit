@@ -7,10 +7,11 @@
 <p><b>Catch-all</b> (pošta pro neznámé adresy) je ve výchozím stavu vypnutý: neznámé adresy se odmítají již během dialogu SMTP, což drží stranou spam a backscatter. Zapněte ho, jen když je to opravdu nutné.</p>
 <h2>Schránky</h2>
 <ul>
-  <li>Schránka má velikost (kvótu) v rámci balíčku; využití se aktualizuje každých deset minut. Když schránka dosáhne 80 % a znovu 95 % své kvóty, server vloží do její doručené pošty upozornění (v jazyce schránky); poté, co klesne pod 70 %, může být upozorněna znovu.</li>
+  <li>Schránka má velikost (kvótu) ze svého <b>balíčku</b> (Mail 10, Mail 100 …), který určuje i to, kolik smí poslat; obsazenost se obnovuje každých deset minut. Když schránka dosáhne 80 % a znovu 95 % kvóty, server vloží upozornění do její doručené pošty (v jazyce schránky); po poklesu pod 70 % může být upozorněna znovu.</li>
   <li>Její <b>heslo</b> slouží jen pro webmail a vlastní stránky uživatele, vždy s dvoufázovým přihlášením.</li>
   <li>Poštovní programy používají <b>hesla aplikací</b>, která uživatel pošty vytváří na <code>/mail</code> — jedno pro každý program nebo zařízení. Ztracený telefon znamená zrušit jedno heslo aplikace, ne měnit všechno.</li>
   <li><b>Vypnutá</b> schránka dál přijímá poštu, ale nikdo se do ní nemůže přihlásit. Personál může také <b>zablokovat odesílání</b> (například po zneužití) a nastavit pro jednu schránku jiné limity odesílání.</li>
+  <li>Personál může <b>otevřít schránku</b> z její stránky, jako v hostingovém panelu: webmail té schránky se otevře na půl hodiny bez jejího hesla a heslo ani druhý faktor se nemění. Je to pro dotaz zákazníka, zda zpráva dorazila. Každé otevření je v auditním protokolu a vlastní stránka uživatele ukazuje, kdy se to stalo naposledy.</li>
   <li>Smazání schránky přesune její poštu na 7 dní do složky koše na serveru, poté je pryč.</li>
 </ul>
 <h2>Aliasy a přeposílání</h2>

@@ -1,10 +1,12 @@
 <h1>Clientes y planes</h1>
-<h2>Planes</h2>
-<p>Un plan contiene los límites que recibe un cliente: cuántos dominios, buzones y alias, cuánto almacenamiento pueden usar todos los buzones juntos, el tamaño de un buzón nuevo y el del más grande, y los <b>límites de envío</b>. Los sistemas de facturación se refieren a un plan por su nombre corto (por ejemplo <code>business-10</code>).</p>
+<h2>Un plan vale para un buzón</h2>
+<p>Un plan es el de <b>un solo buzón</b> (Mail 10, Mail 100 …): el tamaño de un buzón nuevo, el tamaño máximo y cuánto puede enviar por hora y por día. El correo se vende por buzón, así que un cliente puede tener varios planes a la vez — por ejemplo tres Mail 10, dos Mail 100 y uno Mail 25. Los sistemas de facturación se refieren a un plan por su nombre corto (por ejemplo <code>mail-10</code>).</p>
+<p>Cada cliente tiene además un <b>plan base</b>. Contiene lo que vale para todo el cliente: cuántos dominios y alias, cuánto almacenamiento pueden usar todos los buzones juntos, cuánto puede enviar el cliente por hora y cuántos destinatarios puede tener un mensaje. Un cliente nuevo empieza con tantos buzones del plan base como incluye ese plan.</p>
 <ul>
-  <li><b>Mensajes por hora / por día (por buzón)</b> y <b>por hora para todo el cliente</b> protegen la reputación de la dirección del servidor: un buzón cuya contraseña fue robada no puede enviar miles de mensajes de spam. Los mensajes por encima del límite esperan en la cola.</li>
-  <li><b>Destinatarios por mensaje</b> impide que un mensaje vaya a miles de direcciones.</li>
-  <li>Cambiar a un cliente a un plan más pequeño no borra nada; simplemente no se puede añadir nada nuevo por encima de los nuevos límites.</li>
+  <li><b>Planes de correo</b> en la página del cliente dice cuántos buzones de cada plan tiene el cliente y cuántos están en uso. Un buzón nuevo se puede crear mientras un plan tenga uno libre, y recibe el tamaño y los límites de envío de ese plan; el personal puede mover un buzón a otro plan más tarde. La API REST escribe lo pedido con <code>PUT /api/v1/customers/{id}/mailbox-packages</code>.</li>
+  <li><b>Mensajes por hora y por día</b> vienen del plan del propio buzón, y <b>por hora para todo el cliente</b> del plan base. Protegen la reputación de la dirección del servidor: un buzón con la contraseña robada no puede enviar miles de mensajes de spam. Los mensajes por encima del límite esperan en la cola.</li>
+  <li><b>Destinatarios por mensaje</b> evita que un mensaje vaya a miles de direcciones.</li>
+  <li>Un plan solo se puede quitar cuando no queda ningún buzón suyo, y un plan con buzones no se puede eliminar.</li>
 </ul>
 <h2>Clientes</h2>
 <p>Un cliente es dueño de dominios y buzones. El correo de cada cliente se almacena bajo su <b>propio usuario del sistema</b>, de modo que ni siquiera un fallo en el software de correo puede permitir que un cliente lea el correo de otro cliente. Un cliente nunca puede dirigir correo a los buzones de otro cliente, enviar como sus direcciones ni ver sus dominios.</p>

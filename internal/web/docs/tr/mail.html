@@ -7,10 +7,11 @@
 <p><b>Catch-all</b> (bilinmeyen adreslere gelen posta) varsayılan olarak kapalıdır: bilinmeyen adresler SMTP konuşması sırasında reddedilir, bu da spam'i ve geri saçılmayı (backscatter) uzak tutar. Yalnızca gerçekten gerektiğinde açın.</p>
 <h2>Posta kutuları</h2>
 <ul>
-  <li>Bir posta kutusunun paket içinde bir boyutu (kotası) vardır; kullanım her on dakikada bir güncellenir. Bir posta kutusu kotasının %80'ine ve ardından %95'ine ulaştığında, sunucu Gelen kutusuna bir uyarı koyar (posta kutusunun dilinde); %70'in altına düştükten sonra yeniden uyarılabilir.</li>
+  <li>Bir posta kutusunun boyutu (kota) kendi <b>paketinden</b> gelir (Mail 10, Mail 100 …); aynı paket ne kadar gönderebileceğini de belirler. Kullanım her on dakikada güncellenir. Bir posta kutusu kotasının %80'ine ve yeniden %95'ine ulaştığında sunucu, gelen kutusuna (posta kutusunun dilinde) bir uyarı koyar; %70'in altına düştükten sonra yeniden uyarılabilir.</li>
   <li><b>Parolası</b> yalnızca web posta ve kullanıcının kendi sayfaları içindir, her zaman iki adımlı girişle birlikte.</li>
   <li>Posta programları <b>uygulama parolalarını</b> kullanır; bunları posta kullanıcısı <code>/mail</code> adresinde oluşturur — program veya cihaz başına bir tane. Kaybolan bir telefon, her şeyi değiştirmek değil, tek bir uygulama parolasını iptal etmek demektir.</li>
   <li><b>Devre dışı</b> bir posta kutusu posta almaya devam eder ancak kimse oturum açamaz. Personel ayrıca <b>göndermeyi engelleyebilir</b> (örneğin kötüye kullanımdan sonra) ve tek bir posta kutusu için başka gönderim sınırları belirleyebilir.</li>
+  <li>Personel, bir posta kutusunu sayfasından <b>açabilir</b>, bir hosting panelinde olduğu gibi: o posta kutusunun web postası yarım saat boyunca parolası olmadan açılır, parola ve ikinci faktör de olduğu gibi kalır. Müşteri bir iletinin gelip gelmediğini sorduğunda işe yarar. Her açılış denetim kaydındadır ve kullanıcının kendi sayfası bunun en son ne zaman olduğunu gösterir.</li>
   <li>Bir posta kutusunu silmek, postasını sunucudaki bir çöp klasörüne 7 günlüğüne taşır, ardından posta kalıcı olarak silinir.</li>
 </ul>
 <h2>Takma adlar ve yönlendirmeler</h2>

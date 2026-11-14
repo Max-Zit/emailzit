@@ -1,10 +1,12 @@
 <h1>Clienti e pacchetti</h1>
-<h2>Pacchetti</h2>
-<p>Un pacchetto contiene i limiti che riceve un cliente: quanti domini, caselle e alias, quanto spazio possono usare tutte le caselle insieme, la dimensione di una nuova casella e quella della casella più grande, e i <b>limiti di invio</b>. I sistemi di fatturazione indicano un pacchetto con il suo nome breve (per esempio <code>business-10</code>).</p>
+<h2>Un pacchetto vale per una casella</h2>
+<p>Un pacchetto è quello di <b>una sola casella</b> (Mail 10, Mail 100 …): la dimensione di una nuova casella, la dimensione massima e quanto può inviare all'ora e al giorno. La posta si vende per casella, quindi un cliente può avere più pacchetti insieme — per esempio tre Mail 10, due Mail 100 e uno Mail 25. I sistemi di fatturazione indicano un pacchetto con il suo nome breve (per esempio <code>mail-10</code>).</p>
+<p>Ogni cliente ha inoltre un <b>pacchetto base</b>. Contiene ciò che vale per tutto il cliente: quanti domini e alias, quanto spazio possono usare tutte le caselle insieme, quanto il cliente può inviare all'ora e quanti destinatari può avere un messaggio. Un cliente nuovo inizia con tante caselle del pacchetto base quante quel pacchetto ne comprende.</p>
 <ul>
-  <li><b>Messaggi all'ora / al giorno (per casella)</b> e <b>all'ora per l'intero cliente</b> proteggono la reputazione dell'indirizzo del server: una casella la cui password è stata rubata non può inviare migliaia di messaggi di spam. I messaggi oltre il limite attendono nella coda.</li>
-  <li><b>Destinatari per messaggio</b> impedisce che un messaggio arrivi a migliaia di indirizzi.</li>
-  <li>Passare un cliente a un pacchetto più piccolo non elimina nulla; non si può aggiungere niente di nuovo oltre i nuovi limiti.</li>
+  <li><b>Pacchetti di posta</b> nella pagina del cliente dice quante caselle di ogni pacchetto ha il cliente e quante sono in uso. Una nuova casella si può creare finché un pacchetto ne ha una libera, e riceve la dimensione e i limiti di invio di quel pacchetto; il personale può spostare una casella in un altro pacchetto più tardi. L'API REST scrive l'ordine con <code>PUT /api/v1/customers/{id}/mailbox-packages</code>.</li>
+  <li><b>Messaggi all'ora e al giorno</b> vengono dal pacchetto della casella stessa, <b>all'ora per tutto il cliente</b> dal pacchetto base. Proteggono la reputazione dell'indirizzo del server: una casella con la password rubata non può inviare migliaia di messaggi di spam. I messaggi oltre il limite attendono in coda.</li>
+  <li><b>Destinatari per messaggio</b> impedisce che un messaggio vada a migliaia di indirizzi.</li>
+  <li>Un pacchetto si può togliere al cliente solo quando non resta nessuna delle sue caselle, e un pacchetto con caselle non si può eliminare.</li>
 </ul>
 <h2>Clienti</h2>
 <p>Un cliente possiede domini e caselle. La posta di ogni cliente è conservata sotto il suo <b>utente di sistema dedicato</b>, quindi nemmeno un difetto nel software di posta può permettere a un cliente di leggere la posta di un altro cliente. Un cliente non può mai instradare posta nelle caselle di un altro cliente, inviare con i suoi indirizzi o vederne i domini.</p>

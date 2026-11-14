@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/max-zit/emailzit/internal/auth"
 	"github.com/max-zit/emailzit/internal/sieve"
 	"github.com/max-zit/emailzit/internal/store"
 )
@@ -217,7 +218,8 @@ func (s *Server) applyMail(r *http.Request) {
 type overviewData struct {
 	Totals   store.Totals
 	Customer *store.Customer
-	Package  *store.Package
+	Package  *store.Package           // the customer's base package
+	Plans    []*store.CustomerPackage // the customer's mail plans
 	Domains  []*store.Domain
 	Mail     MailSettings
 }
@@ -232,6 +234,9 @@ func (s *Server) handleOverview(w http.ResponseWriter, r *http.Request) {
 		d.Customer, err = s.store.CustomerByID(r.Context(), u.CustomerID)
 		if err == nil {
 			d.Package, err = s.store.PackageByID(r.Context(), d.Customer.PackageID)
+		}
+		if err == nil {
+			d.Plans, err = s.store.CustomerPackages(r.Context(), scopeOf(r), u.CustomerID)
 		}
 		if err == nil {
 			d.Domains, err = s.store.Domains(r.Context(), scopeOf(r), "")
@@ -262,8 +267,8 @@ type packageData struct {
 
 func (s *Server) handlePackage(w http.ResponseWriter, r *http.Request) {
 	if r.PathValue("id") == "new" {
-		p := &store.Package{MaxDomains: 1, MaxMailboxes: 5, MaxAliases: 20, StorageMB: 5120, MailboxMB: 1024, MaxMailboxMB: 5120,
-			SendPerHour: 100, SendPerDay: 500, CustomerPerHour: 300, RcptPerMsg: 50}
+		p := &store.Package{MaxDomains: 10, MaxMailboxes: 1, MaxAliases: 100, StorageMB: 0, MailboxMB: 10240, MaxMailboxMB: 10240,
+			SendPerHour: 200, SendPerDay: 1000, CustomerPerHour: 500, RcptPerMsg: 100}
 		s.render(w, r, http.StatusOK, "package", &Page{Title: "New package", Nav: "packages", Data: &packageData{P: p, New: true}})
 		return
 	}
@@ -304,7 +309,8 @@ func (s *Server) handlePackageSave(w http.ResponseWriter, r *http.Request) {
 		s.render(w, r, http.StatusBadRequest, "package", pg)
 		return
 	}
-	s.audit(r, "package.save", "package:"+p.Slug, "%s: %d domains, %d mailboxes, %d MB, %d/h per mailbox", p.Name, p.MaxDomains, p.MaxMailboxes, p.StorageMB, p.SendPerHour)
+	s.audit(r, "package.save", "package:"+p.Slug, "%s: mailbox %d MB (at most %d MB), %d mailboxes included, %d/h per mailbox",
+		p.Name, p.MailboxMB, p.MaxMailboxMB, p.MaxMailboxes, p.SendPerHour)
 	s.redirect(w, r, "/packages", "Saved.")
 }
 
@@ -369,6 +375,7 @@ type customerData struct {
 	C         *store.Customer
 	Package   *store.Package
 	Packages  []*store.Package
+	Plans     []*store.CustomerPackage // the mail plans the customer has, with how many are in use
 	Logins    []*store.User
 	Domains   []*store.Domain
 	Web       []store.WebSender  // hosting accounts (HostZit) sending through emailzit-sendmail
@@ -402,6 +409,10 @@ func (s *Server) handleCustomer(w http.ResponseWriter, r *http.Request) {
 	var err error
 	if d.Package, err = s.store.PackageByID(r.Context(), c.PackageID); err == nil {
 		if d.Packages, err = s.store.Packages(r.Context()); err == nil {
+			if d.Plans, err = s.store.CustomerPackages(r.Context(), store.Staff, c.ID); err != nil {
+				s.serverError(w, r, err)
+				return
+			}
 			if d.Logins, err = s.store.CustomerUsers(r.Context(), c.ID); err == nil {
 				d.Domains, err = s.store.Domains(r.Context(), store.Staff, c.ID)
 				if err == nil {
@@ -443,6 +454,34 @@ func (s *Server) handleCustomerUpdate(w http.ResponseWriter, r *http.Request) {
 		s.audit(r, "customer.package", "customer:"+c.ID, "package changed from %s to #%d", c.PackageName, pkg)
 	}
 	s.audit(r, "customer.update", "customer:"+c.ID, "%s", strings.TrimSpace(r.FormValue("name")))
+	s.redirect(w, r, to, "Saved.")
+}
+
+// handleCustomerPlan sets how many mailboxes of one plan the customer
+// has. Mail is sold per mailbox, so a customer may hold several plans at
+// the same time (three Mail 10, two Mail 100 …); 0 removes a plan.
+func (s *Server) handleCustomerPlan(w http.ResponseWriter, r *http.Request) {
+	c := s.loadCustomer(w, r)
+	if c == nil {
+		return
+	}
+	to := "/customers/" + c.ID
+	pkg, err := strconv.ParseInt(r.FormValue("package"), 10, 64)
+	if err != nil || pkg <= 0 {
+		s.redirectErr(w, r, to, "Choose a plan.")
+		return
+	}
+	p, err := s.store.PackageByID(r.Context(), pkg)
+	if err != nil {
+		s.redirectErr(w, r, to, "Choose a plan.")
+		return
+	}
+	n := formInt(r, "mailboxes")
+	if err := s.store.SetCustomerPackageCount(r.Context(), c.ID, pkg, n); err != nil {
+		s.redirectErr(w, r, to, mailErr(err))
+		return
+	}
+	s.audit(r, "customer.plan", "customer:"+c.ID, "%s: %d mailboxes of the plan %s", c.Name, n, p.Name)
 	s.redirect(w, r, to, "Saved.")
 }
 
@@ -530,7 +569,9 @@ type domainData struct {
 	D         *store.Domain
 	Mailboxes []*store.Mailbox
 	Aliases   []*store.Alias
-	Package   *store.Package
+	Package   *store.Package           // the customer's base package (its limits)
+	Plans     []*store.CustomerPackage // the plans a new mailbox can be made on
+	Paid      int                      // mailboxes of all the customer's plans together
 	Records   []DNSRecord
 	Checked   map[int]string // index in Records → ok, missing, different (after "Check DNS")
 	Mail      MailSettings
@@ -561,7 +602,11 @@ func (s *Server) handleDomain(w http.ResponseWriter, r *http.Request) {
 		if d.Aliases, err = s.store.Aliases(r.Context(), sc, "", dom.ID); err == nil {
 			var c *store.Customer
 			if c, err = s.store.CustomerByID(r.Context(), dom.CustomerID); err == nil {
-				d.Package, err = s.store.PackageByID(r.Context(), c.PackageID)
+				if d.Package, err = s.store.PackageByID(r.Context(), c.PackageID); err == nil {
+					if d.Plans, err = s.store.CustomerPackages(r.Context(), sc, dom.CustomerID); err == nil {
+						d.Paid = c.MailboxesPaid
+					}
+				}
 			}
 		}
 	}
@@ -693,13 +738,14 @@ func (s *Server) handleMailboxCreate(w http.ResponseWriter, r *http.Request) {
 		s.redirectErr(w, r, to, "The passwords do not match.")
 		return
 	}
+	pkg, _ := strconv.ParseInt(r.FormValue("package"), 10, 64)
 	m, err := s.store.CreateMailbox(r.Context(), scopeOf(r), store.NewMailbox{DomainID: dom.ID, LocalPart: r.FormValue("local"),
-		DisplayName: r.FormValue("display_name"), Password: r.FormValue("password"), QuotaMB: formInt(r, "quota_mb")})
+		DisplayName: r.FormValue("display_name"), Password: r.FormValue("password"), QuotaMB: formInt(r, "quota_mb"), PackageID: pkg})
 	if err != nil {
 		s.redirectErr(w, r, to, mailErr(err))
 		return
 	}
-	s.audit(r, "mailbox.create", "mailbox:"+m.Address, "%d MB", m.QuotaMB)
+	s.audit(r, "mailbox.create", "mailbox:"+m.Address, "plan %s, %d MB", m.PackageName, m.QuotaMB)
 	s.syncSpam(r.Context(), m.CustomerID, m.Address)
 	s.redirect(w, r, "/mailboxes/"+m.ID, "Mailbox created.")
 }
@@ -711,7 +757,8 @@ type mailboxData struct {
 	Sent         store.SentStats
 	D            *store.Domain
 	AppPasswords []*store.AppPassword
-	Package      *store.Package
+	Package      *store.Package           // the plan of this mailbox
+	Plans        []*store.CustomerPackage // staff: the plans the mailbox can be moved to
 	Staff        bool
 	Mail         MailSettings
 }
@@ -740,9 +787,8 @@ func (s *Server) handleMailbox(w http.ResponseWriter, r *http.Request) {
 			if sp, err := s.store.MailboxSpamSettings(r.Context(), sc, m.ID); err == nil {
 				d.Spam = newSpamForm("/mailboxes/"+m.ID+"/spam", sp)
 			}
-			var c *store.Customer
-			if c, err = s.store.CustomerByID(r.Context(), m.CustomerID); err == nil {
-				d.Package, err = s.store.PackageByID(r.Context(), c.PackageID)
+			if d.Package, err = s.store.PackageByID(r.Context(), m.PackageID); err == nil && d.Staff {
+				d.Plans, err = s.store.CustomerPackages(r.Context(), store.Staff, m.CustomerID)
 			}
 		}
 	}
@@ -770,14 +816,58 @@ func (s *Server) handleMailboxUpdate(w http.ResponseWriter, r *http.Request) {
 	if m == nil {
 		return
 	}
+	pkg, _ := strconv.ParseInt(r.FormValue("package"), 10, 64)
 	u := store.MailboxUpdate{DisplayName: r.FormValue("display_name"), QuotaMB: formInt(r, "quota_mb"), Disabled: r.FormValue("disabled") == "1",
-		SendBlocked: r.FormValue("send_blocked") == "1", SendPerHour: optInt(r, "send_per_hour"), SendPerDay: optInt(r, "send_per_day")}
+		SendBlocked: r.FormValue("send_blocked") == "1", SendPerHour: optInt(r, "send_per_hour"), SendPerDay: optInt(r, "send_per_day"),
+		PackageID: pkg}
 	if err := s.store.UpdateMailbox(r.Context(), scopeOf(r), m.ID, u); err != nil {
 		s.redirectErr(w, r, "/mailboxes/"+m.ID, mailErr(err))
 		return
 	}
-	s.audit(r, "mailbox.update", "mailbox:"+m.Address, "%d MB, disabled %v, sending blocked %v", u.QuotaMB, u.Disabled, u.SendBlocked)
+	if saved, err := s.store.MailboxByID(r.Context(), scopeOf(r), m.ID); err == nil {
+		m = saved // the plan sets the size, so say what was really stored
+	}
+	s.audit(r, "mailbox.update", "mailbox:"+m.Address, "plan %s, %d MB, disabled %v, sending blocked %v",
+		m.PackageName, m.QuotaMB, m.Disabled, m.SendBlocked)
 	s.redirect(w, r, "/mailboxes/"+m.ID, "Saved.")
+}
+
+// handleMailboxOpen signs the administrator in to the mailbox itself
+// (webmail and the mail user's pages), the way a hosting panel does:
+// customers ask whether a message arrived or want something checked. Only
+// staff who may write; the mailbox's own password and second factor are
+// not needed and not touched. Every time is written to the audit log and
+// shown to the mail user on their own page. The sign-in lasts half an
+// hour.
+func (s *Server) handleMailboxOpen(w http.ResponseWriter, r *http.Request) {
+	m := s.loadMailbox(w, r)
+	if m == nil {
+		return
+	}
+	to := "/mailboxes/" + m.ID
+	if ok, err := s.store.MailboxActive(r.Context(), m.ID); err != nil || !ok {
+		s.redirectErr(w, r, to, "The mailbox is disabled, or its domain or customer is not active.")
+		return
+	}
+	const life = 30 * time.Minute
+	tok, _, err := s.store.CreateMailSession(r.Context(), m.ID, store.StageFull, life, clientIP(r), r.UserAgent())
+	if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	s.setMailCookie(w, r, tok, life)
+	// the webmail signs in to IMAP and SMTP with its own short-lived token
+	if wt, err := s.store.CreateWebmailToken(r.Context(), m.ID, life); err == nil {
+		_ = s.store.SetSessionWebmail(r.Context(), auth.HashToken("mailsession", tok), wt)
+	} else {
+		s.log.Error("webmail token for a mailbox opened by staff", "mailbox", m.Address, "err", err)
+	}
+	who := userFrom(r).Username
+	if err := s.store.MarkStaffOpened(r.Context(), m.ID, who); err != nil {
+		s.log.Error("recording that staff opened a mailbox", "mailbox", m.Address, "err", err)
+	}
+	s.audit(r, "mailbox.open", "mailbox:"+m.Address, "opened the mailbox itself (webmail) to help the customer")
+	http.Redirect(w, r, "/mail/webmail", http.StatusSeeOther)
 }
 
 func (s *Server) handleMailboxPassword(w http.ResponseWriter, r *http.Request) {

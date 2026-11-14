@@ -1,10 +1,12 @@
 <h1>Kupci i paketi</h1>
-<h2>Paketi</h2>
-<p>Paket sadrži ograničenja koja kupac dobija: koliko domena, mailboxa i aliasa, koliko prostora svi mailboxi zajedno smeju da zauzmu, veličinu novog mailboxa i najvećeg, i <b>ograničenja slanja</b>. Sistemi za naplatu paket označavaju kratkim imenom (na primer <code>business-10</code>).</p>
+<h2>Paketi su planovi mailboxa</h2>
+<p>Paket je plan <b>jednog mailboxa</b> (Mail 10, Mail 100 …): veličina novog mailboxa, najveća veličina koju može da ima i koliko sme da pošalje po satu i po danu. Pošta se prodaje po mailboxu, pa jedan kupac može da ima više planova u isto vreme — na primer tri Mail 10, dva Mail 100 i jedan Mail 25. Sistemi za naplatu paket označavaju kratkim imenom (na primer <code>mail-10</code>).</p>
+<p>Svaki kupac ima i <b>osnovni paket</b>. On sadrži ono što važi za celog kupca: koliko domena i aliasa, koliko prostora svi mailboxi zajedno smeju da zauzmu, koliko kupac sme da pošalje po satu i koliko primalaca jedna poruka može da ima. Novi kupac počinje sa onoliko mailboxa osnovnog paketa koliko taj paket sadrži.</p>
 <ul>
-  <li><b>Poruka po satu / po danu (po mailboxu)</b> i <b>po satu za celog kupca</b> čuvaju reputaciju adrese servera: mailbox kome je ukradena lozinka ne može da pošalje hiljade spam poruka. Poruke preko ograničenja čekaju u redu.</li>
+  <li><b>Planovi pošte</b> na stranici kupca kažu koliko mailboxa svakog plana kupac ima i koliko ih je zauzeto. Novi mailbox može da se napravi dok plan ima slobodan, i dobija veličinu i ograničenja slanja tog plana; osoblje kasnije može da prebaci mailbox u drugi plan. REST API upisuje naručeno pozivom <code>PUT /api/v1/customers/{id}/mailbox-packages</code>.</li>
+  <li><b>Poruka po satu i po danu</b> dolazi iz plana samog mailboxa, a <b>po satu za celog kupca</b> iz osnovnog paketa. Čuvaju reputaciju adrese servera: mailbox kome je ukradena lozinka ne može da pošalje hiljade spam poruka. Poruke preko ograničenja čekaju u redu.</li>
   <li><b>Primalaca po poruci</b> sprečava da jedna poruka ode na hiljade adresa.</li>
-  <li>Prebacivanje kupca na manji paket ništa ne briše; samo se ništa novo ne može dodati preko novih ograničenja.</li>
+  <li>Plan može da se ukine samo kada nijedan njegov mailbox nije ostao, a paket sa mailboxima ne može da se obriše.</li>
 </ul>
 <h2>Kupci</h2>
 <p>Kupac poseduje domene i mailboxe. Pošta svakog kupca se čuva pod njegovim <b>sopstvenim sistemskim korisnikom</b>, pa ni greška u softveru za poštu ne može dozvoliti jednom kupcu da čita poštu drugog. Kupac nikad ne može da usmeri poštu u mailboxe drugog kupca, da šalje kao njegove adrese ili da vidi njegove domene.</p>

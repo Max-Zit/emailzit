@@ -1,10 +1,12 @@
 <h1>Clientes e planos</h1>
-<h2>Planos</h2>
-<p>Um plano contém os limites que um cliente recebe: quantos domínios, caixas de correio e aliases, quanto armazenamento todas as caixas de correio podem usar em conjunto, o tamanho de uma nova caixa de correio e o da maior, e os <b>limites de envio</b>. Os sistemas de faturação referem-se a um plano pelo seu nome curto (por exemplo <code>business-10</code>).</p>
+<h2>Um plano vale para uma caixa de correio</h2>
+<p>Um plano é o de <b>uma só caixa de correio</b> (Mail 10, Mail 100 …): o tamanho de uma caixa nova, o tamanho máximo e quanto pode enviar por hora e por dia. O correio vende-se por caixa, por isso um cliente pode ter vários planos ao mesmo tempo — por exemplo três Mail 10, dois Mail 100 e um Mail 25. Os sistemas de faturação referem-se a um plano pelo nome curto (por exemplo <code>mail-10</code>).</p>
+<p>Cada cliente tem além disso um <b>plano base</b>. Contém o que vale para todo o cliente: quantos domínios e aliases, quanto armazenamento todas as caixas podem usar juntas, quanto o cliente pode enviar por hora e quantos destinatários pode ter uma mensagem. Um cliente novo começa com tantas caixas do plano base quantas esse plano inclui.</p>
 <ul>
-  <li><b>Mensagens por hora / por dia (por caixa)</b> e <b>por hora para o cliente inteiro</b> protegem a reputação do endereço do servidor: uma caixa de correio cuja palavra-passe foi roubada não consegue enviar milhares de mensagens de spam. As mensagens acima do limite esperam na fila.</li>
-  <li><b>Destinatários por mensagem</b> impede que uma mensagem vá para milhares de endereços.</li>
-  <li>Mudar um cliente para um plano mais pequeno não apaga nada; não é possível adicionar nada de novo acima dos novos limites.</li>
+  <li><b>Planos de correio</b> na página do cliente diz quantas caixas de cada plano o cliente tem e quantas estão em uso. Uma caixa nova pode ser criada enquanto um plano tiver uma livre, e recebe o tamanho e os limites de envio desse plano; o pessoal pode mover uma caixa para outro plano mais tarde. A API REST escreve o pedido com <code>PUT /api/v1/customers/{id}/mailbox-packages</code>.</li>
+  <li><b>Mensagens por hora e por dia</b> vêm do plano da própria caixa, e <b>por hora para todo o cliente</b> do plano base. Protegem a reputação do endereço do servidor: uma caixa com a senha roubada não consegue enviar milhares de mensagens de spam. As mensagens acima do limite esperam na fila.</li>
+  <li><b>Destinatários por mensagem</b> evita que uma mensagem vá para milhares de endereços.</li>
+  <li>Um plano só pode ser retirado quando não resta nenhuma das suas caixas, e um plano com caixas não pode ser eliminado.</li>
 </ul>
 <h2>Clientes</h2>
 <p>Um cliente é dono de domínios e caixas de correio. O correio de cada cliente é guardado sob o seu <b>próprio utilizador de sistema</b>, por isso nem uma falha no software de correio permite que um cliente leia o correio de outro cliente. Um cliente nunca pode encaminhar correio para as caixas de correio de outro cliente, enviar como os endereços dele nem ver os domínios dele.</p>

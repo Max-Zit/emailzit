@@ -15,15 +15,25 @@
 <h1>{{.Name}}</h1>
 <div class="tiles">
   <a class="tile" href="/domains"><span class="tile-label">{{template "icon" "globe"}}{{$.T "Domains"}}</span><b>{{.Domains}}</b><small>{{$.T "of %d" $.Data.Package.MaxDomains}}</small></a>
-  <a class="tile" href="/mailboxes"><span class="tile-label">{{template "icon" "mail"}}{{$.T "Mailboxes"}}</span><b>{{.Mailboxes}}</b><small>{{$.T "of %d" $.Data.Package.MaxMailboxes}}</small></a>
+  <a class="tile" href="/mailboxes"><span class="tile-label">{{template "icon" "mail"}}{{$.T "Mailboxes"}}</span><b>{{.Mailboxes}}</b><small>{{$.T "of %d" .MailboxesPaid}}</small></a>
   <a class="tile" href="/aliases"><span class="tile-label">{{template "icon" "route"}}{{$.T "Aliases and forwarders"}}</span><b>{{.Aliases}}</b><small>{{$.T "of %d" $.Data.Package.MaxAliases}}</small></a>
   <div class="tile"><span class="tile-label">{{template "icon" "disk"}}{{$.T "Storage given to mailboxes"}}</span><b>{{mb .QuotaMB}}</b><small>{{if $.Data.Package.StorageMB}}{{$.T "of %s" (mb (i64 $.Data.Package.StorageMB))}}{{else}}{{$.T "no limit"}}{{end}} · {{$.T "%s used" (bytes .UsedBytes)}}</small></div>
 </div>
 <section class="panel">
-  <h2>{{template "icon" "package"}}{{$.T "Package"}}: {{$.Data.Package.Name}}</h2>
+  <h2>{{template "icon" "package"}}{{$.T "Mail plans"}}</h2>
+  {{if $.Data.Plans}}
+  <div class="table-wrap"><table>
+    <thead><tr><th>{{$.T "Plan"}}</th><th class="num">{{$.T "Mailbox size"}}</th><th class="hide-sm">{{$.T "Sending per mailbox"}}</th><th class="num">{{$.T "Mailboxes"}}</th><th class="num">{{$.T "In use"}}</th></tr></thead>
+    <tbody>{{range $.Data.Plans}}<tr>
+      <td>{{.Package.Name}}</td>
+      <td class="num">{{mb (i64 .Package.MailboxMB)}}</td>
+      <td class="hide-sm small">{{$.T "%d per hour, %d per day" .Package.SendPerHour .Package.SendPerDay}}</td>
+      <td class="num">{{.Mailboxes}}</td>
+      <td class="num">{{.Used}}</td>
+    </tr>{{end}}</tbody>
+  </table></div>
+  {{end}}
   <dl class="facts">
-    <dt>{{$.T "Largest mailbox"}}</dt><dd>{{mb (i64 $.Data.Package.MaxMailboxMB)}}</dd>
-    <dt>{{$.T "Sending per mailbox"}}</dt><dd>{{$.T "%d per hour, %d per day" $.Data.Package.SendPerHour $.Data.Package.SendPerDay}}</dd>
     <dt>{{$.T "Recipients per message"}}</dt><dd>{{$.Data.Package.RcptPerMsg}}</dd>
   </dl>
 </section>

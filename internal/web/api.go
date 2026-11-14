@@ -154,8 +154,14 @@ func (s *Server) apiAuth(scope string, next http.HandlerFunc) http.Handler {
 			return
 		}
 		ctx := context.WithValue(r.Context(), apiCtxKey{}, t)
-		if l, err := s.store.HostZitLinkByToken(r.Context(), t.ID); err == nil {
+		switch l, err := s.store.HostZitLinkByToken(r.Context(), t.ID); {
+		case err == nil:
 			ctx = context.WithValue(ctx, apiLinkKey{}, l)
+		case t.CreatedBy == pairingBy:
+			// a token the pairing made for a link that is gone does
+			// nothing any more, even if it was not revoked
+			apiError(w, http.StatusUnauthorized, "unauthorized", "the API token is not valid", "")
+			return
 		}
 		next(w, r.WithContext(ctx))
 	})

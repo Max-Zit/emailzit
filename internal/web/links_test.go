@@ -224,3 +224,35 @@ func TestLinkScopeAssignedCustomers(t *testing.T) {
 		t.Errorf("the billing system got %d for a customer of the server", code)
 	}
 }
+
+// A token the pairing made does nothing once its link is gone, even if
+// it was not revoked (the HostZit review asked for this). Tokens made by
+// hand are not touched.
+func TestPairedTokenWithoutItsLinkIsDead(t *testing.T) {
+	ctx := context.Background()
+	s, st := linkServer(t)
+	token, _, _ := pairWith(t, s, "https://h1.example.net:8442", "h1", "127.0.0.1")
+	if code, _ := call(t, s.Handler(), "GET", "/api/v1/customers", token, ""); code != 200 {
+		t.Fatalf("the token of the link answered %d", code)
+	}
+	links, err := st.HostZitLinks(ctx)
+	if err != nil || len(links) != 1 {
+		t.Fatalf("the links are %+v (%v)", links, err)
+	}
+	// the link goes without revoking the token (a restore of an older
+	// backup, a row removed by hand …)
+	if err := st.DeleteHostZitLink(ctx, links[0].ID); err != nil {
+		t.Fatal(err)
+	}
+	if code, _ := call(t, s.Handler(), "GET", "/api/v1/customers", token, ""); code != 401 {
+		t.Errorf("the token of a link that is gone answered %d, want 401", code)
+	}
+	// a token made by hand still works
+	own, _, err := st.CreateAPIToken(ctx, "portal", store.Scopes, nil, 0, "admin")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if code, _ := call(t, s.Handler(), "GET", "/api/v1/customers", own, ""); code != 200 {
+		t.Errorf("a token made by hand answered %d", code)
+	}
+}

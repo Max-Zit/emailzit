@@ -44,6 +44,9 @@ const (
 	pairingPrefix = "ezlink_"
 	// linkTokenName is the name of the API token EmailZit gives HostZit.
 	linkTokenName = "HostZit (paired)" // #nosec G101 -- a name shown on the token page, not a secret
+	// pairingBy marks the tokens the pairing made; they stop working when
+	// their link is gone.
+	pairingBy = "pairing"
 	// relayUser is the local part of the relay login of the link.
 	relayUser = "hostzit-relay"
 )
@@ -176,7 +179,7 @@ func (s *Server) handleLinkHostZit(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	tok, rec, err := s.store.CreateAPIToken(r.Context(), linkTokenName,
-		[]string{store.ScopeCustomersRead, store.ScopeCustomersWrite, store.ScopeSSO}, addrs, 0, "pairing")
+		[]string{store.ScopeCustomersRead, store.ScopeCustomersWrite, store.ScopeSSO}, addrs, 0, pairingBy)
 	if err != nil {
 		s.apiInternal(w, r, err)
 		return
@@ -276,14 +279,25 @@ func (s *Server) ownAddresses(ctx context.Context, r *http.Request) []string {
 			}
 		}
 	}
-	// The addresses of the mail host name, so HostZit also allows the other
-	// family (it reaches us over one of the two).
-	if h := s.MailConfig(ctx).Hostname; h != "" {
-		if ips, err := net.DefaultResolver.LookupIP(ctx, "ip", h); err == nil {
-			for _, ip := range ips {
-				if !ip.IsLoopback() && !ip.IsLinkLocalUnicast() {
-					add(ip.String())
-				}
+	// The addresses of the names HostZit knows us by: the mail host name
+	// and the host name of the panel from the pairing code. HostZit keeps
+	// only addresses one of those names really points at, and it also
+	// allows the other family this way (it reaches us over one of the two).
+	names := []string{s.MailConfig(ctx).Hostname}
+	if u, err := url.Parse(s.PublicPanelURL(ctx)); err == nil {
+		names = append(names, u.Hostname())
+	}
+	for _, h := range names {
+		if h == "" {
+			continue
+		}
+		ips, err := net.DefaultResolver.LookupIP(ctx, "ip", h)
+		if err != nil {
+			continue
+		}
+		for _, ip := range ips {
+			if !ip.IsLoopback() && !ip.IsLinkLocalUnicast() {
+				add(ip.String())
 			}
 		}
 	}

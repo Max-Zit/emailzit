@@ -92,6 +92,11 @@ func (f *fakeRelayStore) entries() []store.RelayMail {
 
 // startRelay runs the relay on a loopback port and returns its address.
 func startRelay(t *testing.T, f *fakeRelayStore, got chan<- string) string {
+	return startRelayWith(t, f, got, 1<<20)
+}
+
+// startRelayWith also says how large a message may be.
+func startRelayWith(t *testing.T, f *fakeRelayStore, got chan<- string, max int64) string {
 	t.Helper()
 	cert, err := tlsutil.LoadOrCreate(t.TempDir(), "panel", "EmailZit test", 1)
 	if err != nil {
@@ -105,7 +110,7 @@ func startRelay(t *testing.T, f *fakeRelayStore, got chan<- string) string {
 	t.Cleanup(cancel)
 	s := &RelayServer{Store: f, Log: slog.New(slog.DiscardHandler), TLS: tlsutil.ServerConfig(cert),
 		Hostname: func(context.Context) string { return "mail.test" },
-		MaxBytes: func(context.Context) int64 { return 1 << 20 },
+		MaxBytes: func(context.Context) int64 { return max },
 		Dial:     fakePostfix(got),
 		Hosted: func(_ context.Context, domain string) (string, bool, bool) {
 			switch domain {
@@ -331,5 +336,42 @@ func TestEnvelopeAddress(t *testing.T) {
 		if ok != c.ok || got != c.want {
 			t.Errorf("envelope(%q) = %q, %v; want %q, %v", c.in, got, ok, c.want, c.ok)
 		}
+	}
+}
+
+// A message larger than the limit is refused and the connection ends (the
+// rest of the message is not read away); the next message goes over a new
+// connection. A client that says SIZE is told before it sends.
+func TestRelayRefusesATooLargeMessage(t *testing.T) {
+	f := &fakeRelayStore{pass: "s3cret", limits: store.SendLimits{CustomerPerHour: 100, RcptPerMsg: 10}}
+	got := make(chan string, 4)
+	addr := startRelayWith(t, f, got, 2048)
+	c := signedIn(t, addr, "s3cret")
+	if err := c.Mail("web@acme.test"); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.Rcpt("a@example.test"); err != nil {
+		t.Fatal(err)
+	}
+	w, err := c.Data()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := w.Write([]byte("From: web@acme.test\r\nSubject: big\r\n\r\n" + strings.Repeat("x", 4096) + "\r\n")); err != nil {
+		t.Fatal(err)
+	}
+	if err := w.Close(); err == nil || !strings.Contains(err.Error(), "552") {
+		t.Fatalf("a message over the limit was answered with %v", err)
+	}
+	if err := c.Mail("web@acme.test"); err == nil {
+		t.Error("the connection was kept open after a message over the limit")
+	}
+	c2 := signedIn(t, addr, "s3cret")
+	if err := c2.Mail("web@acme.test"); err != nil {
+		t.Fatalf("a new connection does not work: %v", err)
+	}
+	_ = c2.Quit()
+	if e := f.entries(); len(e) != 1 || e[0].Reason != "the message is too large" {
+		t.Errorf("the relay log holds %+v", e)
 	}
 }

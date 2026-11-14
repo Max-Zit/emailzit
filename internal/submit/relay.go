@@ -464,14 +464,20 @@ func (z *relaySession) data() error {
 		return err
 	}
 	_ = z.c.SetDeadline(z.s.now().Add(10 * time.Minute))
-	raw, err := io.ReadAll(io.LimitReader(z.tr.DotReader(), z.max+1))
+	dot := z.tr.DotReader()
+	raw, err := io.ReadAll(io.LimitReader(dot, z.max+1))
 	if err != nil {
 		return err
 	}
 	if int64(len(raw)) > z.max {
+		// The rest of the message is not read away (that would be an
+		// unbounded read), so the connection ends here: the next command
+		// would otherwise be read out of the middle of the message. A
+		// client that says SIZE in MAIL FROM is told before it sends.
 		z.refused(z.from, len(z.rcpts), "the message is too large")
 		z.reset()
-		return z.say(552, fmt.Sprintf("5.3.4 The message is larger than %d MB", z.max>>20))
+		_ = z.say(552, fmt.Sprintf("5.3.4 The message is larger than %d MB", z.max>>20))
+		return errors.New("the message is too large")
 	}
 	code, text := z.send(raw)
 	z.reset()

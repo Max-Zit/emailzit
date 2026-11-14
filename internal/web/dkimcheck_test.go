@@ -94,3 +94,24 @@ func (m *countingMail) DKIMOff(context.Context, string) error {
 	m.off++
 	return nil
 }
+
+// A name server that answers the test question and then refuses the
+// record must not leave the check undecided for ever: the system resolver
+// is asked next (found on e1, where one name server of a test domain
+// answered "server misbehaving" over IPv6).
+func TestDKIMLookupFallsBackToTheSystemResolver(t *testing.T) {
+	old := checkResolver
+	t.Cleanup(func() { checkResolver = old })
+	checkResolver = func(context.Context, string) *net.Resolver {
+		return &net.Resolver{PreferGo: true, Dial: func(ctx context.Context, network, _ string) (net.Conn, error) {
+			// a server that is there but says nothing useful
+			return net.Dial(network, "127.0.0.1:1")
+		}}
+	}
+	// the system resolver answers (example.com has the documented empty
+	// DKIM record under every selector), so the check can decide
+	txt, err := dkimTXT(context.Background(), "example.com", "ez-no-such-selector._domainkey.example.com")
+	if err != nil && !notFound(err) {
+		t.Fatalf("the fallback did not decide: %v (records %v)", err, txt)
+	}
+}

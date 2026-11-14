@@ -80,9 +80,22 @@ func (s *Server) stopSigning(ctx context.Context, domain string) {
 }
 
 // dkimTXT asks the name servers of the domain itself, so a record that
-// was just published is seen at once (tests replace it).
+// was just published is seen at once, and falls back to the system
+// resolver when one of them answers nothing useful (tests replace it).
+// A name server of a domain may answer the test question and still refuse
+// the record, and the check would then never decide anything.
 func dkimTXT(ctx context.Context, domain, name string) ([]string, error) {
-	return checkResolver(ctx, domain).LookupTXT(ctx, name)
+	txt, err := checkResolver(ctx, domain).LookupTXT(ctx, name)
+	if err == nil || notFound(err) {
+		return txt, err
+	}
+	return net.DefaultResolver.LookupTXT(ctx, name)
+}
+
+// notFound reports a DNS answer that says the name does not exist.
+func notFound(err error) bool {
+	var de *net.DNSError
+	return errors.As(err, &de) && de.IsNotFound
 }
 
 // dkimInDNS looks the key up at the name servers of the domain. decided
@@ -96,8 +109,7 @@ func (s *Server) dkimInDNS(ctx context.Context, k *store.DKIMKey) (found, decide
 	}
 	txt, err := lookup(ctx, k.Domain, k.RecordName())
 	if err != nil {
-		var de *net.DNSError
-		if errors.As(err, &de) && de.IsNotFound {
+		if notFound(err) {
 			return false, true // there is no such record
 		}
 		return false, false

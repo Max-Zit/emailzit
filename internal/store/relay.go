@@ -208,10 +208,3 @@ func (s *Store) RelayCounts(ctx context.Context, since time.Time) (sent, refused
 		FROM relay_log WHERE at > $1`, since).Scan(&sent, &refused)
 	return sent, refused, err
 }
-
-// CleanRelayLog drops relay entries older than the retention of the
-// delivery log (30 days).
-func (s *Store) CleanRelayLog(ctx context.Context) error {
-	_, err := s.db.Exec(ctx, `DELETE FROM relay_log WHERE at < now() - interval '30 days'`)
-	return err
-}

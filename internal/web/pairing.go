@@ -19,8 +19,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/max-zit/emailzit/internal/auth"
 	"github.com/max-zit/emailzit/internal/netacl"
 	"github.com/max-zit/emailzit/internal/store"
+	"github.com/max-zit/emailzit/internal/submit"
 )
 
 // Linking EmailZit and HostZit with ONE pairing code (INTEGRATION.md,
@@ -40,6 +42,8 @@ const (
 	pairingPrefix = "ezlink_"
 	// linkTokenName is the name of the API token EmailZit gives HostZit.
 	linkTokenName = "HostZit (paired)"
+	// relayUser is the local part of the relay login of the link.
+	relayUser = "hostzit-relay"
 )
 
 // pairing is what EmailZit remembers of an open pairing code.
@@ -179,6 +183,7 @@ func (s *Server) handleLinkHostZit(w http.ResponseWriter, r *http.Request) {
 		s.apiInternal(w, r, err)
 		return
 	}
+	s.ForgetHostedDomains()
 	_ = s.store.Audit(r.Context(), "-", ip, "hostzit.paired", "settings", "paired with "+u+" (token for "+strings.Join(addrs, ", ")+")")
 	writeJSON(w, http.StatusCreated, map[string]any{
 		"api_token":          tok,
@@ -186,7 +191,7 @@ func (s *Server) handleLinkHostZit(w http.ResponseWriter, r *http.Request) {
 		"emailzit_addresses": s.ownAddresses(r.Context()),
 		"emailzit_url":       s.PublicPanelURL(r.Context()),
 		"emailzit_mail_host": s.MailConfig(r.Context()).Hostname,
-		"relay":              nil, // comes with the relay login
+		"relay":              s.newRelay(r.Context(), ip),
 	})
 }
 
@@ -240,6 +245,8 @@ func (s *Server) handleLinkDelete(w http.ResponseWriter, r *http.Request) {
 	if l.TokenID != "" {
 		_ = s.store.DeleteAPIToken(r.Context(), l.TokenID)
 	}
+	s.dropRelay(r.Context())
+	s.ForgetHostedDomains()
 	_ = s.store.Audit(r.Context(), "-", clientIP(r), "hostzit.unlinked", "settings", "unlinked by HostZit ("+l.URL+")")
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
@@ -345,9 +352,9 @@ func (s *Server) handleHostZitCode(w http.ResponseWriter, r *http.Request) {
 	}
 	// the code itself never goes into the audit log
 	s.audit(r, "hostzit.code", "settings", "pairing code created (valid until %s)", until.UTC().Format(time.RFC3339))
-	l := s.hostzitLink(r.Context())
-	s.render(w, r, http.StatusOK, "hostzit", &Page{Title: "HostZit", Nav: "settings",
-		Data: &hostzitData{L: l, HasToken: l.Token != "", Code: code}})
+	d := s.hostzitPage(r.Context())
+	d.Code = code
+	s.render(w, r, http.StatusOK, "hostzit", &Page{Title: "HostZit", Nav: "settings", Data: d})
 }
 
 // handleHostZitUnlink ends the link from this side: EmailZit tells HostZit
@@ -371,6 +378,43 @@ func (s *Server) handleHostZitUnlink(w http.ResponseWriter, r *http.Request) {
 	if l.TokenID != "" {
 		_ = s.store.DeleteAPIToken(r.Context(), l.TokenID)
 	}
+	s.dropRelay(r.Context())
+	s.ForgetHostedDomains()
 	s.audit(r, "hostzit.unlink", "settings", "link with %s ended", l.URL)
 	s.redirect(w, r, "/settings/hostzit", msg)
+}
+
+// newRelay makes the relay login of the link and returns it for the
+// pairing answer: the websites of a HostZit on another server send their
+// mail with it (INTEGRATION.md E3). nil when this server takes no mail.
+func (s *Server) newRelay(ctx context.Context, ip string) any {
+	if s.Mail == nil {
+		return nil
+	}
+	host := s.MailConfig(ctx).Hostname
+	if host == "" {
+		s.log.Warn("no relay login for HostZit: the mail host name is not set yet")
+		return nil
+	}
+	user := relayUser + "@" + strings.ToLower(host)
+	pass := auth.RandomToken(24)
+	if _, err := s.store.SetRelayLogin(ctx, user, pass); err != nil {
+		s.log.Error("relay login", "err", err)
+		return nil
+	}
+	_ = s.store.Audit(ctx, "-", ip, "hostzit.relay", "settings", "relay login "+user+" created for the websites of HostZit")
+	return map[string]any{
+		"host":     strings.ToLower(host),
+		"port":     submit.RelayPort,
+		"username": user,
+		"password": pass,
+		"starttls": true,
+	}
+}
+
+// dropRelay removes the relay login (the link ended).
+func (s *Server) dropRelay(ctx context.Context) {
+	if err := s.store.DeleteRelayLogins(ctx); err != nil {
+		s.log.Error("relay login", "err", err)
+	}
 }

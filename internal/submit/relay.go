@@ -541,6 +541,11 @@ func envelope(arg, want string) (addr string, params []string, ok bool) {
 		return "", nil, false
 	}
 	addr = strings.TrimSpace(rest[1:end])
+	// nothing that could be a line of its own in the session with Postfix,
+	// and no second pair of brackets
+	if strings.ContainsAny(addr, "<>") || strings.ContainsFunc(addr, func(r rune) bool { return r < ' ' || r == 0x7f }) {
+		return "", nil, false
+	}
 	for _, p := range strings.Fields(rest[end+1:]) {
 		params = append(params, p)
 	}

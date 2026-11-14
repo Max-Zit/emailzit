@@ -268,6 +268,11 @@ func (s *Server) reportText(ctx context.Context, since time.Time) (string, error
 		{"  risky attachments", st.Attachments}} {
 		fmt.Fprintf(&b, "  %-24s %7d\n", l.label, l.n)
 	}
+	// mail of the websites of a linked HostZit on another server
+	if sent, refused, err := s.store.RelayCounts(ctx, since); err == nil && sent+refused > 0 {
+		fmt.Fprintf(&b, "  %-24s %7d\n", "from websites, taken", sent)
+		fmt.Fprintf(&b, "  %-24s %7d\n", "from websites, refused", refused)
+	}
 	b.WriteString("\n")
 	if len(st.TopSenders) > 0 {
 		b.WriteString("Mailboxes that sent the most (recipients):\n\n")

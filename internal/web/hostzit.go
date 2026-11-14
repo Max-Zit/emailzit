@@ -12,9 +12,11 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/max-zit/emailzit/internal/store"
+	"github.com/max-zit/emailzit/internal/submit"
 )
 
 // The link to HostZit (INTEGRATION.md P3, P6, P7): when both products run
@@ -186,11 +188,25 @@ type hostzitData struct {
 	L        HostZitLink
 	HasToken bool
 	Code     string // a fresh pairing code, shown once
+	// Relay is the login the websites of HostZit send their mail with.
+	Relay     *store.RelayLogin
+	RelayHost string
+	RelayPort int
+}
+
+// hostzitPage is what the HostZit page shows (the pairing code is added by
+// the handler that made it).
+func (s *Server) hostzitPage(ctx context.Context) *hostzitData {
+	l := s.hostzitLink(ctx)
+	d := &hostzitData{L: l, HasToken: l.Token != "", RelayPort: submit.RelayPort}
+	if rl, err := s.store.RelayLoginOf(ctx); err == nil {
+		d.Relay, d.RelayHost = rl, s.MailConfig(ctx).Hostname
+	}
+	return d
 }
 
 func (s *Server) handleHostZit(w http.ResponseWriter, r *http.Request) {
-	l := s.hostzitLink(r.Context())
-	s.render(w, r, http.StatusOK, "hostzit", &Page{Title: "HostZit", Nav: "settings", Data: &hostzitData{L: l, HasToken: l.Token != ""}})
+	s.render(w, r, http.StatusOK, "hostzit", &Page{Title: "HostZit", Nav: "settings", Data: s.hostzitPage(r.Context())})
 }
 
 func (s *Server) handleHostZitSave(w http.ResponseWriter, r *http.Request) {
@@ -209,6 +225,7 @@ func (s *Server) handleHostZitSave(w http.ResponseWriter, r *http.Request) {
 		l.ServerName, l.Addresses, l.Pin, l.TokenID, l.LinkedAt = old.ServerName, old.Addresses, old.Pin, old.TokenID, old.LinkedAt
 	case old.TokenID != "":
 		_ = s.store.DeleteAPIToken(r.Context(), old.TokenID)
+		s.dropRelay(r.Context()) // that HostZit is gone
 	}
 	if t := strings.TrimSpace(r.FormValue("token")); t != "" {
 		if !strings.HasPrefix(t, "hzt_") || len(t) > 200 || strings.ContainsAny(t, " \r\n") {
@@ -219,11 +236,13 @@ func (s *Server) handleHostZitSave(w http.ResponseWriter, r *http.Request) {
 	}
 	if l.URL == "" {
 		l = HostZitLink{}
+		s.dropRelay(r.Context())
 	}
 	if err := s.store.SetSetting(r.Context(), settingHostZit, l); err != nil {
 		s.serverError(w, r, err)
 		return
 	}
+	s.ForgetHostedDomains()
 	s.audit(r, "settings.hostzit", "settings", "HostZit link %q (self-signed allowed %v)", l.URL, l.Insecure)
 	go s.publishAllDNS(context.WithoutCancel(r.Context()))
 	s.redirect(w, r, "/settings/hostzit", "Saved. The DNS records of all domains are being written into HostZit's DNS.")
@@ -271,4 +290,104 @@ func (s *Server) handleWebSend(w http.ResponseWriter, r *http.Request) {
 	}
 	s.audit(r, "web.send.unblock", fmt.Sprintf("webuid:%d", uid), "mail from the hosting account allowed again (customer %s)", c.Name)
 	s.redirect(w, r, back, "Mail from the hosting account is allowed again.")
+}
+
+// ---- "does HostZit host this domain?" (the relay asks for every message)
+
+// HostedLife is how long an answer of HostZit about a domain is used
+// before it is asked again.
+const HostedLife = 10 * time.Minute
+
+// hostedCache remembers HostZit's answers about domains.
+type hostedCache struct {
+	mu sync.Mutex
+	m  map[string]hostedAnswer
+}
+
+type hostedAnswer struct {
+	customer string
+	ok       bool
+	until    time.Time
+}
+
+// HostedDomain tells whether HostZit hosts the domain for one of its
+// customers, and which customer that is here (empty when the customer is
+// not in EmailZit). temp: HostZit could not be asked, so nothing is
+// decided — the caller lets the sender try again later.
+//
+// HostZit answers GET /api/v1/domains/{domain} with the domain's customer
+// (customer_id, or customer.id) and its state; 404 means it does not host
+// the domain. The answer is remembered for HostedLife, in both directions.
+func (s *Server) HostedDomain(ctx context.Context, domain string) (string, bool, bool) {
+	domain = strings.ToLower(strings.TrimSpace(domain))
+	if domain == "" || s.hostzitLink(ctx).Token == "" {
+		return "", false, false
+	}
+	now := s.now()
+	s.hosted.mu.Lock()
+	a, found := s.hosted.m[domain]
+	s.hosted.mu.Unlock()
+	if found && now.Before(a.until) {
+		return a.customer, a.ok, false
+	}
+	st, body, err := s.hostzitCall(ctx, http.MethodGet, "/api/v1/domains/"+url.PathEscape(domain), nil)
+	switch {
+	case err != nil || st == 0:
+		s.log.Warn("HostZit cannot be asked about a domain", "domain", domain, "err", err)
+		return "", false, true
+	case st == http.StatusNotFound:
+		a = hostedAnswer{until: now.Add(HostedLife)}
+	case st >= 300:
+		s.log.Warn("HostZit refused the question about a domain", "domain", domain, "status", st, "message", apiMessage(body))
+		return "", false, true
+	default:
+		var in struct {
+			CustomerID string `json:"customer_id"`
+			Customer   struct {
+				ID string `json:"id"`
+			} `json:"customer"`
+			Status    string `json:"status"`
+			Suspended bool   `json:"suspended"`
+		}
+		if err := json.Unmarshal(body, &in); err != nil {
+			s.log.Warn("HostZit's answer about a domain is not understood", "domain", domain, "err", err)
+			return "", false, true
+		}
+		cust := in.CustomerID
+		if cust == "" {
+			cust = in.Customer.ID
+		}
+		live := !in.Suspended && (in.Status == "" || in.Status == "active")
+		// the customer counts only when it is the same customer here (P1)
+		if cust != "" {
+			if _, err := s.store.CustomerByID(ctx, cust); err != nil {
+				cust = ""
+			}
+		}
+		a = hostedAnswer{customer: cust, ok: live, until: now.Add(HostedLife)}
+	}
+	s.hosted.mu.Lock()
+	if s.hosted.m == nil {
+		s.hosted.m = map[string]hostedAnswer{}
+	}
+	if len(s.hosted.m) > 5000 {
+		s.hosted.m = map[string]hostedAnswer{} // a flood of unknown domains
+	}
+	s.hosted.m[domain] = a
+	s.hosted.mu.Unlock()
+	return a.customer, a.ok, false
+}
+
+// ForgetHostedDomains drops what HostZit said about domains (the link
+// changed).
+func (s *Server) ForgetHostedDomains() {
+	s.hosted.mu.Lock()
+	s.hosted.m = nil
+	s.hosted.mu.Unlock()
+}
+
+// HostZitAddresses are the addresses of the linked HostZit (empty when the
+// link was typed in by hand and nobody said them).
+func (s *Server) HostZitAddresses(ctx context.Context) []string {
+	return s.hostzitLink(ctx).Addresses
 }

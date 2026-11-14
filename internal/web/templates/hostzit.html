@@ -18,6 +18,20 @@
   {{end}}
 </section>
 
+{{with .Data.Relay}}
+<section class="panel">
+  <h2>{{template "icon" "mail"}}{{$.T "Mail of the websites on the hosting server"}}</h2>
+  <p class="muted">{{$.T "HostZit runs on another server, so its websites send their mail to this server with a login of their own. The pairing handed it over; it cannot be used for a mailbox, the webmail or a mail program, and only the addresses of that HostZit reach the port."}}</p>
+  <dl class="facts">
+    <div><dt>{{$.T "Server"}}</dt><dd class="mono">{{$.Data.RelayHost}}</dd></div>
+    <div><dt>{{$.T "Port"}}</dt><dd class="mono">{{$.Data.RelayPort}} (STARTTLS)</dd></div>
+    <div><dt>{{$.T "User name"}}</dt><dd class="mono">{{.Username}}</dd></div>
+    <div><dt>{{$.T "Last used"}}</dt><dd>{{if .LastUsed.IsZero}}<span class="muted">{{$.T "never"}}</span>{{else}}{{$.Time .LastUsed}}{{end}}</dd></div>
+  </dl>
+  <p class="small muted">{{$.T "The password is only known to HostZit. A new pairing gives a new one."}}</p>
+</section>
+{{end}}
+
 {{if .User.CanWrite}}
 <section class="panel">
   <h2>{{template "icon" "key"}}{{.T "Link with a pairing code"}}</h2>

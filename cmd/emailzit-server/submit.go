@@ -56,10 +56,7 @@ func startSubmit(ctx context.Context, st *store.Store, srv *web.Server, log *slo
 		return
 	}
 	ss := &submit.Server{Store: st, Log: log, PeerUID: mailhelper.PeerUID,
-		Dial: func(ctx context.Context) (net.Conn, error) {
-			var d net.Dialer
-			return d.DialContext(ctx, "unix", submit.PostfixService)
-		},
+		Dial:     postfixDial,
 		Hostname: func(ctx context.Context) string { return srv.MailConfig(ctx).Hostname },
 		MaxBytes: func(ctx context.Context) int64 { return int64(srv.MailConfig(ctx).MaxMessageMB) << 20 },
 		Blocked: func(uid int, reason string) {
@@ -78,10 +75,7 @@ func startSubmit(ctx context.Context, st *store.Store, srv *web.Server, log *slo
 // service as mail from websites).
 func systemMailer(srv *web.Server) web.SystemMailer {
 	return func(ctx context.Context, domain string, to []string, subject, body string) error {
-		dial := func(ctx context.Context) (net.Conn, error) {
-			var d net.Dialer
-			return d.DialContext(ctx, "unix", submit.PostfixService)
-		}
+		dial := postfixDial
 		host := srv.MailConfig(ctx).Hostname
 		if host == "" {
 			h, _ := os.Hostname()
@@ -89,4 +83,10 @@ func systemMailer(srv *web.Server) web.SystemMailer {
 		}
 		return submit.SendAs(ctx, dial, host, domain, to, subject, body)
 	}
+}
+
+// postfixDial opens the Postfix service that takes our messages.
+func postfixDial(ctx context.Context) (net.Conn, error) {
+	var d net.Dialer
+	return d.DialContext(ctx, "unix", submit.PostfixService)
 }

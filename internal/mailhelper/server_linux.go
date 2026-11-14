@@ -783,14 +783,15 @@ func (s *Server) authPolicyToken() string {
 }
 
 // nftRules is EmailZit's own firewall table: blocked addresses lose the
-// mail sign-in ports and the panels (port 25 stays open: other servers).
+// mail sign-in ports, the relay for the websites of a linked HostZit and
+// the panels (port 25 stays open: other servers).
 const nftRules = `table inet emailzit {
 	set banned4 { type ipv4_addr; flags timeout; }
 	set banned6 { type ipv6_addr; flags timeout; }
 	chain input {
 		type filter hook input priority -10; policy accept;
-		ip saddr @banned4 tcp dport { 110, 143, 465, 587, 993, 995, 4190, 8444 } drop
-		ip6 saddr @banned6 tcp dport { 110, 143, 465, 587, 993, 995, 4190, 8444 } drop
+		ip saddr @banned4 tcp dport { 110, 143, 465, 587, 993, 995, 2587, 4190, 8444 } drop
+		ip6 saddr @banned6 tcp dport { 110, 143, 465, 587, 993, 995, 2587, 4190, 8444 } drop
 	}
 }
 `
@@ -986,6 +987,7 @@ func (s *Server) followJournal(ctx context.Context, p *maillog.Parser) error {
 		if time.Since(last) > time.Hour {
 			last = time.Now()
 			_, _ = s.DB.Exec(ctx, `DELETE FROM mail_log WHERE at < now() - interval '30 days'`)
+			_, _ = s.DB.Exec(ctx, `DELETE FROM relay_log WHERE at < now() - interval '30 days'`)
 		}
 	}
 	return sc.Err()

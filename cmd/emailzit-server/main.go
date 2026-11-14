@@ -246,6 +246,7 @@ func run() error {
 	go func() { errc <- hs.Serve(l) }()
 	log.Info("listening", "listener", "console", "addr", raw.Addr().String())
 	servers = append(servers, startPublic(ctx, *publicWeb, srv, consoleCert, raw.Addr().String(), log)...)
+	startHostZitRelay(ctx, st, srv, consoleCert, log)
 	if *devHTTP != "" {
 		a, ok := netacl.AddrOf(*devHTTP)
 		if !ok || !a.IsLoopback() {

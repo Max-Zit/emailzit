@@ -371,8 +371,9 @@ type customerData struct {
 	Packages  []*store.Package
 	Logins    []*store.User
 	Domains   []*store.Domain
-	Web       []store.WebSender // hosting accounts (HostZit) sending through emailzit-sendmail
-	Spam      string            // the customer's spam level
+	Web       []store.WebSender  // hosting accounts (HostZit) sending through emailzit-sendmail
+	RelayMail []store.RelayEntry // the newest mail of the customer's websites through the relay
+	Spam      string             // the customer's spam level
 	Levels    []string
 	Exports   []exportFile
 	Exporting bool // an export is running
@@ -405,6 +406,7 @@ func (s *Server) handleCustomer(w http.ResponseWriter, r *http.Request) {
 				d.Domains, err = s.store.Domains(r.Context(), store.Staff, c.ID)
 				if err == nil {
 					d.Web, err = s.store.WebSenders(r.Context(), c.ID)
+					d.RelayMail, _ = s.store.RelayLog(r.Context(), store.Scope{CustomerID: c.ID}, 10)
 					d.Levels = sieve.SpamLevels
 					d.Exports, d.Exporting = s.exportFiles(c.ID), s.exportRunning(c.ID)
 					d.Import = s.lastImport(c.ID)

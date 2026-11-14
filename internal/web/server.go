@@ -35,6 +35,9 @@ type Server struct {
 	jobs jobList
 	// pairLimit counts the attempts at the pairing endpoint.
 	pairLimit pairingLimiter
+	// hosted remembers for a few minutes which domains HostZit hosts (the
+	// relay asks for every message).
+	hosted hostedCache
 	// testMail remembers when a domain last sent a test message (one a
 	// minute, so the page cannot be used to send more).
 	testMail struct {

@@ -780,7 +780,7 @@ type Mailbox struct {
 	ID           string
 	DomainID     string
 	CustomerID   string
-	PackageID    int64  // the mailbox's plan (Mail 10, Mail 100 …)
+	PackageID    int64 // the mailbox's plan (Mail 10, Mail 100 …)
 	PackageName  string
 	LocalPart    string
 	Address      string

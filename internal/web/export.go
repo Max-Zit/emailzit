@@ -267,7 +267,9 @@ func (s *Server) apiExport(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) apiJob(w http.ResponseWriter, r *http.Request) {
 	j := s.jobs.get(r.PathValue("id"))
-	if j == nil {
+	// a link that serves only its own customers learns nothing about the
+	// jobs of the others (E13)
+	if j == nil || !s.apiServes(r, j.CustomerID) {
 		apiError(w, http.StatusNotFound, "not_found", "no such job (jobs are kept for a day)", "")
 		return
 	}

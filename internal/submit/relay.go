@@ -95,7 +95,8 @@ func (s *RelayServer) Serve(ctx context.Context, l net.Listener) error {
 	for {
 		c, err := l.Accept()
 		if err != nil {
-			if ctx.Err() != nil {
+			// the listener is closed when the link ends: not an error
+			if ctx.Err() != nil || errors.Is(err, net.ErrClosed) {
 				return nil
 			}
 			var ne net.Error

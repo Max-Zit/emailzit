@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -161,6 +162,10 @@ func TestPairingGivesTokenAndRelay(t *testing.T) {
 		r.Header.Set("Authorization", "Pairing "+secret)
 		r.Header.Set("Content-Type", "application/json")
 		r.RemoteAddr = "144.91.79.144:50000"
+		// the address HostZit reached this server on (the answer names it,
+		// so HostZit can bind its own token to it)
+		local := &net.TCPAddr{IP: net.ParseIP("213.136.66.211"), Port: 8444}
+		r = r.WithContext(context.WithValue(r.Context(), http.LocalAddrContextKey, net.Addr(local)))
 		w := httptest.NewRecorder()
 		s.Handler().ServeHTTP(w, r)
 		return w
@@ -180,9 +185,10 @@ func TestPairingGivesTokenAndRelay(t *testing.T) {
 		t.Fatalf("the pairing answered %d: %s", w.Code, w.Body.String())
 	}
 	var out struct {
-		Token  string   `json:"api_token"`
-		Scopes []string `json:"scopes"`
-		Relay  struct {
+		Token     string   `json:"api_token"`
+		Scopes    []string `json:"scopes"`
+		Addresses []string `json:"emailzit_addresses"`
+		Relay     struct {
 			Host     string `json:"host"`
 			Port     int    `json:"port"`
 			Username string `json:"username"`
@@ -195,6 +201,9 @@ func TestPairingGivesTokenAndRelay(t *testing.T) {
 	}
 	if !strings.HasPrefix(out.Token, "ezt_") || len(out.Scopes) != 3 {
 		t.Errorf("the answer holds %+v", out)
+	}
+	if len(out.Addresses) != 1 || out.Addresses[0] != "213.136.66.211" {
+		t.Errorf("EmailZit's addresses are %v, want the one HostZit reached", out.Addresses)
 	}
 	if out.Relay.Host != "mail.example.net" || out.Relay.Port != submit.RelayPort || !out.Relay.STARTTLS ||
 		out.Relay.Username != relayUser+"@mail.example.net" || len(out.Relay.Password) < 20 {

@@ -188,7 +188,7 @@ func (s *Server) handleLinkHostZit(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, map[string]any{
 		"api_token":          tok,
 		"scopes":             []string{store.ScopeCustomersRead, store.ScopeCustomersWrite, store.ScopeSSO},
-		"emailzit_addresses": s.ownAddresses(r.Context()),
+		"emailzit_addresses": s.ownAddresses(r.Context(), r),
 		"emailzit_url":       s.PublicPanelURL(r.Context()),
 		"emailzit_mail_host": s.MailConfig(r.Context()).Hostname,
 		"relay":              s.newRelay(r.Context(), ip),
@@ -254,25 +254,34 @@ func (s *Server) handleLinkDelete(w http.ResponseWriter, r *http.Request) {
 // ownAddresses are the addresses of this server HostZit should allow for
 // EmailZit's token: the addresses of the mail host name, or the addresses
 // of this machine when the name says nothing.
-func (s *Server) ownAddresses(ctx context.Context) []string {
+func (s *Server) ownAddresses(ctx context.Context, r *http.Request) []string {
+	seen := map[string]bool{}
 	var out []string
-	if h := s.MailConfig(ctx).Hostname; h != "" {
-		if ips, err := net.DefaultResolver.LookupIP(ctx, "ip", h); err == nil {
-			for _, ip := range ips {
-				out = append(out, ip.String())
+	add := func(ip string) {
+		if ip != "" && !seen[ip] {
+			seen[ip] = true
+			out = append(out, ip)
+		}
+	}
+	// The address HostZit reached us on. It is always one that works, and
+	// it needs no netlink socket: the service may not open one, so asking
+	// the interfaces of this machine is not an option.
+	if r != nil {
+		if a, ok := r.Context().Value(http.LocalAddrContextKey).(net.Addr); ok {
+			if h, _, err := net.SplitHostPort(a.String()); err == nil {
+				add(h)
 			}
 		}
 	}
-	if len(out) > 0 {
-		return out
-	}
-	addrs, err := net.InterfaceAddrs()
-	if err != nil {
-		return nil
-	}
-	for _, a := range addrs {
-		if n, ok := a.(*net.IPNet); ok && !n.IP.IsLoopback() && !n.IP.IsLinkLocalUnicast() {
-			out = append(out, n.IP.String())
+	// The addresses of the mail host name, so HostZit also allows the other
+	// family (it reaches us over one of the two).
+	if h := s.MailConfig(ctx).Hostname; h != "" {
+		if ips, err := net.DefaultResolver.LookupIP(ctx, "ip", h); err == nil {
+			for _, ip := range ips {
+				if !ip.IsLoopback() && !ip.IsLinkLocalUnicast() {
+					add(ip.String())
+				}
+			}
 		}
 	}
 	return out

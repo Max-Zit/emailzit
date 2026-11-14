@@ -18,6 +18,7 @@
 
 ## Features
 
+- **Sold per mailbox:** a package is the plan of one mailbox (its size and what it may send), and a customer can hold several plans at the same time — three Mail 10, two Mail 100 and one Mail 25 if that is what was ordered.
 - **Two panels and webmail:** the server administrator manages packages, customers, domains, limits and the server; every customer manages their own mailboxes, aliases, forwarders and spam settings; every mail user has webmail (with contacts and a signature), password and app passwords, auto-reply and filters.
 - **Proven mail software underneath:** Postfix, Dovecot (IMAP/POP3, quotas, Sieve filters) and Rspamd (spam filtering, greylisting, optional ClamAV virus scan), configured and kept up to date by EmailZit.
 - **Spam, virus and phishing protection:** spam levels and allowed/blocked senders per customer and per mailbox; postscreen and DNS block lists on port 25 (through a local Unbound resolver); risky attachments (programs, scripts, macro documents, also inside archives) refused; forged senders refused (mail that fails the sender domain's own DMARC policy); phishing warnings in the subject; optional ClamAV with Sanesecurity's signatures (GPG-checked); outgoing spam refused, and a mailbox that keeps sending it is blocked automatically.
@@ -26,7 +27,7 @@
 - **Moving in:** import from other IMAP servers, from cPanel account backups and from another EmailZit server; export per customer.
 - **Server from the panel:** operating system updates, reboot and SSH port; upload of the server's certificate; encrypted backups of the panel, also to SFTP.
 - **Security:** isolation between customers, brute-force protection, two-factor sign-in, company sign-in (OIDC) for staff, four-eyes approval for risky changes, hash-chained audit log, signed updates; TLS for mail programs offers post-quantum key exchange first and signs with SHA-2 only.
-- **Works with the other MaxZit products:** [HostZit](https://github.com/Max-Zit/hostzit) is linked with one pairing code, writes the DNS records and sends the websites' mail through EmailZit (also when HostZit runs on another server); a status API (`GET /api/v1/server/status`) that [WatchZit](https://github.com/Max-Zit/watchzit) can watch with a JSON/HTTP check; REST API for billing systems.
+- **Works with the other MaxZit products:** [HostZit](https://github.com/Max-Zit/hostzit) is linked with one pairing code — several HostZit servers at once if you have them, each serving all customers or only the ones you choose for it — writes the DNS records and sends the websites' mail through EmailZit (also when HostZit runs on another server); a status API (`GET /api/v1/server/status`) that [WatchZit](https://github.com/Max-Zit/watchzit) can watch with a JSON/HTTP check; REST API for billing systems.
 - **Self-hosted:** Debian 13 package or appliance image (ISO, OVA, qcow2, VHDX), 14 languages, user guide in all 14 languages.
 
 ## Install

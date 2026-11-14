@@ -93,9 +93,11 @@ queue IDs — never free text into a shell or file).
 ## 4. Anti-abuse (a compromised mailbox must not ruin the server IP)
 
 - **Outgoing limits** per mailbox, per customer and per server: messages
-  and recipients per hour/day, recipients per message — from the package,
-  overridable per customer/mailbox. Over the limit: `DEFER` (not lost),
-  notification to the customer and admin.
+  and recipients per hour/day, recipients per message — per mailbox from
+  the mailbox's own plan (a package is the plan of one mailbox, and a
+  customer may hold several at once), per customer from the customer's
+  base package, overridable per mailbox. Over the limit: `DEFER` (not
+  lost), notification to the customer and admin.
 - **Automatic detection:** sudden spike against the mailbox's normal volume,
   many unknown/bouncing recipients, sending from a new country/IP shortly
   after sign-in from elsewhere, many failed logins followed by success,

@@ -32,10 +32,11 @@ func startHostZitRelay(ctx context.Context, st *store.Store, srv *web.Server, ce
 
 // relayPort holds the listener while a relay login exists.
 type relayPort struct {
-	mu    sync.Mutex
-	l     net.Listener
-	acl   *netacl.List
-	addrs string // the allowed addresses, as last seen
+	mu     sync.Mutex
+	l      net.Listener
+	acl    *netacl.List
+	addrs  string // the allowed addresses, as last seen
+	failed bool   // the port could not be opened (said once)
 }
 
 func (p *relayPort) watch(ctx context.Context, st *store.Store, srv *web.Server, cert tls.Certificate, log *slog.Logger) {
@@ -77,9 +78,14 @@ func (p *relayPort) open(ctx context.Context, st *store.Store, srv *web.Server, 
 	addr := ":" + strconv.Itoa(submit.RelayPort)
 	raw, err := net.Listen("tcp", addr)
 	if err != nil {
-		log.Error("relay: the port cannot be opened", "addr", addr, "err", err)
+		// something else holds the port: say so once, not every half minute
+		if !p.failed {
+			p.failed = true
+			log.Error("relay: the port cannot be opened", "addr", addr, "err", err)
+		}
 		return
 	}
+	p.failed = false
 	p.acl = netacl.NewManagement(nets)
 	p.addrs = list
 	p.l = &netacl.Listener{Listener: raw, List: p.acl, OnRefuse: func(remote string) {

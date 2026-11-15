@@ -250,7 +250,9 @@ func (s *Server) putOwnedRecords(ctx context.Context, l *store.HostZitLink, path
 		return st, resp, false, err
 	}
 	plain := withoutProof(recs)
-	if len(plain) == len(recs) {
+	if len(plain) == 0 || len(plain) == len(recs) {
+		// nothing to write without the proof record, or it was not in the
+		// set at all: that 400 is about something else
 		return st, resp, false, nil
 	}
 	s.log.Warn("HostZit refuses the record _emailzit: the mail records are written without it",

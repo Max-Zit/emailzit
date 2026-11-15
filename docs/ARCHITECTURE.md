@@ -121,7 +121,9 @@ queue IDs — never free text into a shell or file).
   domains of this server only when that HostZit hosts the domain as well
   (or an administrator assigned the customer to the link), other domains
   only once the PUBLIC DNS of the domain shows the `_emailzit` record that
-  HostZit was asked to publish, From must use the sender domain.
+  HostZit was asked to publish (*Settings → HostZit* lists those domains
+  with their record, so a domain whose DNS is not on HostZit can be given
+  it by hand), From must use the sender domain.
 - Blacklist checks of the server IPs (and later WatchZit alerts).
 
 ## 5. Deliverability and DNS

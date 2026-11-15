@@ -29,6 +29,19 @@
     {{end}}
   </dl>
   {{if $l.RelayUser}}<p class="small muted">{{$.T "The websites of that HostZit send their mail to %s on port %d (STARTTLS) with this login. The password is only known to HostZit; a new pairing gives a new one." $.Data.RelayHost $.Data.RelayPort}}</p>{{end}}
+  {{if .Proofs}}
+  <h3>{{$.T "Mail of websites that have no mail on this server"}}</h3>
+  <p class="small muted">{{$.T "Such a domain may send through the relay of that HostZit only while this record is in its PUBLIC DNS. HostZit publishes it by itself for the zones it holds; a domain whose DNS is somewhere else needs the record set there by hand, otherwise its website mail is refused."}}</p>
+  <div class="table-wrap"><table class="dns">
+    <thead><tr><th>{{$.T "Domain"}}</th><th>{{$.T "Name"}}</th><th>{{$.T "Value"}}</th><th>{{$.T "In the DNS"}}</th></tr></thead>
+    <tbody>{{range .Proofs}}<tr>
+      <td class="mono small">{{.Domain}}</td>
+      <td class="mono small">{{.Name}} TXT</td>
+      <td><code class="wrap" data-copy-text>{{.Value}}</code></td>
+      <td>{{if eq .State "ok"}}<span class="badge ok"><i></i>{{$.T "OK"}}</span>{{else if eq .State "waiting"}}<span class="badge warn"><i></i>{{$.T "Waiting"}}</span>{{else}}<span class="badge bad"><i></i>{{$.T "Missing"}}</span>{{end}}<br><small class="muted">{{$.Time .When}}</small></td>
+    </tr>{{end}}</tbody>
+  </table></div>
+  {{end}}
   {{if $.User.CanWrite}}
   <form method="post" action="/settings/hostzit/scope" class="stack mt">
     <input type="hidden" name="link" value="{{$l.ID}}">

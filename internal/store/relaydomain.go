@@ -58,6 +58,36 @@ func (s *Store) SaveRelayDomainProof(ctx context.Context, d *RelayDomain) error 
 	return err
 }
 
+// RelayDomainsOfLink lists what one link has shown about the website
+// domains it asked for, the ones asked about last first. The panel shows
+// them with their record, so an administrator sees which website domain
+// still waits for its record and can read it out to a customer whose DNS
+// is not on HostZit (HostZit's question 2 of 2026-11-15).
+func (s *Store) RelayDomainsOfLink(ctx context.Context, linkID int64, limit int) ([]*RelayDomain, error) {
+	if limit <= 0 || limit > 200 {
+		limit = 50
+	}
+	rows, err := s.db.Query(ctx, `SELECT domain, link_id, token, hz_customer, proven_at, checked_at, created_at
+		FROM relay_domains WHERE link_id=$1 ORDER BY checked_at DESC LIMIT $2`, linkID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []*RelayDomain
+	for rows.Next() {
+		d := &RelayDomain{}
+		var proven *time.Time
+		if err := rows.Scan(&d.Domain, &d.LinkID, &d.Token, &d.HZCustomer, &proven, &d.CheckedAt, &d.FirstSeen); err != nil {
+			return nil, err
+		}
+		if proven != nil {
+			d.ProvenAt = *proven
+		}
+		out = append(out, d)
+	}
+	return out, rows.Err()
+}
+
 // PruneRelayDomainProofs forgets the domains nothing has asked about since
 // before, so a flood of unknown domains cannot fill the table.
 func (s *Store) PruneRelayDomainProofs(ctx context.Context, before time.Time) error {

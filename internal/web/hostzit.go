@@ -185,10 +185,18 @@ func (s *Server) publishDNS(ctx context.Context, domainID string, remove bool, d
 			continue
 		}
 		asked = true
-		st, body, err := s.hostzitCall(ctx, l, http.MethodPut, path, map[string]any{"customer_id": d.CustomerID, "records": recs})
+		st, body, old, err := s.putOwnedRecords(ctx, l, path, d.CustomerID, recs)
 		switch {
-		case err != nil:
-			note = "HostZit is not reachable: " + err.Error()
+		case err != nil || st == 0:
+			// A HostZit that cannot be reached must not keep the records
+			// of the other links out of their DNS: the next link is asked,
+			// and the note of a link that did not answer only stays while
+			// no link took the records (HostZit's lab retest, 2026-11-15).
+			note = "HostZit is not reachable"
+			if err != nil {
+				note += ": " + err.Error()
+			}
+			continue
 		case st == http.StatusNotFound:
 			continue // that HostZit does not host the zone: ask the next one
 		case st == http.StatusConflict:
@@ -196,6 +204,8 @@ func (s *Server) publishDNS(ctx context.Context, domainID string, remove bool, d
 		case st >= 300:
 			note = fmt.Sprintf("HostZit refused the records (%d): %s", st, apiMessage(body))
 			continue
+		case old:
+			managed, note = true, oldHostZitNote
 		default:
 			managed, note = true, ""
 		}
@@ -217,6 +227,49 @@ func (s *Server) publishDNS(ctx context.Context, domainID string, remove bool, d
 	defer cancel()
 	s.verifyInDNS(ctx, d)
 	s.checkDKIM(ctx, d)
+}
+
+// oldHostZitNote is shown for a HostZit that does not know the name
+// _emailzit yet (before HostZit 0.10.1): its mail records are written
+// without the proof record, so the domain keeps working and only its
+// verification waits for the record set by hand.
+const oldHostZitNote = "This HostZit is older than 0.10.1 and refuses the record _emailzit, so the mail records were written without it. Update that HostZit, or set that record at the DNS provider of the domain: a domain is verified only from the public DNS."
+
+// putOwnedRecords writes the records EmailZit owns into the zone of one
+// link. A HostZit before 0.10.1 does not know the name _emailzit and
+// refuses the whole set because of it (400), which would leave the domain
+// without MX, SPF, DKIM and DMARC after an upgrade of EmailZit alone; then
+// the records are written once more without the proof record and old says
+// so (HostZit's question 1 of 2026-11-15).
+func (s *Server) putOwnedRecords(ctx context.Context, l *store.HostZitLink, path, customerID string, recs []hzRecord) (int, []byte, bool, error) {
+	body := func(list []hzRecord) map[string]any {
+		return map[string]any{"customer_id": customerID, "records": list}
+	}
+	st, resp, err := s.hostzitCall(ctx, l, http.MethodPut, path, body(recs))
+	if err != nil || st != http.StatusBadRequest {
+		return st, resp, false, err
+	}
+	plain := withoutProof(recs)
+	if len(plain) == len(recs) {
+		return st, resp, false, nil
+	}
+	s.log.Warn("HostZit refuses the record _emailzit: the mail records are written without it",
+		"hostzit", l.URL, "message", apiMessage(resp))
+	st, resp, err = s.hostzitCall(ctx, l, http.MethodPut, path, body(plain))
+	return st, resp, err == nil && st < 300, err
+}
+
+// withoutProof is the records without the _emailzit record of the domain
+// (the name itself, or the name inside a zone above it).
+func withoutProof(recs []hzRecord) []hzRecord {
+	out := make([]hzRecord, 0, len(recs))
+	for _, r := range recs {
+		if r.Name == "_emailzit" || strings.HasPrefix(r.Name, "_emailzit.") {
+			continue
+		}
+		out = append(out, r)
+	}
+	return out
 }
 
 func apiMessage(b []byte) string {
@@ -254,6 +307,43 @@ type linkView struct {
 	L         *store.HostZitLink
 	Customers []*store.Customer // the customers of an assigned link
 	Assigned  map[string]bool   // their IDs, for the list of customers
+	Proofs    []proofView       // the website domains its relay asked about
+}
+
+// proofView is one website domain of a link that has no mail on this
+// server, with the record that proves the domain. The record is shown so
+// an administrator can read it out to a customer whose DNS is not on
+// HostZit, and so a refused website is easy to explain (HostZit's question
+// 2 of 2026-11-15).
+type proofView struct {
+	Domain string
+	Name   string
+	Value  string
+	State  string    // ok, waiting, missing
+	When   time.Time // proven at, or last looked up
+}
+
+// relayProofs are the website domains one link asked about.
+func (s *Server) relayProofs(ctx context.Context, linkID int64) []proofView {
+	list, err := s.store.RelayDomainsOfLink(ctx, linkID, 50)
+	if err != nil {
+		s.log.Error("the proofs of the relay domains cannot be read", "err", err)
+		return nil
+	}
+	now := s.now()
+	out := make([]proofView, 0, len(list))
+	for _, p := range list {
+		v := proofView{Domain: p.Domain, Name: relayProofRecord(p.Domain),
+			Value: relayProofPrefix + p.Token, State: "missing", When: p.CheckedAt}
+		switch {
+		case !p.ProvenAt.IsZero() && now.Sub(p.ProvenAt) < relayProofLife:
+			v.State, v.When = "ok", p.ProvenAt
+		case now.Sub(p.FirstSeen) < relayProofGrace:
+			v.State = "waiting"
+		}
+		out = append(out, v)
+	}
+	return out
 }
 
 type hostzitData struct {
@@ -269,7 +359,7 @@ type hostzitData struct {
 func (s *Server) hostzitPage(ctx context.Context) *hostzitData {
 	d := &hostzitData{RelayPort: submit.RelayPort, RelayHost: s.MailConfig(ctx).Hostname}
 	for _, l := range s.links(ctx) {
-		v := linkView{L: l, Assigned: map[string]bool{}}
+		v := linkView{L: l, Assigned: map[string]bool{}, Proofs: s.relayProofs(ctx, l.ID)}
 		if ids, err := s.store.LinkCustomerIDs(ctx, l.ID); err == nil {
 			for _, id := range ids {
 				v.Assigned[id] = true

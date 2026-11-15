@@ -107,14 +107,14 @@ const (
 )
 
 // checkResolver returns the resolver the check uses for a domain: the name
-// servers of the domain itself, so a change is seen at once and an answer
-// the server's own resolver remembered (a name looked up before it existed
-// is remembered as missing) cannot fool the check. Without reachable name
-// servers the system resolver is used.
+// servers of the zone the name belongs to, so a change is seen at once and
+// an answer the server's own resolver remembered (a name looked up before
+// it existed is remembered as missing) cannot fool the check. Without
+// reachable name servers the system resolver is used.
 var checkResolver = func(ctx context.Context, domain string) *net.Resolver {
 	sys := net.DefaultResolver
-	ns, err := sys.LookupNS(ctx, domain)
-	if err != nil {
+	zone, ns := zoneOf(ctx, sys.LookupNS, domain)
+	if zone == "" {
 		return sys
 	}
 	for _, n := range ns {
@@ -129,11 +129,32 @@ var checkResolver = func(ctx context.Context, domain string) *net.Resolver {
 		}}
 		// one question to see that we may talk to it at all (a network that
 		// allows no DNS of its own would make every record look missing)
-		if _, err := r.LookupNS(ctx, domain); err == nil {
+		if _, err := r.LookupNS(ctx, zone); err == nil {
 			return r
 		}
 	}
 	return sys
+}
+
+// zoneOf finds the zone a name belongs to and its name servers. A name
+// inside a zone has none of its own: the website shop.x.com lives in the
+// zone x.com, and its records (_emailzit.shop.x.com) are answered by the
+// name servers of x.com (HostZit's question 3 of 2026-11-15). The walk
+// upwards is short and stops before a one-label name, so a registry is
+// never asked instead of the zone.
+func zoneOf(ctx context.Context, lookupNS func(context.Context, string) ([]*net.NS, error), domain string) (string, []*net.NS) {
+	name := strings.TrimSuffix(strings.ToLower(strings.TrimSpace(domain)), ".")
+	for i := 0; i < 3 && strings.Contains(name, "."); i++ {
+		if ns, err := lookupNS(ctx, name); err == nil && len(ns) > 0 {
+			return name, ns
+		}
+		_, rest, ok := strings.Cut(name, ".")
+		if !ok {
+			break
+		}
+		name = rest
+	}
+	return "", nil
 }
 
 // checkRecords looks the records up at the name servers of the domain.

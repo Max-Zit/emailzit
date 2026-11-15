@@ -101,6 +101,8 @@ func (p *relayPort) open(ctx context.Context, st *store.Store, srv *web.Server, 
 		Dial:     postfixDial,
 		Hosted:   srv.HostedDomain,
 		Serves:   srv.RelayCustomer,
+		Assigned: srv.RelayAssigned,
+		Allows:   srv.RelayLoginAllows,
 	}
 	l := p.l
 	go func() {

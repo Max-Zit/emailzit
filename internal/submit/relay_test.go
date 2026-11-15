@@ -99,7 +99,7 @@ func startRelay(t *testing.T, f *fakeRelayStore, got chan<- string) string {
 }
 
 // startRelayWith also says how large a message may be.
-func startRelayWith(t *testing.T, f *fakeRelayStore, got chan<- string, max int64) string {
+func startRelayWith(t *testing.T, f *fakeRelayStore, got chan<- string, max int64, tweak ...func(*RelayServer)) string {
 	t.Helper()
 	cert, err := tlsutil.LoadOrCreate(t.TempDir(), "panel", "EmailZit test", 1)
 	if err != nil {
@@ -120,6 +120,8 @@ func startRelayWith(t *testing.T, f *fakeRelayStore, got chan<- string, max int6
 				return "", false, false // only the link of the login asks
 			}
 			switch domain {
+			case "acme.test":
+				return "cust-1", true, false // the websites of that customer are on this HostZit
 			case "shop.test":
 				return "", true, false // hosted, but the customer is not in EmailZit
 			case "down.test":
@@ -131,6 +133,13 @@ func startRelayWith(t *testing.T, f *fakeRelayStore, got chan<- string, max int6
 		Serves: func(_ context.Context, linkID int64, customerID string) bool {
 			return linkID == 7 && customerID != "other-customer"
 		},
+		// the login works only from the address of its own link
+		Allows: func(_ context.Context, linkID int64, ip string) bool {
+			return linkID == 7 && ip == "127.0.0.1"
+		},
+	}
+	for _, f := range tweak {
+		f(s)
 	}
 	go func() { _ = s.Serve(ctx, l) }()
 	t.Cleanup(func() { _ = l.Close() })
@@ -396,5 +405,68 @@ func TestRelayRefusesADomainOfAnotherCustomer(t *testing.T) {
 	defer func() { _ = c.Quit() }()
 	if err := c.Mail("web@other-customer.test"); err == nil || !strings.Contains(err.Error(), "550") {
 		t.Fatalf("a mail domain of another customer was answered with %v", err)
+	}
+}
+
+// The login of one HostZit must not send with the mail domain of a
+// customer whose websites are on ANOTHER HostZit: a link that serves every
+// customer has to show that its own HostZit holds the domain (found in the
+// joint test J5 of the HostZit routine).
+func TestRelayRefusesAMailDomainOfAnotherHostZit(t *testing.T) {
+	f := &fakeRelayStore{pass: "s3cret", limits: store.SendLimits{CustomerPerHour: 100, RcptPerMsg: 10}}
+	addr := startRelayWith(t, f, make(chan string, 2), 1<<20, func(s *RelayServer) {
+		// this HostZit hosts nothing of acme.test
+		s.Hosted = func(context.Context, int64, string) (string, bool, bool) { return "", false, false }
+	})
+	c := signedIn(t, addr, "s3cret")
+	defer func() { _ = c.Quit() }()
+	if err := c.Mail("web@acme.test"); err == nil || !strings.Contains(err.Error(), "550") {
+		t.Fatalf("the mail domain of a customer of another HostZit was answered with %v", err)
+	}
+}
+
+// A customer an administrator assigned to the link needs no question to
+// HostZit: the assignment is their own word (and a client's own HostZit is
+// linked exactly that way).
+func TestRelayTakesAnAssignedCustomerWithoutAsking(t *testing.T) {
+	f := &fakeRelayStore{pass: "s3cret", limits: store.SendLimits{CustomerPerHour: 100, RcptPerMsg: 10}}
+	asked := false
+	addr := startRelayWith(t, f, make(chan string, 2), 1<<20, func(s *RelayServer) {
+		s.Hosted = func(context.Context, int64, string) (string, bool, bool) {
+			asked = true
+			return "", false, false
+		}
+		s.Assigned = func(_ context.Context, linkID int64, customerID string) bool {
+			return linkID == 7 && customerID == "cust-1"
+		}
+	})
+	c := signedIn(t, addr, "s3cret")
+	defer func() { _ = c.Quit() }()
+	if err := c.Mail("web@acme.test"); err != nil {
+		t.Fatalf("the mail of an assigned customer was refused: %v", err)
+	}
+	if asked {
+		t.Fatal("HostZit was asked about the domain of an assigned customer")
+	}
+}
+
+// The relay port is open for the addresses of all links together, so the
+// login of one link must not work from the server of another (E8).
+func TestRelayLoginOnlyFromTheAddressesOfItsLink(t *testing.T) {
+	f := &fakeRelayStore{pass: "s3cret"}
+	addr := startRelayWith(t, f, make(chan string, 2), 1<<20, func(s *RelayServer) {
+		s.Allows = func(context.Context, int64, string) bool { return false } // another link's server
+	})
+	c, err := smtp.Dial(addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = c.Close() }()
+	if err := c.StartTLS(&tls.Config{InsecureSkipVerify: true, ServerName: "mail.test"}); err != nil { // #nosec G402 -- our own test certificate
+		t.Fatal(err)
+	}
+	host, _, _ := net.SplitHostPort(addr)
+	if err := c.Auth(smtp.PlainAuth("", "hostzit-relay@mail.test", "s3cret", host)); err == nil || !strings.Contains(err.Error(), "535") {
+		t.Fatalf("the login of another link was answered with %v", err)
 	}
 }

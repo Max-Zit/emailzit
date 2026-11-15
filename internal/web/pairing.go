@@ -51,16 +51,24 @@ const (
 	relayUser = "hostzit-relay"
 )
 
-// pairing is what EmailZit remembers of an open pairing code.
+// pairing is what EmailZit remembers of an open pairing code. The scope
+// belongs to the code, not to the link that comes out of it: a HostZit
+// must never see more than the administrator meant it to see, not even in
+// the seconds between the pairing and a change on the settings page (E13,
+// HostZit's security review of 2026-11-14).
 type pairing struct {
-	Hash    string    `json:"hash"` // sha256 of the secret, hex
-	Expires time.Time `json:"expires"`
-	By      string    `json:"by"`
+	Hash      string    `json:"hash"` // sha256 of the secret, hex
+	Expires   time.Time `json:"expires"`
+	By        string    `json:"by"`
+	ScopeAll  bool      `json:"scope_all"` // serve every customer
+	Customers []string  `json:"customers"` // the customers it serves otherwise
 }
 
 // NewPairingCode makes a code for the administrator to paste into HostZit.
-// Only the hash is kept; an older code stops working.
-func (s *Server) NewPairingCode(ctx context.Context, by string) (string, time.Time, error) {
+// Only the hash is kept; an older code stops working. The scope the
+// administrator chose is kept with the code and the new link has it from
+// its first second.
+func (s *Server) NewPairingCode(ctx context.Context, by string, scopeAll bool, customers []string) (string, time.Time, error) {
 	var raw [32]byte
 	if _, err := rand.Read(raw[:]); err != nil {
 		return "", time.Time{}, err
@@ -68,7 +76,8 @@ func (s *Server) NewPairingCode(ctx context.Context, by string) (string, time.Ti
 	secret := base64.RawURLEncoding.EncodeToString(raw[:])
 	until := s.now().Add(PairingLife)
 	sum := sha256.Sum256([]byte(secret))
-	p := pairing{Hash: base64.RawURLEncoding.EncodeToString(sum[:]), Expires: until, By: by}
+	p := pairing{Hash: base64.RawURLEncoding.EncodeToString(sum[:]), Expires: until, By: by,
+		ScopeAll: scopeAll, Customers: customers}
 	if err := s.store.SetSetting(ctx, settingPairing, p); err != nil {
 		return "", time.Time{}, err
 	}
@@ -86,21 +95,21 @@ func (s *Server) NewPairingCode(ctx context.Context, by string) (string, time.Ti
 // usePairingCode checks the secret HostZit sends and uses the code up. It
 // is used up even when the rest of the pairing fails, so a code cannot be
 // tried twice.
-func (s *Server) usePairingCode(ctx context.Context, secret string) error {
+func (s *Server) usePairingCode(ctx context.Context, secret string) (*pairing, error) {
 	var p pairing
 	if err := s.store.GetSetting(ctx, settingPairing, &p); err != nil || p.Hash == "" {
-		return errors.New("no pairing code is open")
+		return nil, errors.New("no pairing code is open")
 	}
 	_ = s.store.SetSetting(ctx, settingPairing, pairing{}) // one use, whatever follows
 	if s.now().After(p.Expires) {
-		return errors.New("the pairing code has expired")
+		return nil, errors.New("the pairing code has expired")
 	}
 	sum := sha256.Sum256([]byte(secret))
 	want, err := base64.RawURLEncoding.DecodeString(p.Hash)
 	if err != nil || subtle.ConstantTimeCompare(sum[:], want) != 1 {
-		return errors.New("wrong pairing code")
+		return nil, errors.New("wrong pairing code")
 	}
-	return nil
+	return &p, nil
 }
 
 // pairingLimiter counts the attempts of an address and of the open code,
@@ -154,7 +163,8 @@ func (s *Server) handleLinkHostZit(w http.ResponseWriter, r *http.Request) {
 	if !decodeJSON(w, r, &in) {
 		return
 	}
-	if err := s.usePairingCode(r.Context(), strings.TrimSpace(secret)); err != nil {
+	code, err := s.usePairingCode(r.Context(), strings.TrimSpace(secret))
+	if err != nil {
 		s.log.Warn("pairing refused", "ip", ip, "err", err)
 		apiError(w, http.StatusUnauthorized, "invalid_code", "the pairing code is not valid", "")
 		return
@@ -170,10 +180,12 @@ func (s *Server) handleLinkHostZit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Pairing again with the same server replaces only THAT link: its old
-	// token and relay login go, everything of the other links stays (E7).
-	link := &store.HostZitLink{URL: u, ScopeAll: true}
+	// token and relay login go, everything of the other links stays (E7),
+	// and the link keeps the scope it has. A NEW link gets the scope of
+	// the code, so it never sees more than the administrator meant.
+	link, fresh := &store.HostZitLink{URL: u, ScopeAll: code.ScopeAll}, true
 	if old, err := s.store.HostZitLinkByURL(r.Context(), u); err == nil {
-		link = old
+		link, fresh = old, false
 		if old.TokenID != "" {
 			_ = s.store.DeleteAPIToken(r.Context(), old.TokenID)
 		}
@@ -190,8 +202,20 @@ func (s *Server) handleLinkHostZit(w http.ResponseWriter, r *http.Request) {
 		s.apiInternal(w, r, err)
 		return
 	}
+	scope := "all customers"
+	if fresh {
+		if err := s.store.SetLinkScope(r.Context(), link.ID, code.ScopeAll, code.Customers); err != nil {
+			s.log.Error("the scope of the new link cannot be set", "hostzit", u, "err", err)
+		}
+		link.ScopeAll = code.ScopeAll
+	}
+	if !link.ScopeAll {
+		ids, _ := s.store.LinkCustomerIDs(r.Context(), link.ID)
+		scope = fmt.Sprintf("%d assigned customers", len(ids))
+	}
 	s.ForgetHostedDomains()
-	_ = s.store.Audit(r.Context(), "-", ip, "hostzit.paired", "settings", "paired with "+u+" (token for "+strings.Join(addrs, ", ")+")")
+	_ = s.store.Audit(r.Context(), "-", ip, "hostzit.paired", "settings",
+		"paired with "+u+" (token for "+strings.Join(addrs, ", ")+", serves "+scope+")")
 	writeJSON(w, http.StatusCreated, map[string]any{
 		"api_token":          tok,
 		"scopes":             []string{store.ScopeCustomersRead, store.ScopeCustomersWrite, store.ScopeSSO},
@@ -372,15 +396,29 @@ func (s *Server) certPin() string {
 	return base64.StdEncoding.EncodeToString(sum[:])
 }
 
-// handleHostZitCode makes a pairing code and shows it once.
+// handleHostZitCode makes a pairing code and shows it once. The scope
+// belongs to the code: the administrator says here what the HostZit that
+// uses it may see, and its link has that from the first second (E13).
 func (s *Server) handleHostZitCode(w http.ResponseWriter, r *http.Request) {
-	code, until, err := s.NewPairingCode(r.Context(), userFrom(r).Username)
+	_ = r.ParseForm()
+	// "all customers" has to be said; a form that says nothing serves
+	// nobody until the customers are chosen
+	all := r.FormValue("scope") == "all"
+	var customers []string
+	if !all {
+		customers = r.Form["customer"]
+	}
+	code, until, err := s.NewPairingCode(r.Context(), userFrom(r).Username, all, customers)
 	if err != nil {
 		s.serverError(w, r, err)
 		return
 	}
 	// the code itself never goes into the audit log
-	s.audit(r, "hostzit.code", "settings", "pairing code created (valid until %s)", until.UTC().Format(time.RFC3339))
+	scope := "all customers"
+	if !all {
+		scope = fmt.Sprintf("%d chosen customers", len(customers))
+	}
+	s.audit(r, "hostzit.code", "settings", "pairing code created for %s (valid until %s)", scope, until.UTC().Format(time.RFC3339))
 	d := s.hostzitPage(r.Context())
 	d.Code = code
 	s.render(w, r, http.StatusOK, "hostzit", &Page{Title: "HostZit", Nav: "settings", Data: d})

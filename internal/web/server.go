@@ -61,8 +61,9 @@ type Server struct {
 	DataDir string
 	// HelperAvailable replaces the check for the root helper (tests).
 	HelperAvailable func() bool
-	// DKIMTXT replaces the DNS lookup of the DKIM records (tests).
-	DKIMTXT func(ctx context.Context, domain, name string) ([]string, error)
+	// PublicTXT replaces the lookup of a TXT record in the public DNS
+	// (the DKIM records, the proof of a domain; tests).
+	PublicTXT func(ctx context.Context, domain, name string) ([]string, error)
 	// Mail applies mail changes that need root (customer directories, DKIM
 	// keys); nil = nothing to apply (development without a mail stack).
 	Mail MailApplier

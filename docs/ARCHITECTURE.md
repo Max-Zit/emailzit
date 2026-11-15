@@ -81,8 +81,11 @@ queue IDs — never free text into a shell or file).
    session/token, never from the request; tests try every endpoint with
    another customer's IDs (isolation test suite, also on real VMs).
 4. Domains are verified before mail for them is accepted when the server is
-   shared (TXT token or HostZit owning the zone) — no "claiming" a domain
-   another customer will use.
+   shared: the TXT token has to be in the PUBLIC DNS. With HostZit the
+   record is written into the zone as well, so the domain verifies itself
+   in seconds — but a zone inside HostZit is never the proof by itself (any
+   hosting account can create one for a name that is not theirs) — no
+   "claiming" a domain another customer will use.
 5. Secrets (DKIM private keys, app/API tokens, IMAP import passwords) are
    encrypted at rest with the server key (like PassZit `secret.key`); mailbox
    passwords are argon2id (Dovecot `ARGON2ID` scheme, verify in the lab).
@@ -114,8 +117,11 @@ queue IDs — never free text into a shell or file).
   per hosting account (to agree, see INTEGRATION).
 - Websites of a HostZit on ANOTHER server send over SMTP to EmailZit's own
   submission server (port 2587, STARTTLS, the relay login the pairing
-  handed over): only for that HostZit's addresses, only for sender domains
-  of this server or of its customers, From must use the sender domain.
+  handed over): the login only from the addresses of its own link, mail
+  domains of this server only when that HostZit hosts the domain as well
+  (or an administrator assigned the customer to the link), other domains
+  only once the PUBLIC DNS of the domain shows the `_emailzit` record that
+  HostZit was asked to publish, From must use the sender domain.
 - Blacklist checks of the server IPs (and later WatchZit alerts).
 
 ## 5. Deliverability and DNS

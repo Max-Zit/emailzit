@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -53,6 +54,18 @@ func TestHostZitLink(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	// what the public DNS of the zones says; only hosted.test really
+	// answers, so only that domain can verify itself
+	s.PublicTXT = func(_ context.Context, _, name string) ([]string, error) {
+		mu.Lock()
+		defer mu.Unlock()
+		for _, r := range got["hosted.test"] {
+			if r.Type == "TXT" && r.Name+".hosted.test" == name {
+				return []string{r.Content}, nil
+			}
+		}
+		return nil, &net.DNSError{Err: "no such host", IsNotFound: true}
+	}
 	must(st.SetSetting(ctx, settingMail, MailSettings{Hostname: "mail.example.net", RequireVerification: true, MaxMessageMB: 25}))
 	link := &store.HostZitLink{URL: hz.URL, Token: st.SealSecret("hostzit.token", "hzt_test"), Insecure: true, ScopeAll: true}
 	must(st.SaveHostZitLink(ctx, link))
@@ -73,9 +86,15 @@ func TestHostZitLink(t *testing.T) {
 	seen := map[string]string{}
 	for _, r := range recs {
 		seen[r.Type+" "+r.Name] = r.Content
-		if strings.HasPrefix(r.Name, "_emailzit") || strings.HasSuffix(r.Content, ".") || r.TTL != 3600 {
+		if strings.HasSuffix(r.Content, ".") || r.TTL != 3600 {
 			t.Errorf("record %+v", r)
 		}
+	}
+	// the proof record goes along: a HostZit that really holds the zone
+	// makes it public, and the domain then verifies itself (a zone inside
+	// HostZit is no proof)
+	if !strings.HasPrefix(seen["TXT _emailzit"], "emailzit-verify=") {
+		t.Fatalf("no proof record: %v", seen)
 	}
 	if seen["MX @"] != "10 mail.example.net" || !strings.HasPrefix(seen["TXT _dmarc"], "v=DMARC1") || seen["CNAME autoconfig"] != "mail.example.net" {
 		t.Fatalf("records %v", seen)
@@ -100,6 +119,15 @@ func TestHostZitLink(t *testing.T) {
 	e, _ = st.DomainByID(ctx, store.Staff, e.ID)
 	if e.Verified || e.DNSManaged || e.DNSNote != errNoZone.Error() {
 		t.Fatalf("elsewhere: %+v", e)
+	}
+	// a zone HostZit took the records for, but which says nothing in the
+	// public DNS, is NOT verified: the zone may be of a stranger's domain
+	q, err := st.CreateDomain(ctx, store.Staff, c.ID, "quiet.test", false)
+	must(err)
+	s.publishDNS(ctx, q.ID, false, nil)
+	q, _ = st.DomainByID(ctx, store.Staff, q.ID)
+	if !q.DNSManaged || q.Verified {
+		t.Fatalf("a zone that is not in the public DNS verified the domain: %+v", q)
 	}
 	s.publishDNS(ctx, d.ID, true, d)
 	if len(deleted) != 1 || deleted[0] != "hosted.test" {
@@ -178,9 +206,27 @@ func TestHostedDomain(t *testing.T) {
 	var mu sync.Mutex
 	asked := map[string]int{}
 	down := false
+	zone := map[string]string{} // what HostZit published in the public DNS
 	hz := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		mu.Lock()
 		defer mu.Unlock()
+		if name, ok := strings.CutPrefix(r.URL.Path, "/api/v1/dns/zones/"); ok {
+			// the proof record of a domain whose zone HostZit holds
+			name = strings.TrimSuffix(name, "/owned/emailzit")
+			if name != "shop.test" {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+			var in struct {
+				Records []hzRecord `json:"records"`
+			}
+			_ = json.NewDecoder(r.Body).Decode(&in)
+			for _, rec := range in.Records {
+				zone[rec.Name+"."+name] = rec.Content
+			}
+			_, _ = io.WriteString(w, `{"zone":"`+name+`"}`)
+			return
+		}
 		domain := strings.TrimPrefix(r.URL.Path, "/api/v1/domains/")
 		asked[domain]++
 		switch {
@@ -200,6 +246,15 @@ func TestHostedDomain(t *testing.T) {
 	link := &store.HostZitLink{URL: hz.URL, Token: st.SealSecret("hostzit.token", "hzt_test"), Insecure: true, ScopeAll: true}
 	if err := st.SaveHostZitLink(ctx, link); err != nil {
 		t.Fatal(err)
+	}
+	// the public DNS of the zones: only what HostZit really published
+	s.PublicTXT = func(_ context.Context, _, name string) ([]string, error) {
+		mu.Lock()
+		defer mu.Unlock()
+		if v, ok := zone[name]; ok {
+			return []string{v}, nil
+		}
+		return nil, &net.DNSError{Err: "no such host", IsNotFound: true}
 	}
 
 	// the same customer in both products (P1): its mail counts against its

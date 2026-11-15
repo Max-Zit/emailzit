@@ -82,6 +82,16 @@ type RelayServer struct {
 	// this customer: a link that serves only the customers assigned to it
 	// never carries another customer's mail (E13). nil = every customer.
 	Serves func(ctx context.Context, linkID int64, customerID string) bool
+	// Assigned tells whether an administrator assigned the customer to
+	// this link by hand. Such a link carries that customer's mail without
+	// asking HostZit; a link that serves every customer has to show that
+	// its own HostZit holds the domain (J5). nil = never assigned.
+	Assigned func(ctx context.Context, linkID int64, customerID string) bool
+	// Allows tells whether the login of the link may be used from this
+	// address: the port is open for the addresses of all links together,
+	// so the login of one HostZit must not work from another (E8).
+	// nil = every address of the allow-list.
+	Allows func(ctx context.Context, linkID int64, ip string) bool
 	// Now is the clock (tests).
 	Now func() time.Time
 }
@@ -330,6 +340,11 @@ func (z *relaySession) auth(arg string) error {
 		return z.say(504, "5.5.4 Only PLAIN and LOGIN")
 	}
 	id, linkID, err := z.s.Store.CheckRelayLogin(z.ctx, user, pass)
+	if err == nil && z.s.Allows != nil && !z.s.Allows(z.ctx, linkID, z.ip) {
+		// the login belongs to another HostZit than the one calling (E8)
+		z.s.Log.Warn("relay: the login of another link was used", "ip", z.ip, "user", user, "link", linkID)
+		err = errWrongAddress
+	}
 	if err != nil {
 		z.tries++
 		z.s.Log.Warn("relay: sign-in refused", "ip", z.ip, "user", user, "try", z.tries)
@@ -400,10 +415,7 @@ func (z *relaySession) allowed(domain string) (cust string, ok, temp bool) {
 	}
 	switch id, err := z.s.Store.DomainCustomer(z.ctx, domain); {
 	case err == nil:
-		if z.s.Serves != nil && !z.s.Serves(z.ctx, z.linkID, id) {
-			return "", false, false // not a customer of this link (E13)
-		}
-		return id, true, false
+		return z.ownDomain(domain, id)
 	case !errors.Is(err, store.ErrNotFound):
 		z.s.Log.Error("relay: domain", "domain", domain, "err", err)
 		return "", false, true
@@ -412,6 +424,33 @@ func (z *relaySession) allowed(domain string) (cust string, ok, temp bool) {
 		return "", false, false
 	}
 	return z.s.Hosted(z.ctx, z.linkID, domain)
+}
+
+// ownDomain decides about a mail domain of this server. The link must
+// serve its customer (E13), and a link that serves EVERY customer must
+// also show that its own HostZit holds this domain: without that the
+// login of one HostZit sends with the mail domain of a customer of
+// another HostZit, which is what the joint test J5 found. A customer an
+// administrator assigned to the link needs no such question: the
+// assignment is their own word.
+func (z *relaySession) ownDomain(domain, customer string) (cust string, ok, temp bool) {
+	if z.s.Serves != nil && !z.s.Serves(z.ctx, z.linkID, customer) {
+		return "", false, false // not a customer of this link (E13)
+	}
+	if z.s.Assigned != nil && z.s.Assigned(z.ctx, z.linkID, customer) {
+		return customer, true, false
+	}
+	if z.s.Hosted == nil {
+		return customer, true, false
+	}
+	switch at, hosted, temp := z.s.Hosted(z.ctx, z.linkID, domain); {
+	case temp:
+		return "", false, true
+	case hosted && at == customer:
+		return customer, true, false
+	}
+	z.s.Log.Warn("relay: the HostZit of this login does not host the domain", "domain", domain, "link", z.linkID, "ip", z.ip)
+	return "", false, false
 }
 
 func (z *relaySession) rcpt(arg string) error {
@@ -574,3 +613,7 @@ func decode64(s string) ([]byte, error) {
 	}
 	return base64.StdEncoding.DecodeString(s)
 }
+
+// errWrongAddress: the relay login belongs to another link than the
+// HostZit that is calling (E8).
+var errWrongAddress = errors.New("the relay login does not belong to this address")

@@ -17,8 +17,14 @@ import (
 // pairWith pairs this EmailZit with a HostZit and returns its answer.
 func pairWith(t *testing.T, s *Server, url, name, addr string) (token string, relayUser, relayPass string) {
 	t.Helper()
+	return pairWithScope(t, s, url, name, addr, true, nil)
+}
+
+// pairWithScope pairs with the scope the administrator chose for the code.
+func pairWithScope(t *testing.T, s *Server, url, name, addr string, all bool, customers []string) (token string, relayUser, relayPass string) {
+	t.Helper()
 	ctx := context.Background()
-	code, _, err := s.NewPairingCode(ctx, "admin")
+	code, _, err := s.NewPairingCode(ctx, "admin", all, customers)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -254,5 +260,60 @@ func TestPairedTokenWithoutItsLinkIsDead(t *testing.T) {
 	}
 	if code, _ := call(t, s.Handler(), "GET", "/api/v1/customers", own, ""); code != 200 {
 		t.Errorf("a token made by hand answered %d", code)
+	}
+}
+
+// The scope belongs to the PAIRING CODE: a HostZit of a client must not
+// see every customer in the seconds between the pairing and a change on
+// the settings page, and pairing again with a server that is already
+// linked leaves its customers alone (HostZit's security review of
+// 2026-11-14).
+func TestThePairingCodeCarriesTheScope(t *testing.T) {
+	ctx := context.Background()
+	s, st := linkServer(t)
+	p := &store.Package{Slug: "pc", Name: "PC", MaxDomains: 2, MaxMailboxes: 2, MaxAliases: 2, StorageMB: 0, MailboxMB: 10,
+		MaxMailboxMB: 50, SendPerHour: 1, SendPerDay: 1, CustomerPerHour: 1, RcptPerMsg: 1}
+	if err := st.SavePackage(ctx, p); err != nil {
+		t.Fatal(err)
+	}
+	mine, err := st.CreateCustomer(ctx, store.NewCustomer{Name: "Client with its own HostZit", PackageID: p.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	other, err := st.CreateCustomer(ctx, store.NewCustomer{Name: "Someone else", PackageID: p.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	url := "https://client.example.net:8442"
+	token, _, _ := pairWithScope(t, s, url, "client", "127.0.0.1", false, []string{mine.ID})
+	link, err := st.HostZitLinkByURL(ctx, url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if link.ScopeAll {
+		t.Fatal("the new link serves all customers although the code said otherwise")
+	}
+	ids, err := st.LinkCustomerIDs(ctx, link.ID)
+	if err != nil || len(ids) != 1 || ids[0] != mine.ID {
+		t.Fatalf("the link serves %v (%v)", ids, err)
+	}
+	// its token never saw the other customer, not even once
+	if code, _ := call(t, s.Handler(), "GET", "/api/v1/customers/"+other.ID, token, ""); code != 404 {
+		t.Errorf("the token of the new link got %d for another customer", code)
+	}
+	if code, _ := call(t, s.Handler(), "GET", "/api/v1/customers/"+mine.ID, token, ""); code != 200 {
+		t.Errorf("the token of the new link cannot read its own customer (%d)", code)
+	}
+	// pairing again keeps what the link serves, whatever the new code says
+	token2, _, _ := pairWithScope(t, s, url, "client", "127.0.0.1", true, nil)
+	again, err := st.HostZitLinkByURL(ctx, url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if again.ScopeAll || again.ID != link.ID {
+		t.Fatalf("the link after the second pairing: %+v", again)
+	}
+	if code, _ := call(t, s.Handler(), "GET", "/api/v1/customers/"+other.ID, token2, ""); code != 404 {
+		t.Errorf("after pairing again the link sees another customer (%d)", code)
 	}
 }

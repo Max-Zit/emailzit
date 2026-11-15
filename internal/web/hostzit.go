@@ -170,9 +170,9 @@ func (s *Server) publishDNS(ctx context.Context, domainID string, remove bool, d
 		all = withOutboundSPF(all, c.OutboundIP)
 	}
 	for _, r := range all {
-		if strings.HasPrefix(r.Name, "_emailzit.") {
-			continue // HostZit hosting the zone is the proof
-		}
+		// The proof record of the domain goes along: a HostZit that really
+		// holds the delegated zone makes it public in seconds, and the
+		// check then verifies the domain in the PUBLIC DNS.
 		name := strings.TrimSuffix(strings.TrimSuffix(r.Name, d.Name), ".")
 		if name == "" {
 			name = "@"
@@ -205,20 +205,18 @@ func (s *Server) publishDNS(ctx context.Context, domainID string, remove bool, d
 		note = errNoZone.Error()
 	}
 	_ = s.store.SetDomainDNS(ctx, d.ID, managed, note)
-	if managed && !d.DKIMPublished {
-		// HostZit now holds the DKIM record itself, so the domain can be
-		// signed without waiting for the hourly check
-		if err := s.store.SetDKIMPublished(ctx, d.ID, true); err == nil {
-			d.DKIMPublished = true
-			s.installDKIM(ctx, d.ID)
-		}
+	if !managed || (d.Verified && d.DKIMPublished) {
+		return
 	}
-	if managed && !d.Verified {
-		// the zone is in HostZit for the same customer: that is the proof
-		if err := s.store.SetDomainVerified(ctx, store.Staff, d.ID, true); err == nil {
-			_ = s.store.Audit(ctx, "-", "local", "domain.verify", "domain:"+d.Name, "verified: the zone is in HostZit's DNS for the same customer")
-		}
-	}
+	// The records are in HostZit's DNS now, which is NOT a proof of the
+	// domain: every hosting account may create a zone for any name, and a
+	// zone that is not delegated does nothing in the public DNS. So the
+	// verification and the signing follow the public DNS, asked right
+	// away because the name servers of the zone answer at once.
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	s.verifyInDNS(ctx, d)
+	s.checkDKIM(ctx, d)
 }
 
 func apiMessage(b []byte) string {
@@ -296,7 +294,11 @@ func (s *Server) handleHostZit(w http.ResponseWriter, r *http.Request) {
 // in). A link made with a pairing code keeps what the pairing settled.
 func (s *Server) handleHostZitSave(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	l := &store.HostZitLink{ScopeAll: true}
+	// The first link of a server serves all customers: that is the usual
+	// case, both products for the same customers. A further link starts
+	// with nobody until the administrator chooses its customers, so a
+	// client's own HostZit never sees everyone by accident (E13).
+	l := &store.HostZitLink{ScopeAll: !s.linked(ctx)}
 	if id, _ := strconv.ParseInt(r.FormValue("link"), 10, 64); id > 0 {
 		old, err := s.store.HostZitLinkByID(ctx, id)
 		if err != nil {
@@ -471,16 +473,38 @@ func (s *Server) HostedDomain(ctx context.Context, linkID int64, domain string) 
 			s.log.Warn("HostZit's answer about a domain is not understood", "domain", domain, "err", err)
 			return "", false, true
 		}
-		cust := in.CustomerID
-		if cust == "" {
-			cust = in.Customer.ID
+		hzCust := in.CustomerID
+		if hzCust == "" {
+			hzCust = in.Customer.ID
 		}
 		live := !in.Suspended && (in.Status == "" || in.Status == "active")
 		// the customer counts only when it is the same customer here (P1)
 		// and when this link may serve it (E13)
+		cust := hzCust
 		if cust != "" {
 			if _, err := s.store.CustomerByID(ctx, cust); err != nil || !s.store.LinkServes(ctx, l, cust) {
 				cust = ""
+			}
+		}
+		if live && cust == "" {
+			// The domain belongs to nobody here, so HostZit's word is all
+			// there is — and a zone inside HostZit is no proof of a
+			// domain. The public DNS of the domain has to show that this
+			// HostZit holds it.
+			switch _, err := s.store.DomainByName(ctx, store.Staff, domain); {
+			case err == nil:
+				// a mail domain of this server whose customer this link
+				// may not serve, or a domain that is not verified here:
+				// its records are ours, so nothing is published into that
+				// zone and the mail is refused
+				s.log.Warn("the relay of a HostZit asks for a mail domain of another customer", "hostzit", l.URL, "domain", domain)
+				live = false
+			default:
+				proven, temp := s.relayProven(ctx, l, domain, hzCust)
+				if temp {
+					return "", false, true
+				}
+				live = proven
 			}
 		}
 		a = hostedAnswer{customer: cust, ok: live, until: now.Add(HostedLife)}

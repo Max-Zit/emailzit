@@ -26,7 +26,7 @@ func TestPairingCodeIsOneUseAndExpires(t *testing.T) {
 	now := time.Now()
 	s.now = func() time.Time { return now }
 
-	code, until, err := s.NewPairingCode(ctx, "admin")
+	code, until, err := s.NewPairingCode(ctx, "admin", true, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,29 +59,29 @@ func TestPairingCodeIsOneUseAndExpires(t *testing.T) {
 		t.Error("the secret itself is stored, not its hash")
 	}
 
-	if err := s.usePairingCode(ctx, "wrong"); err == nil {
+	if _, err := s.usePairingCode(ctx, "wrong"); err == nil {
 		t.Error("a wrong code was accepted")
 	}
 	// a wrong attempt also uses the code up
-	if err := s.usePairingCode(ctx, body.Secret); err == nil {
+	if _, err := s.usePairingCode(ctx, body.Secret); err == nil {
 		t.Error("the code still worked after an attempt")
 	}
 
-	code, _, err = s.NewPairingCode(ctx, "admin")
+	code, _, err = s.NewPairingCode(ctx, "admin", true, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	raw, _ = base64.RawURLEncoding.DecodeString(strings.TrimPrefix(code, pairingPrefix))
 	_ = json.Unmarshal(raw, &body)
-	if err := s.usePairingCode(ctx, body.Secret); err != nil {
+	if _, err := s.usePairingCode(ctx, body.Secret); err != nil {
 		t.Fatalf("a fresh code was refused: %v", err)
 	}
 
-	code, _, _ = s.NewPairingCode(ctx, "admin")
+	code, _, _ = s.NewPairingCode(ctx, "admin", true, nil)
 	raw, _ = base64.RawURLEncoding.DecodeString(strings.TrimPrefix(code, pairingPrefix))
 	_ = json.Unmarshal(raw, &body)
 	now = now.Add(PairingLife + time.Second)
-	if err := s.usePairingCode(ctx, body.Secret); err == nil {
+	if _, err := s.usePairingCode(ctx, body.Secret); err == nil {
 		t.Error("an expired code was accepted")
 	}
 }
@@ -142,7 +142,7 @@ func TestPairingGivesTokenAndRelay(t *testing.T) {
 	s.MgmtACL.Set(all)
 	newCode := func() string {
 		t.Helper()
-		code, _, err := s.NewPairingCode(ctx, "admin")
+		code, _, err := s.NewPairingCode(ctx, "admin", true, nil)
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -6,13 +6,18 @@
 -- else's name; without this a website could send with another customer's
 -- domain in From and SPF and DMARC would still pass (HostZit's security
 -- review of the relay, 2026-11-14).
+--
+-- The proof belongs to the LINK: every link has to make its own record
+-- appear, so one HostZit can neither pass with the record of another nor
+-- take a proof away from it.
 
 CREATE TABLE relay_domains (
-    domain      text PRIMARY KEY,
+    domain      text   NOT NULL,
     link_id     bigint NOT NULL REFERENCES hostzit_links(id) ON DELETE CASCADE,
-    token       text NOT NULL,                 -- what the record must say
-    hz_customer text NOT NULL DEFAULT '',      -- the customer at that HostZit
-    proven_at   timestamptz,                   -- when the record was seen
+    token       text   NOT NULL,                -- what the record must say
+    hz_customer text   NOT NULL DEFAULT '',     -- the customer at that HostZit
+    proven_at   timestamptz,                    -- when the record was seen
     checked_at  timestamptz NOT NULL DEFAULT now(),
-    created_at  timestamptz NOT NULL DEFAULT now()  -- when it was first asked about
+    created_at  timestamptz NOT NULL DEFAULT now(), -- when it was first asked about
+    PRIMARY KEY (domain, link_id)
 );

@@ -53,13 +53,15 @@ func relayProofRecord(domain string) string { return "_emailzit." + domain }
 // the sender is asked to try again later.
 func (s *Server) relayProven(ctx context.Context, l *store.HostZitLink, domain, hzCustomer string) (ok, temp bool) {
 	now := s.now()
-	p, err := s.store.RelayDomainProof(ctx, domain)
+	// The proof belongs to this link and carries a value of its own, so a
+	// second HostZit can neither pass with the record of the first nor
+	// take its proof away.
+	p, err := s.store.RelayDomainProof(ctx, domain, l.ID)
 	if err != nil {
-		p = &store.RelayDomain{Domain: domain, Token: auth.RandomToken(16), FirstSeen: now}
+		p = &store.RelayDomain{Domain: domain, LinkID: l.ID, Token: auth.RandomToken(16), FirstSeen: now}
 	}
-	proven := p.LinkID == l.ID && !p.ProvenAt.IsZero() && now.Sub(p.ProvenAt) < relayProofLife
 	switch {
-	case proven:
+	case !p.ProvenAt.IsZero() && now.Sub(p.ProvenAt) < relayProofLife:
 		return true, false
 	case now.Sub(p.CheckedAt) < relayProofRetry:
 		// looked up a moment ago; there is nothing new to learn yet
@@ -68,14 +70,7 @@ func (s *Server) relayProven(ctx context.Context, l *store.HostZitLink, domain, 
 	if p.FirstSeen.IsZero() {
 		p.FirstSeen = now
 	}
-	if p.LinkID != l.ID {
-		// Another HostZit vouched for this domain before. Its record is in
-		// the zone of whoever really holds the domain, so this link gets a
-		// value of its own to publish — otherwise the second link would
-		// pass the check with the record of the first.
-		p.Token, p.ProvenAt = auth.RandomToken(16), time.Time{}
-	}
-	p.LinkID, p.HZCustomer, p.CheckedAt = l.ID, hzCustomer, now
+	p.HZCustomer, p.CheckedAt = hzCustomer, now
 	value := relayProofPrefix + p.Token
 	body := map[string]any{"records": []hzRecord{{Name: "_emailzit", Type: "TXT", TTL: 300, Content: value}}}
 	if hzCustomer != "" {

@@ -84,18 +84,18 @@ func TestAZoneInHostZitDoesNotVouchForADomain(t *testing.T) {
 	if _, ok, temp := s.HostedDomain(ctx, link.ID, "fake.test"); ok || temp {
 		t.Fatalf("a zone that is not in the public DNS was accepted: ok=%v temp=%v", ok, temp)
 	}
-	// nothing was written into the zone of a mail domain of this server
-	if _, err := st.RelayDomainProof(ctx, "real.test"); err != nil {
+	if _, err := st.RelayDomainProof(ctx, "real.test", link.ID); err != nil {
 		t.Fatalf("the proof of real.test was not kept: %v", err)
 	}
-	p, err := st.RelayDomainProof(ctx, "fake.test")
+	p, err := st.RelayDomainProof(ctx, "fake.test", link.ID)
 	if err != nil || !p.ProvenAt.IsZero() {
 		t.Fatalf("fake.test counts as proven: %+v (%v)", p, err)
 	}
 
 	// A SECOND HostZit must not pass with the record of the first: the
 	// record of real.test is in the zone of the server that really holds
-	// it, so the second link gets a value of its own to publish.
+	// it, so the second link has to make a value of its own appear — and
+	// its attempt leaves the proof of the first link alone.
 	other := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/api/v1/dns/zones/") {
 			_, _ = io.WriteString(w, `{"zone":"real.test"}`) // takes it, publishes nothing
@@ -111,14 +111,31 @@ func TestAZoneInHostZitDoesNotVouchForADomain(t *testing.T) {
 	}
 	now = now.Add(relayProofRetry + time.Minute)
 	s.ForgetHostedDomains()
-	if _, ok, temp := s.HostedDomain(ctx, second.ID, "real.test"); ok || temp {
-		t.Fatalf("another HostZit passed with the proof of the first: ok=%v temp=%v", ok, temp)
+	if _, ok, _ := s.HostedDomain(ctx, second.ID, "real.test"); ok {
+		t.Fatal("another HostZit passed with the proof of the first")
 	}
-	// and the first link proves its domain again by itself
-	now = now.Add(relayProofRetry + time.Minute)
+	// its own record never appears, so after the grace it is refused
+	now = now.Add(relayProofGrace + time.Minute)
+	s.ForgetHostedDomains()
+	if _, ok, temp := s.HostedDomain(ctx, second.ID, "real.test"); ok || temp {
+		t.Fatalf("another HostZit was not refused: ok=%v temp=%v", ok, temp)
+	}
+	// the link that really holds the zone still may send
 	s.ForgetHostedDomains()
 	if _, ok, temp := s.HostedDomain(ctx, link.ID, "real.test"); !ok || temp {
-		t.Fatalf("the HostZit that holds the zone cannot prove it again: ok=%v temp=%v", ok, temp)
+		t.Fatalf("the probing of another HostZit took the proof away: ok=%v temp=%v", ok, temp)
+	}
+	// each link keeps a value of its own
+	a, err := st.RelayDomainProof(ctx, "real.test", link.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := st.RelayDomainProof(ctx, "real.test", second.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a.Token == b.Token || !b.ProvenAt.IsZero() {
+		t.Fatalf("the two links share a proof: %+v / %+v", a, b)
 	}
 }
 

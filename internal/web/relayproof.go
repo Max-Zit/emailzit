@@ -68,6 +68,13 @@ func (s *Server) relayProven(ctx context.Context, l *store.HostZitLink, domain, 
 	if p.FirstSeen.IsZero() {
 		p.FirstSeen = now
 	}
+	if p.LinkID != l.ID {
+		// Another HostZit vouched for this domain before. Its record is in
+		// the zone of whoever really holds the domain, so this link gets a
+		// value of its own to publish — otherwise the second link would
+		// pass the check with the record of the first.
+		p.Token, p.ProvenAt = auth.RandomToken(16), time.Time{}
+	}
 	p.LinkID, p.HZCustomer, p.CheckedAt = l.ID, hzCustomer, now
 	value := relayProofPrefix + p.Token
 	body := map[string]any{"records": []hzRecord{{Name: "_emailzit", Type: "TXT", TTL: 300, Content: value}}}

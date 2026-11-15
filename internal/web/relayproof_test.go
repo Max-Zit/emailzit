@@ -92,6 +92,34 @@ func TestAZoneInHostZitDoesNotVouchForADomain(t *testing.T) {
 	if err != nil || !p.ProvenAt.IsZero() {
 		t.Fatalf("fake.test counts as proven: %+v (%v)", p, err)
 	}
+
+	// A SECOND HostZit must not pass with the record of the first: the
+	// record of real.test is in the zone of the server that really holds
+	// it, so the second link gets a value of its own to publish.
+	other := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/api/v1/dns/zones/") {
+			_, _ = io.WriteString(w, `{"zone":"real.test"}`) // takes it, publishes nothing
+			return
+		}
+		_, _ = io.WriteString(w, `{"domain":"real.test","customer_id":"hz-9","status":"active"}`)
+	}))
+	defer other.Close()
+	second := &store.HostZitLink{URL: other.URL, Token: st.SealSecret("hostzit.token", "hzt_other"),
+		Insecure: true, ScopeAll: true}
+	if err := st.SaveHostZitLink(ctx, second); err != nil {
+		t.Fatal(err)
+	}
+	now = now.Add(relayProofRetry + time.Minute)
+	s.ForgetHostedDomains()
+	if _, ok, temp := s.HostedDomain(ctx, second.ID, "real.test"); ok || temp {
+		t.Fatalf("another HostZit passed with the proof of the first: ok=%v temp=%v", ok, temp)
+	}
+	// and the first link proves its domain again by itself
+	now = now.Add(relayProofRetry + time.Minute)
+	s.ForgetHostedDomains()
+	if _, ok, temp := s.HostedDomain(ctx, link.ID, "real.test"); !ok || temp {
+		t.Fatalf("the HostZit that holds the zone cannot prove it again: ok=%v temp=%v", ok, temp)
+	}
 }
 
 // The relay port is open for the addresses of all links together, so the

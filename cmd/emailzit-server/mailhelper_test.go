@@ -10,25 +10,27 @@ import (
 )
 
 // The write of the mail configuration at start is interrupted when the
-// package restarts this service while it runs. It has to be written again,
-// or the server stays without /etc/postfix/main.cf and no mail flows until
-// an administrator saves the mail settings (found on a fresh appliance,
-// 2026-11-15).
+// package of a new server restarts this service while it runs. It has to
+// be written again, or the server stays without /etc/postfix/main.cf and
+// no mail flows until an administrator saves the mail settings (found on a
+// fresh appliance, 2026-11-15).
 func TestTheMailConfigurationIsWrittenAgainAfterAnInterruptedTry(t *testing.T) {
 	quiet := slog.New(slog.NewTextHandler(io.Discard, nil))
 	old := mailConfigRetry
 	mailConfigRetry = 5 * time.Millisecond
 	t.Cleanup(func() { mailConfigRetry = old })
+	never := func() bool { return false }
+
 	t.Run("a lost write is made good", func(t *testing.T) {
 		tries := 0
 		err := startMailConfig(context.Background(), quiet, func(context.Context) error {
 			tries++
-			if tries < 3 {
-				return errors.New("postfix: signal: terminated")
+			if tries < mailConfigTries {
+				return errors.New("postfix: signal: killed")
 			}
 			return nil
-		})
-		if err != nil || tries != 3 {
+		}, never)
+		if err != nil || tries != mailConfigTries {
 			t.Fatalf("%d tries, err %v", tries, err)
 		}
 	})
@@ -38,8 +40,18 @@ func TestTheMailConfigurationIsWrittenAgainAfterAnInterruptedTry(t *testing.T) {
 		err := startMailConfig(context.Background(), quiet, func(context.Context) error {
 			tries++
 			return want
-		})
+		}, never)
 		if !errors.Is(err, want) || tries != mailConfigTries {
+			t.Fatalf("%d tries, err %v", tries, err)
+		}
+	})
+	t.Run("a configuration another start wrote counts", func(t *testing.T) {
+		tries := 0
+		err := startMailConfig(context.Background(), quiet, func(context.Context) error {
+			tries++
+			return errors.New("postfix: signal: killed")
+		}, func() bool { return true })
+		if err != nil || tries != 1 {
 			t.Fatalf("%d tries, err %v", tries, err)
 		}
 	})
@@ -51,7 +63,7 @@ func TestTheMailConfigurationIsWrittenAgainAfterAnInterruptedTry(t *testing.T) {
 		if err := startMailConfig(ctx, quiet, func(context.Context) error {
 			tries++
 			return errors.New("terminated")
-		}); err == nil {
+		}, never); err == nil {
 			t.Fatal("the error of the last try is kept")
 		}
 		if tries != 1 || time.Since(start) > time.Second {

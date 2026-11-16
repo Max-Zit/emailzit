@@ -28,27 +28,40 @@ import (
 
 // mailConfigTries is how often the configuration is written at start
 // before it is given up on.
-const mailConfigTries = 5
+const mailConfigTries = 3
 
 // mailConfigRetry is the wait between two tries (a variable, so the test
 // does not have to wait seconds).
-var mailConfigRetry = 3 * time.Second
+var mailConfigRetry = 2 * time.Second
+
+// mailConfigWritten reports whether the mail configuration is in place:
+// postfix.service starts only with main.cf (ConditionPathExists).
+func mailConfigWritten() bool {
+	_, err := os.Stat(mailconf.PostfixMain)
+	return err == nil
+}
 
 // startMailConfig writes the mail configuration at start, and writes it
 // again when the attempt was interrupted. The package of a new server
 // restarts this service while that first write runs, which kills postfix
-// in the middle of it ("postfix: signal: terminated", seen on a fresh
-// appliance 2026-11-15). Until this retry one lost write left the server
-// without /etc/postfix/main.cf: postfix.service is then skipped
-// (ConditionPathExists), dovecot and rspamd stay down, and no mail flows
-// until an administrator saves the mail settings by hand.
-func startMailConfig(ctx context.Context, log *slog.Logger, apply func(context.Context) error) error {
+// in the middle of it ("postfix: signal: killed", on a fresh appliance
+// every time): until this retry one lost write left the server without
+// /etc/postfix/main.cf, postfix.service was skipped, dovecot and rspamd
+// stayed down, and no mail flowed until an administrator saved the mail
+// settings by hand. A process that is being stopped gives up at once, and
+// a configuration another start wrote in the meantime counts — so the log
+// of a healthy new server carries no false alarm.
+func startMailConfig(ctx context.Context, log *slog.Logger, apply func(context.Context) error, written func() bool) error {
 	var err error
 	for try := 1; try <= mailConfigTries; try++ {
 		if err = apply(ctx); err == nil {
 			if try > 1 {
 				log.Info("the mail configuration is written", "attempts", try)
 			}
+			return nil
+		}
+		if written() {
+			log.Warn("the write of the mail configuration was interrupted; another start wrote it", "err", err)
 			return nil
 		}
 		if ctx.Err() != nil || try == mailConfigTries {
@@ -123,7 +136,7 @@ func runMailHelper(ctx context.Context, dbURL, relay string) error {
 			}
 		}
 	}
-	if err := startMailConfig(ctx, log, func(ctx context.Context) error { return s.Start(ctx, req) }); err != nil {
+	if err := startMailConfig(ctx, log, func(ctx context.Context) error { return s.Start(ctx, req) }, mailConfigWritten); err != nil {
 		log.Error("writing the mail configuration at start failed", "err", err)
 	}
 	if err := s.EnsureCustomerDirs(ctx); err != nil {

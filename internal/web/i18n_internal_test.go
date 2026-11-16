@@ -52,6 +52,9 @@ func uiTexts(t *testing.T) map[string]bool {
 	out["The mail server refused the message: %s"] = true
 	out[errNoZone.Error()] = true
 	out[oldHostZitNote] = true
+	out[unreachableNote] = true
+	out[conflictNote] = true
+	out[refusedNote] = true
 	// notes of the DNS records
 	for _, r := range mailRecords(&store.Domain{Name: "example.com"}, MailSettings{Hostname: "mail.example.com"}, &store.DKIMKey{Domain: "example.com", Selector: "s"}) {
 		out[r.Note] = true

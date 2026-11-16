@@ -63,8 +63,27 @@ func validLang(code string) bool {
 	return false
 }
 
+// noteData separates the sentence of a note from the data that belongs to
+// it: the names of records another server kept, or what that server said.
+// The sentence is a text of the console and is translated, the data is
+// shown as it is. No text of the console holds this character, so a note
+// without data is translated as before.
+const noteData = "\x1f"
+
+// noteWith builds a note out of a sentence of the console and its data.
+func noteWith(sentence, data string) string {
+	if strings.TrimSpace(data) == "" {
+		return sentence
+	}
+	return sentence + noteData + data
+}
+
 // translate returns the text in lang; with args it is a format string.
+// A note that carries data after noteData keeps that data as it is.
 func translate(lang, key string, args ...any) string {
+	if sentence, data, ok := strings.Cut(key, noteData); ok {
+		return translate(lang, sentence, args...) + " " + data
+	}
 	if t, ok := catalogs[lang][key]; ok && t != "" {
 		key = t
 	}

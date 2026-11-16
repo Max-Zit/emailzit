@@ -192,17 +192,17 @@ func (s *Server) publishDNS(ctx context.Context, domainID string, remove bool, d
 			// of the other links out of their DNS: the next link is asked,
 			// and the note of a link that did not answer only stays while
 			// no link took the records (HostZit's lab retest, 2026-11-15).
-			note = "HostZit is not reachable"
+			note = unreachableNote
 			if err != nil {
-				note += ": " + err.Error()
+				note = noteWith(unreachableNote, err.Error())
 			}
 			continue
 		case st == http.StatusNotFound:
 			continue // that HostZit does not host the zone: ask the next one
 		case st == http.StatusConflict:
-			managed, note = true, "HostZit kept some own records of the customer with the same names: "+apiMessage(body)
+			managed, note = true, noteWith(conflictNote, conflictNames(body, apiMessage(body)))
 		case st >= 300:
-			note = fmt.Sprintf("HostZit refused the records (%d): %s", st, apiMessage(body))
+			note = noteWith(refusedNote, fmt.Sprintf("(%d) %s", st, apiMessage(body)))
 			continue
 		case old:
 			managed, note = true, oldHostZitNote
@@ -227,6 +227,58 @@ func (s *Server) publishDNS(ctx context.Context, domainID string, remove bool, d
 	defer cancel()
 	s.verifyInDNS(ctx, d)
 	s.checkDKIM(ctx, d)
+}
+
+// The notes of a domain that another server wrote: every one of them is a
+// sentence of the console, so it is shown in the language of the user, and
+// what HostZit said (record names, its message) follows the sentence as
+// data (noteWith). Before, the message was glued to the sentence, which
+// left the whole note in English (HostZit's proposal of 2026-11-16).
+const (
+	unreachableNote = "HostZit is not reachable."
+	conflictNote    = "HostZit kept some own records of the customer with the same names:"
+	refusedNote     = "HostZit refused the records:"
+)
+
+// conflictNames lists the records HostZit kept, from the list it sends with
+// a 409 (record_conflict). Its message is used when there is no list.
+func conflictNames(b []byte, fallback string) string {
+	var e struct {
+		Error struct {
+			Conflicts []json.RawMessage `json:"conflicts"`
+		} `json:"error"`
+	}
+	if json.Unmarshal(b, &e) != nil {
+		return fallback
+	}
+	var out []string
+	seen := map[string]bool{}
+	for _, c := range e.Error.Conflicts {
+		var rec struct {
+			Name string `json:"name"`
+			Type string `json:"type"`
+		}
+		var name string
+		if json.Unmarshal(c, &rec) == nil && rec.Name != "" {
+			name = strings.TrimSpace(rec.Name + " " + rec.Type)
+		} else if json.Unmarshal(c, &name) != nil {
+			name = ""
+		}
+		name = strings.TrimSpace(name)
+		if name == "" || seen[name] {
+			continue
+		}
+		seen[name] = true
+		if len(out) == 8 { // a long list is cut: the note is one line
+			out = append(out, "…")
+			break
+		}
+		out = append(out, name)
+	}
+	if len(out) == 0 {
+		return fallback
+	}
+	return strings.Join(out, ", ")
 }
 
 // oldHostZitNote is shown for a HostZit that does not know the name

@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -157,12 +158,15 @@ func TestAnOldHostZitGetsTheRecordsWithoutTheProof(t *testing.T) {
 // servers of x.com for _emailzit.shop.x.com (HostZit's question 3).
 func TestTheZoneOfANameInsideAZoneIsFound(t *testing.T) {
 	ctx := context.Background()
-	zones := map[string]bool{"x.com": true, "y.co.uk": true}
+	zones := map[string]bool{"x.com.": true, "y.co.uk.": true} // asked absolutely
 	var asked []string
 	lookup := func(_ context.Context, name string) ([]*net.NS, error) {
 		asked = append(asked, name)
+		if !strings.HasSuffix(name, ".") {
+			return nil, fmt.Errorf("the question %q is not absolute, so a search domain can be added to it", name)
+		}
 		if zones[name] {
-			return []*net.NS{{Host: "ns1." + name + "."}}, nil
+			return []*net.NS{{Host: "ns1." + name}}, nil
 		}
 		return nil, &net.DNSError{Err: "no such host", IsNotFound: true}
 	}
@@ -180,7 +184,7 @@ func TestTheZoneOfANameInsideAZoneIsFound(t *testing.T) {
 	// a one-label name is never asked: a registry must not be taken for
 	// the zone of a domain
 	for _, name := range asked {
-		if !strings.Contains(name, ".") {
+		if !strings.Contains(strings.TrimSuffix(name, "."), ".") {
 			t.Errorf("%q was asked for name servers", name)
 		}
 	}

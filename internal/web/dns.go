@@ -129,7 +129,7 @@ var checkResolver = func(ctx context.Context, domain string) *net.Resolver {
 		}}
 		// one question to see that we may talk to it at all (a network that
 		// allows no DNS of its own would make every record look missing)
-		if _, err := r.LookupNS(ctx, zone); err == nil {
+		if _, err := r.LookupNS(ctx, absoluteName(zone)); err == nil {
 			return r
 		}
 	}
@@ -145,7 +145,10 @@ var checkResolver = func(ctx context.Context, domain string) *net.Resolver {
 func zoneOf(ctx context.Context, lookupNS func(context.Context, string) ([]*net.NS, error), domain string) (string, []*net.NS) {
 	name := strings.TrimSuffix(strings.ToLower(strings.TrimSpace(domain)), ".")
 	for i := 0; i < 3 && strings.Contains(name, "."); i++ {
-		if ns, err := lookupNS(ctx, name); err == nil && len(ns) > 0 {
+		// absolute, so no search domain of this server is ever added: a
+		// name that does not exist would otherwise be asked a second time
+		// as name.<search domain>, which answers for something else
+		if ns, err := lookupNS(ctx, absoluteName(name)); err == nil && len(ns) > 0 {
 			return name, ns
 		}
 		_, rest, ok := strings.Cut(name, ".")

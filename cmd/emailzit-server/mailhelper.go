@@ -136,7 +136,14 @@ func runMailHelper(ctx context.Context, dbURL, relay string) error {
 			}
 		}
 	}
-	if err := startMailConfig(ctx, log, func(ctx context.Context) error { return s.Start(ctx, req) }, mailConfigWritten); err != nil {
+	switch err := startMailConfig(ctx, log, func(ctx context.Context) error { return s.Start(ctx, req) }, mailConfigWritten); {
+	case err == nil:
+	case ctx.Err() != nil:
+		// The package of a new server stops this service while the first
+		// write runs; the next start writes the configuration, so this is
+		// no error of the server (a fresh appliance shows it every time).
+		log.Warn("this service was stopped while it wrote the mail configuration; the next start writes it", "err", err)
+	default:
 		log.Error("writing the mail configuration at start failed", "err", err)
 	}
 	if err := s.EnsureCustomerDirs(ctx); err != nil {

@@ -26,9 +26,47 @@ import (
 	"github.com/max-zit/emailzit/internal/web"
 )
 
+// mailConfigTries is how often the configuration is written at start
+// before it is given up on.
+const mailConfigTries = 5
+
+// mailConfigRetry is the wait between two tries (a variable, so the test
+// does not have to wait seconds).
+var mailConfigRetry = 3 * time.Second
+
+// startMailConfig writes the mail configuration at start, and writes it
+// again when the attempt was interrupted. The package of a new server
+// restarts this service while that first write runs, which kills postfix
+// in the middle of it ("postfix: signal: terminated", seen on a fresh
+// appliance 2026-11-15). Until this retry one lost write left the server
+// without /etc/postfix/main.cf: postfix.service is then skipped
+// (ConditionPathExists), dovecot and rspamd stay down, and no mail flows
+// until an administrator saves the mail settings by hand.
+func startMailConfig(ctx context.Context, log *slog.Logger, apply func(context.Context) error) error {
+	var err error
+	for try := 1; try <= mailConfigTries; try++ {
+		if err = apply(ctx); err == nil {
+			if try > 1 {
+				log.Info("the mail configuration is written", "attempts", try)
+			}
+			return nil
+		}
+		if ctx.Err() != nil || try == mailConfigTries {
+			break
+		}
+		log.Warn("writing the mail configuration at start failed, trying again", "attempt", try, "err", err)
+		select {
+		case <-ctx.Done():
+			return err
+		case <-time.After(mailConfigRetry):
+		}
+	}
+	return err
+}
+
 // runMailHelper is the root mail helper service. It connects to the
 // database as role root over the local socket (peer authentication), writes
-// the mail configuration once at start, then serves the panel.
+// the mail configuration at start, then serves the panel.
 func runMailHelper(ctx context.Context, dbURL, relay string) error {
 	if os.Geteuid() != 0 {
 		return errors.New("the mail helper must run as root")
@@ -85,7 +123,7 @@ func runMailHelper(ctx context.Context, dbURL, relay string) error {
 			}
 		}
 	}
-	if err := s.Start(ctx, req); err != nil {
+	if err := startMailConfig(ctx, log, func(ctx context.Context) error { return s.Start(ctx, req) }); err != nil {
 		log.Error("writing the mail configuration at start failed", "err", err)
 	}
 	if err := s.EnsureCustomerDirs(ctx); err != nil {

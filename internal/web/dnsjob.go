@@ -156,10 +156,18 @@ func (s *Server) publishUnmanagedDNS(ctx context.Context) {
 	}
 }
 
+const (
+	// txtLookupLife is the whole time one TXT question may take.
+	txtLookupLife = 20 * time.Second
+	// txtZoneLife is what the name servers of the zone get of it, so a
+	// name server that stalls leaves time for the system resolver.
+	txtZoneLife = 8 * time.Second
+)
+
 // lookupTXT reads a TXT record of a domain from the public DNS (tests
 // replace it through the server).
 func (s *Server) lookupTXT(ctx context.Context, domain, name string) ([]string, error) {
-	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, txtLookupLife)
 	defer cancel()
 	if s.PublicTXT != nil {
 		return s.PublicTXT(ctx, domain, name)
@@ -167,17 +175,43 @@ func (s *Server) lookupTXT(ctx context.Context, domain, name string) ([]string, 
 	return publicTXT(ctx, domain, name)
 }
 
-// publicTXT asks the name servers of the domain itself, so a record that
-// was just published is seen at once, and falls back to the system
-// resolver when one of them answers nothing useful. A name server of a
-// domain may answer the test question and still refuse the record, and the
-// check would then never decide anything (found on e1).
+// publicTXT asks the name servers of the zone the name belongs to, so a
+// record that was just published is seen at once, and falls back to the
+// system resolver only when they cannot be asked at all: a name server of
+// a domain may answer the test question and still refuse the record, and
+// the check would then never decide anything (found on e1).
+//
+// The question carries the ABSOLUTE name. Without the final dot the
+// resolver asks the name with the search domain of this server appended as
+// well (_emailzit.dnstest.maxzit.com.maxzit.com), an authoritative server
+// refuses that, and the refusal is not a "no such name" — so the check
+// used to fall through to the system resolver, whose negative answer is
+// remembered for up to an hour. In the joint test J3 the record was in the
+// public DNS for five minutes while the relay still answered 451, and the
+// message was nearly refused (HostZit's finding, 2026-11-16). A name
+// server that says "no such name" is believed now, cache and all.
 func publicTXT(ctx context.Context, domain, name string) ([]string, error) {
-	txt, err := checkResolver(ctx, domain).LookupTXT(ctx, name)
-	if err == nil || notFound(err) {
+	abs := absoluteName(name)
+	zoneCtx, cancel := context.WithTimeout(ctx, txtZoneLife)
+	defer cancel()
+	txt, err := checkResolver(zoneCtx, domain).LookupTXT(zoneCtx, abs)
+	if zoneAnswered(err) {
 		return txt, err
 	}
-	return net.DefaultResolver.LookupTXT(ctx, name)
+	return net.DefaultResolver.LookupTXT(ctx, abs)
+}
+
+// zoneAnswered reports whether the name servers of the zone gave an answer
+// to believe: records, or "there is no such name". Anything else (no
+// reply, a refusal, a server that misbehaves) is no answer, and the
+// question goes to the system resolver — whose negative answers are
+// remembered, so it must not be asked while the zone itself has spoken.
+func zoneAnswered(err error) bool { return err == nil || notFound(err) }
+
+// absoluteName is the name as a question for the DNS: with the final dot,
+// so no search domain is ever added to it.
+func absoluteName(name string) string {
+	return strings.TrimSuffix(strings.TrimSpace(name), ".") + "."
 }
 
 // notFound reports a DNS answer that says the name does not exist.

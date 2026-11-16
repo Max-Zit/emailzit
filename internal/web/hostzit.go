@@ -520,19 +520,20 @@ type hostedAnswer struct {
 
 // HostedDomain tells whether the HostZit of a link hosts the domain for
 // one of its customers, and which customer that is here (empty when the
-// customer is not in EmailZit). temp: HostZit could not be asked, so
-// nothing is decided — the caller lets the sender try again later.
+// customer is not in EmailZit). A Waiting other than NotWaiting means
+// nothing is decided yet — the caller lets the sender try again later and
+// tells it what is being waited for.
 //
 // The relay asks with the link of the login the message came in on (E8),
 // so a HostZit only ever vouches for its own websites. HostZit answers
 // GET /api/v1/domains/{domain} with the domain's customer (customer_id,
 // or customer.id) and its state; 404 means it does not host the domain.
 // The answer is remembered for HostedLife, in both directions.
-func (s *Server) HostedDomain(ctx context.Context, linkID int64, domain string) (string, bool, bool) {
+func (s *Server) HostedDomain(ctx context.Context, linkID int64, domain string) (string, bool, submit.Waiting) {
 	domain = strings.ToLower(strings.TrimSpace(domain))
 	l, err := s.store.HostZitLinkByID(ctx, linkID)
 	if domain == "" || err != nil || l.Token == "" {
-		return "", false, false
+		return "", false, submit.NotWaiting
 	}
 	key := strconv.FormatInt(linkID, 10) + "|" + domain
 	now := s.now()
@@ -540,18 +541,18 @@ func (s *Server) HostedDomain(ctx context.Context, linkID int64, domain string) 
 	a, found := s.hosted.m[key]
 	s.hosted.mu.Unlock()
 	if found && now.Before(a.until) {
-		return a.customer, a.ok, false
+		return a.customer, a.ok, submit.NotWaiting
 	}
 	st, body, err := s.hostzitCall(ctx, l, http.MethodGet, "/api/v1/domains/"+url.PathEscape(domain), nil)
 	switch {
 	case err != nil || st == 0:
 		s.log.Warn("HostZit cannot be asked about a domain", "hostzit", l.URL, "domain", domain, "err", err)
-		return "", false, true
+		return "", false, submit.WaitingForHostZit
 	case st == http.StatusNotFound:
 		a = hostedAnswer{until: now.Add(HostedLife)}
 	case st >= 300:
 		s.log.Warn("HostZit refused the question about a domain", "hostzit", l.URL, "domain", domain, "status", st, "message", apiMessage(body))
-		return "", false, true
+		return "", false, submit.WaitingForHostZit
 	default:
 		var in struct {
 			CustomerID string `json:"customer_id"`
@@ -563,7 +564,7 @@ func (s *Server) HostedDomain(ctx context.Context, linkID int64, domain string) 
 		}
 		if err := json.Unmarshal(body, &in); err != nil {
 			s.log.Warn("HostZit's answer about a domain is not understood", "domain", domain, "err", err)
-			return "", false, true
+			return "", false, submit.WaitingForHostZit
 		}
 		hzCust := in.CustomerID
 		if hzCust == "" {
@@ -592,9 +593,9 @@ func (s *Server) HostedDomain(ctx context.Context, linkID int64, domain string) 
 				s.log.Warn("the relay of a HostZit asks for a mail domain of another customer", "hostzit", l.URL, "domain", domain)
 				live = false
 			default:
-				proven, temp := s.relayProven(ctx, l, domain, hzCust)
-				if temp {
-					return "", false, true
+				proven, wait := s.relayProven(ctx, l, domain, hzCust)
+				if wait != submit.NotWaiting {
+					return "", false, wait
 				}
 				live = proven
 			}
@@ -610,7 +611,7 @@ func (s *Server) HostedDomain(ctx context.Context, linkID int64, domain string) 
 	}
 	s.hosted.m[key] = a
 	s.hosted.mu.Unlock()
-	return a.customer, a.ok, false
+	return a.customer, a.ok, submit.NotWaiting
 }
 
 // RelayCustomer tells the relay whether the customer of a mail domain may

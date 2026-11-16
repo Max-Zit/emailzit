@@ -10,6 +10,7 @@ import (
 	"github.com/max-zit/emailzit/internal/auth"
 	"github.com/max-zit/emailzit/internal/netacl"
 	"github.com/max-zit/emailzit/internal/store"
+	"github.com/max-zit/emailzit/internal/submit"
 )
 
 // What the relay of a linked HostZit may send with (INTEGRATION.md E3, E8
@@ -49,9 +50,10 @@ const (
 func relayProofRecord(domain string) string { return "_emailzit." + domain }
 
 // relayProven reports whether the public DNS of a domain shows that the
-// HostZit of this link holds its zone. temp: nothing is decided yet, so
-// the sender is asked to try again later.
-func (s *Server) relayProven(ctx context.Context, l *store.HostZitLink, domain, hzCustomer string) (ok, temp bool) {
+// HostZit of this link holds its zone. A Waiting other than NotWaiting
+// means nothing is decided yet, so the sender is asked to try again later
+// and is told what is being waited for.
+func (s *Server) relayProven(ctx context.Context, l *store.HostZitLink, domain, hzCustomer string) (ok bool, wait submit.Waiting) {
 	now := s.now()
 	// The proof belongs to this link and carries a value of its own, so a
 	// second HostZit can neither pass with the record of the first nor
@@ -62,10 +64,10 @@ func (s *Server) relayProven(ctx context.Context, l *store.HostZitLink, domain, 
 	}
 	switch {
 	case !p.ProvenAt.IsZero() && now.Sub(p.ProvenAt) < relayProofLife:
-		return true, false
+		return true, submit.NotWaiting
 	case now.Sub(p.CheckedAt) < relayProofRetry:
 		// looked up a moment ago; there is nothing new to learn yet
-		return false, now.Sub(p.FirstSeen) < relayProofGrace
+		return false, s.stillWaiting(p, now, "asked a moment ago", nil)
 	}
 	if p.FirstSeen.IsZero() {
 		p.FirstSeen = now
@@ -82,15 +84,18 @@ func (s *Server) relayProven(ctx context.Context, l *store.HostZitLink, domain, 
 	case err != nil || st == 0:
 		s.log.Warn("the proof of a relay domain cannot be published", "hostzit", l.URL, "domain", domain, "err", err)
 		s.saveProof(ctx, p)
-		return false, true
+		return false, submit.WaitingForHostZit
 	case st == http.StatusNotFound:
 		s.saveProof(ctx, p) // that HostZit does not hold the zone
-		return false, false
+		return false, submit.NotWaiting
 	case st >= 300:
 		s.log.Warn("HostZit refused the proof of a relay domain", "hostzit", l.URL, "domain", domain,
 			"status", st, "message", apiMessage(resp))
 		s.saveProof(ctx, p)
-		return false, now.Sub(p.FirstSeen) < relayProofGrace
+		if now.Sub(p.FirstSeen) < relayProofGrace {
+			return false, submit.WaitingForHostZit
+		}
+		return false, submit.NotWaiting
 	}
 	txt, lookupErr := s.lookupTXT(ctx, domain, relayProofRecord(domain))
 	for _, t := range txt {
@@ -99,19 +104,42 @@ func (s *Server) relayProven(ctx context.Context, l *store.HostZitLink, domain, 
 		}
 		p.ProvenAt = now
 		s.saveProof(ctx, p)
-		s.log.Info("the domain of a website is proven in the public DNS", "domain", domain, "hostzit", l.URL)
-		return true, false
+		s.log.Info("the domain of a website is proven in the public DNS", "domain", domain, "hostzit", l.URL,
+			"after", now.Sub(p.FirstSeen).Round(time.Second).String())
+		return true, submit.NotWaiting
 	}
 	s.saveProof(ctx, p)
+	said := "the record is not there yet"
 	switch {
 	case lookupErr != nil && !notFound(lookupErr):
-		return false, true // the DNS said nothing at all: ask again later
-	case now.Sub(p.FirstSeen) < relayProofGrace:
-		return false, true // the record may still be on its way
+		said = "the DNS did not answer: " + lookupErr.Error()
+	case lookupErr != nil:
+		said = "no such name"
+	case len(txt) > 0:
+		said = "other records are there"
+	}
+	return false, s.stillWaiting(p, now, said, l)
+}
+
+// stillWaiting says whether the sender is asked to try again, and writes
+// down why the proof is not there yet — without a line in the log a 451
+// of the relay could not be told apart from a HostZit that cannot be
+// asked (HostZit's finding in the joint test J3, 2026-11-16).
+func (s *Server) stillWaiting(p *store.RelayDomain, now time.Time, said string, l *store.HostZitLink) submit.Waiting {
+	left := relayProofGrace - now.Sub(p.FirstSeen)
+	host := ""
+	if l != nil {
+		host = l.URL
+	}
+	if left > 0 {
+		s.log.Info("the proof of a website domain is not in the public DNS yet", "domain", p.Domain,
+			"record", relayProofRecord(p.Domain), "dns", said, "hostzit", host,
+			"time_left", left.Round(time.Second).String())
+		return submit.WaitingForDNS
 	}
 	s.log.Warn("the domain of a website is not in the public DNS of that HostZit: its mail is refused",
-		"domain", domain, "hostzit", l.URL, "record", relayProofRecord(domain))
-	return false, false
+		"domain", p.Domain, "record", relayProofRecord(p.Domain), "dns", said, "hostzit", host)
+	return submit.NotWaiting
 }
 
 func (s *Server) saveProof(ctx context.Context, p *store.RelayDomain) {

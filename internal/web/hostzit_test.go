@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/max-zit/emailzit/internal/store"
+	"github.com/max-zit/emailzit/internal/submit"
 )
 
 func TestHostZitLink(t *testing.T) {
@@ -264,9 +265,9 @@ func TestHostedDomain(t *testing.T) {
 	}
 	// a domain of HostZit whose customer is not in EmailZit: hosted, but
 	// no customer here (P1)
-	cust, ok, temp := s.HostedDomain(ctx, link.ID, "SHOP.test")
-	if !ok || temp || cust != "" {
-		t.Errorf("shop.test gave %q, %v, %v", cust, ok, temp)
+	cust, ok, wait := s.HostedDomain(ctx, link.ID, "SHOP.test")
+	if !ok || wait != submit.NotWaiting || cust != "" {
+		t.Errorf("shop.test gave %q, %v, %v", cust, ok, wait)
 	}
 	if _, ok, _ := s.HostedDomain(ctx, link.ID, "shop.test"); !ok {
 		t.Error("the second answer differs")
@@ -284,11 +285,11 @@ func TestHostedDomain(t *testing.T) {
 	down = true
 	mu.Unlock()
 	// the known answers are still used
-	if _, ok, temp := s.HostedDomain(ctx, link.ID, "shop.test"); !ok || temp {
+	if _, ok, wait := s.HostedDomain(ctx, link.ID, "shop.test"); !ok || wait != submit.NotWaiting {
 		t.Error("the remembered answer was dropped")
 	}
 	s.ForgetHostedDomains()
-	if _, ok, temp := s.HostedDomain(ctx, link.ID, "shop.test"); ok || !temp {
+	if _, ok, wait := s.HostedDomain(ctx, link.ID, "shop.test"); ok || wait == submit.NotWaiting {
 		t.Error("an unreachable HostZit must decide nothing")
 	}
 	// without a link nothing is asked at all
@@ -296,7 +297,7 @@ func TestHostedDomain(t *testing.T) {
 		t.Fatal(err)
 	}
 	s.ForgetHostedDomains()
-	if _, ok, temp := s.HostedDomain(ctx, link.ID, "shop.test"); ok || temp {
+	if _, ok, wait := s.HostedDomain(ctx, link.ID, "shop.test"); ok || wait != submit.NotWaiting {
 		t.Error("a domain was taken without a link")
 	}
 }

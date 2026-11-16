@@ -192,3 +192,42 @@ func TestTheDomainVerifiesItselfAndTheRecordsAreOfferedAgain(t *testing.T) {
 		t.Fatalf("the domain was not verified from the public DNS: %+v", d)
 	}
 }
+
+// The question to the DNS carries the absolute name, and an answer of the
+// zone's own name servers is believed — including "there is no such
+// name". Without the final dot the resolver also asks the name with the
+// search domain of this server appended; an authoritative server refuses
+// that, the refusal is not a "no such name", and the check used to fall
+// through to the system resolver, whose negative answer is remembered for
+// up to an hour. In the joint test J3 that kept the relay at 451 while the
+// record had been in the public DNS for five minutes (HostZit's finding,
+// 2026-11-16).
+func TestTheDNSQuestionIsAbsoluteAndTheZoneIsBelieved(t *testing.T) {
+	for name, want := range map[string]string{
+		"_emailzit.shop.example.com":  "_emailzit.shop.example.com.",
+		"_emailzit.shop.example.com.": "_emailzit.shop.example.com.",
+		" example.com ":               "example.com.",
+	} {
+		if got := absoluteName(name); got != want {
+			t.Errorf("the question for %q is %q, want %q", name, got, want)
+		}
+	}
+	cases := []struct {
+		what string
+		err  error
+		want bool
+	}{
+		{"records", nil, true},
+		{"no such name", &net.DNSError{Err: "no such host", IsNotFound: true}, true},
+		{"a timeout", &net.DNSError{Err: "i/o timeout", IsTimeout: true}, false},
+		{"a refusal", &net.DNSError{Err: "server misbehaving"}, false},
+	}
+	for _, c := range cases {
+		if got := zoneAnswered(c.err); got != c.want {
+			t.Errorf("%s counts as an answer: %v, want %v", c.what, got, c.want)
+		}
+	}
+	if txtZoneLife >= txtLookupLife {
+		t.Errorf("the name servers of the zone get %s of %s, so a stalling one leaves nothing for the resolver", txtZoneLife, txtLookupLife)
+	}
+}

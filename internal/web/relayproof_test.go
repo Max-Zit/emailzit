@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/max-zit/emailzit/internal/store"
+	"github.com/max-zit/emailzit/internal/submit"
 )
 
 // A zone inside HostZit proves nothing: every hosting account may create
@@ -64,8 +65,8 @@ func TestAZoneInHostZitDoesNotVouchForADomain(t *testing.T) {
 	}
 
 	// the domain whose zone is really delegated to that HostZit may send
-	if _, ok, temp := s.HostedDomain(ctx, link.ID, "real.test"); !ok || temp {
-		t.Fatalf("a domain of that HostZit cannot send: ok=%v temp=%v", ok, temp)
+	if _, ok, wait := s.HostedDomain(ctx, link.ID, "real.test"); !ok || wait != submit.NotWaiting {
+		t.Fatalf("a domain of that HostZit cannot send: ok=%v wait=%v", ok, wait)
 	}
 	// the record is published under the name EmailZit asks for
 	mu.Lock()
@@ -75,14 +76,14 @@ func TestAZoneInHostZitDoesNotVouchForADomain(t *testing.T) {
 		t.Fatalf("the proof record says %q", value)
 	}
 	// a zone that only exists inside HostZit: first "try again later"
-	if _, ok, temp := s.HostedDomain(ctx, link.ID, "fake.test"); ok || !temp {
-		t.Fatalf("a zone that is not in the public DNS: ok=%v temp=%v", ok, temp)
+	if _, ok, wait := s.HostedDomain(ctx, link.ID, "fake.test"); ok || wait != submit.WaitingForDNS {
+		t.Fatalf("a zone that is not in the public DNS: ok=%v wait=%v", ok, wait)
 	}
 	// and once the record has had its time, the mail is refused
 	now = now.Add(relayProofGrace + time.Minute)
 	s.ForgetHostedDomains()
-	if _, ok, temp := s.HostedDomain(ctx, link.ID, "fake.test"); ok || temp {
-		t.Fatalf("a zone that is not in the public DNS was accepted: ok=%v temp=%v", ok, temp)
+	if _, ok, wait := s.HostedDomain(ctx, link.ID, "fake.test"); ok || wait != submit.NotWaiting {
+		t.Fatalf("a zone that is not in the public DNS was accepted: ok=%v wait=%v", ok, wait)
 	}
 	if _, err := st.RelayDomainProof(ctx, "real.test", link.ID); err != nil {
 		t.Fatalf("the proof of real.test was not kept: %v", err)
@@ -117,13 +118,13 @@ func TestAZoneInHostZitDoesNotVouchForADomain(t *testing.T) {
 	// its own record never appears, so after the grace it is refused
 	now = now.Add(relayProofGrace + time.Minute)
 	s.ForgetHostedDomains()
-	if _, ok, temp := s.HostedDomain(ctx, second.ID, "real.test"); ok || temp {
-		t.Fatalf("another HostZit was not refused: ok=%v temp=%v", ok, temp)
+	if _, ok, wait := s.HostedDomain(ctx, second.ID, "real.test"); ok || wait != submit.NotWaiting {
+		t.Fatalf("another HostZit was not refused: ok=%v wait=%v", ok, wait)
 	}
 	// the link that really holds the zone still may send
 	s.ForgetHostedDomains()
-	if _, ok, temp := s.HostedDomain(ctx, link.ID, "real.test"); !ok || temp {
-		t.Fatalf("the probing of another HostZit took the proof away: ok=%v temp=%v", ok, temp)
+	if _, ok, wait := s.HostedDomain(ctx, link.ID, "real.test"); !ok || wait != submit.NotWaiting {
+		t.Fatalf("the probing of another HostZit took the proof away: ok=%v wait=%v", ok, wait)
 	}
 	// each link keeps a value of its own
 	a, err := st.RelayDomainProof(ctx, "real.test", link.ID)

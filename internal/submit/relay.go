@@ -76,8 +76,9 @@ type RelayServer struct {
 	// Dial connects to Postfix (PostfixService); replaced in tests.
 	Dial func(ctx context.Context) (net.Conn, error)
 	// Hosted asks HostZit whether the domain belongs to one of its
-	// customers. temp: HostZit could not be asked, try again later.
-	Hosted func(ctx context.Context, linkID int64, domain string) (customerID string, ok, temp bool)
+	// customers. A Waiting other than NotWaiting means nothing is decided
+	// yet and the sender is asked to try again later.
+	Hosted func(ctx context.Context, linkID int64, domain string) (customerID string, ok bool, wait Waiting)
 	// Serves tells whether the link of the login may carry the mail of
 	// this customer: a link that serves only the customers assigned to it
 	// never carries another customer's mail (E13). nil = every customer.
@@ -359,6 +360,31 @@ func (z *relaySession) auth(arg string) error {
 	return z.say(235, "2.7.0 Signed in")
 }
 
+// Waiting says what a "try again later" waits for. The owner of the
+// website reads this text in HostZit, so it has to name the right thing:
+// until 0.11.3 every wait said that the hosting server could not be
+// asked, while EmailZit was in fact waiting for the domain's own public
+// DNS (HostZit's finding in the joint test J3, 2026-11-16).
+type Waiting int
+
+const (
+	// NotWaiting: the answer about the domain is final.
+	NotWaiting Waiting = iota
+	// WaitingForHostZit: the hosting server could not be asked.
+	WaitingForHostZit
+	// WaitingForDNS: the record that proves the domain is not in its
+	// public DNS yet.
+	WaitingForDNS
+)
+
+// Text is what the sender is told while this wait lasts.
+func (w Waiting) Text() string {
+	if w == WaitingForDNS {
+		return "4.7.1 The domain is being checked in its public DNS; try again later"
+	}
+	return "4.7.1 The hosting server cannot be asked about this domain; try again later"
+}
+
 // mail takes the envelope sender and decides whether the relay may send
 // for its domain.
 func (z *relaySession) mail(arg string) error {
@@ -380,10 +406,10 @@ func (z *relaySession) mail(arg string) error {
 		}
 	}
 	domain := strings.ToLower(domainOf(addr))
-	cust, ok, temp := z.allowed(domain)
+	cust, ok, wait := z.allowed(domain)
 	switch {
-	case temp:
-		return z.say(451, "4.7.1 The hosting server cannot be asked about this domain; try again later")
+	case wait != NotWaiting:
+		return z.say(451, wait.Text())
 	case !ok:
 		z.refused(addr, 0, "the sender domain is not hosted here")
 		return z.say(550, "5.7.1 Mail cannot be sent for this domain here")
@@ -409,19 +435,19 @@ func (z *relaySession) mail(arg string) error {
 // allowed tells whether the relay may send for a domain: a mail domain of
 // this server, or a domain HostZit hosts. The customer is the one in
 // EmailZit ("" when the domain's customer is not here).
-func (z *relaySession) allowed(domain string) (cust string, ok, temp bool) {
+func (z *relaySession) allowed(domain string) (cust string, ok bool, wait Waiting) {
 	if domain == "" {
-		return "", false, false
+		return "", false, NotWaiting
 	}
 	switch id, err := z.s.Store.DomainCustomer(z.ctx, domain); {
 	case err == nil:
 		return z.ownDomain(domain, id)
 	case !errors.Is(err, store.ErrNotFound):
 		z.s.Log.Error("relay: domain", "domain", domain, "err", err)
-		return "", false, true
+		return "", false, WaitingForHostZit
 	}
 	if z.s.Hosted == nil {
-		return "", false, false
+		return "", false, NotWaiting
 	}
 	return z.s.Hosted(z.ctx, z.linkID, domain)
 }
@@ -433,24 +459,24 @@ func (z *relaySession) allowed(domain string) (cust string, ok, temp bool) {
 // another HostZit, which is what the joint test J5 found. A customer an
 // administrator assigned to the link needs no such question: the
 // assignment is their own word.
-func (z *relaySession) ownDomain(domain, customer string) (cust string, ok, temp bool) {
+func (z *relaySession) ownDomain(domain, customer string) (cust string, ok bool, wait Waiting) {
 	if z.s.Serves != nil && !z.s.Serves(z.ctx, z.linkID, customer) {
-		return "", false, false // not a customer of this link (E13)
+		return "", false, NotWaiting // not a customer of this link (E13)
 	}
 	if z.s.Assigned != nil && z.s.Assigned(z.ctx, z.linkID, customer) {
-		return customer, true, false
+		return customer, true, NotWaiting
 	}
 	if z.s.Hosted == nil {
-		return customer, true, false
+		return customer, true, NotWaiting
 	}
-	switch at, hosted, temp := z.s.Hosted(z.ctx, z.linkID, domain); {
-	case temp:
-		return "", false, true
+	switch at, hosted, wait := z.s.Hosted(z.ctx, z.linkID, domain); {
+	case wait != NotWaiting:
+		return "", false, wait
 	case hosted && at == customer:
-		return customer, true, false
+		return customer, true, NotWaiting
 	}
 	z.s.Log.Warn("relay: the HostZit of this login does not host the domain", "domain", domain, "link", z.linkID, "ip", z.ip)
-	return "", false, false
+	return "", false, NotWaiting
 }
 
 func (z *relaySession) rcpt(arg string) error {

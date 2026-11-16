@@ -115,19 +115,21 @@ func startRelayWith(t *testing.T, f *fakeRelayStore, got chan<- string, max int6
 		Hostname: func(context.Context) string { return "mail.test" },
 		MaxBytes: func(context.Context) int64 { return max },
 		Dial:     fakePostfix(got),
-		Hosted: func(_ context.Context, linkID int64, domain string) (string, bool, bool) {
+		Hosted: func(_ context.Context, linkID int64, domain string) (string, bool, Waiting) {
 			if linkID != 7 {
-				return "", false, false // only the link of the login asks
+				return "", false, NotWaiting // only the link of the login asks
 			}
 			switch domain {
 			case "acme.test":
-				return "cust-1", true, false // the websites of that customer are on this HostZit
+				return "cust-1", true, NotWaiting // the websites of that customer are on this HostZit
 			case "shop.test":
-				return "", true, false // hosted, but the customer is not in EmailZit
+				return "", true, NotWaiting // hosted, but the customer is not in EmailZit
 			case "down.test":
-				return "", false, true // HostZit cannot be asked
+				return "", false, WaitingForHostZit // HostZit cannot be asked
+			case "waiting.test":
+				return "", false, WaitingForDNS // its proof is not in the public DNS yet
 			}
-			return "", false, false
+			return "", false, NotWaiting
 		},
 		// the link serves every customer except the one of other.test
 		Serves: func(_ context.Context, linkID int64, customerID string) bool {
@@ -219,8 +221,14 @@ func TestRelayRefusesAForeignSenderAndAForeignFrom(t *testing.T) {
 		t.Fatalf("a foreign sender domain was answered with %v", err)
 	}
 	// HostZit cannot be asked: try again later, do not refuse for good
-	if err := c.Mail("someone@down.test"); err == nil || !strings.Contains(err.Error(), "451") {
+	if err := c.Mail("someone@down.test"); err == nil || !strings.Contains(err.Error(), "451") || !strings.Contains(err.Error(), "hosting server cannot be asked") {
 		t.Fatalf("an unreachable HostZit was answered with %v", err)
+	}
+	// waiting for the public DNS of the domain says so, not that the
+	// hosting server could not be asked: the owner of the website reads
+	// this text in HostZit (its finding in the joint test J3)
+	if err := c.Mail("web@waiting.test"); err == nil || !strings.Contains(err.Error(), "451") || !strings.Contains(err.Error(), "public DNS") {
+		t.Fatalf("a domain whose proof is still missing was answered with %v", err)
 	}
 	// a domain HostZit hosts, but the From header is of another domain
 	if err := c.Mail("web@shop.test"); err != nil {
@@ -416,7 +424,7 @@ func TestRelayRefusesAMailDomainOfAnotherHostZit(t *testing.T) {
 	f := &fakeRelayStore{pass: "s3cret", limits: store.SendLimits{CustomerPerHour: 100, RcptPerMsg: 10}}
 	addr := startRelayWith(t, f, make(chan string, 2), 1<<20, func(s *RelayServer) {
 		// this HostZit hosts nothing of acme.test
-		s.Hosted = func(context.Context, int64, string) (string, bool, bool) { return "", false, false }
+		s.Hosted = func(context.Context, int64, string) (string, bool, Waiting) { return "", false, NotWaiting }
 	})
 	c := signedIn(t, addr, "s3cret")
 	defer func() { _ = c.Quit() }()
@@ -432,9 +440,9 @@ func TestRelayTakesAnAssignedCustomerWithoutAsking(t *testing.T) {
 	f := &fakeRelayStore{pass: "s3cret", limits: store.SendLimits{CustomerPerHour: 100, RcptPerMsg: 10}}
 	asked := false
 	addr := startRelayWith(t, f, make(chan string, 2), 1<<20, func(s *RelayServer) {
-		s.Hosted = func(context.Context, int64, string) (string, bool, bool) {
+		s.Hosted = func(context.Context, int64, string) (string, bool, Waiting) {
 			asked = true
-			return "", false, false
+			return "", false, NotWaiting
 		}
 		s.Assigned = func(_ context.Context, linkID int64, customerID string) bool {
 			return linkID == 7 && customerID == "cust-1"

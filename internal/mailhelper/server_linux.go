@@ -218,7 +218,7 @@ func (s *Server) do(ctx context.Context, r Request) error {
 // ---- configuration
 
 // apply writes the configuration, checks it and reloads; on any error the
-// previous files are put back.
+// previous files are put back (undo).
 func (s *Server) apply(ctx context.Context, r Request) error {
 	host := r.Hostname
 	if host == "" {
@@ -272,7 +272,7 @@ func (s *Server) apply(ctx context.Context, r Request) error {
 			}
 		}
 		if err := writeFile(f.Path, f.Content, os.FileMode(f.Mode)); err != nil {
-			s.restore(old, files)
+			s.undo(ctx, old, files)
 			return err
 		}
 		if strings.HasPrefix(f.Path, mailconf.PostfixMaps+"/") {
@@ -303,24 +303,69 @@ func (s *Server) apply(ctx context.Context, r Request) error {
 	s.nginxHost = host
 	s.writeNginx(ctx, host)
 	if !changed {
+		// Every file is already what it should be, so nothing is reloaded
+		// here: a service that is nevertheless down (the files of an
+		// interrupted write stay in place) is started.
+		s.keepMail(ctx)
 		return nil
 	}
 	if out, err := s.Run(ctx, "postfix", "check"); err != nil {
-		s.restore(old, files)
+		s.undo(ctx, old, files)
 		return fmt.Errorf("postfix check: %s", firstLine(out, err))
 	}
 	if out, err := s.Run(ctx, "doveconf", "-n"); err != nil {
-		s.restore(old, files)
+		s.undo(ctx, old, files)
 		return fmt.Errorf("doveconf: %s", firstLine(out, err))
 	}
 	for _, svc := range []string{"postfix", "dovecot"} {
 		if out, err := s.Run(ctx, "systemctl", "reload-or-restart", svc); err != nil {
-			s.restore(old, files)
+			if !s.undo(ctx, old, files) {
+				return ctx.Err()
+			}
 			_, _ = s.Run(ctx, "systemctl", "reload-or-restart", svc)
 			return fmt.Errorf("%s: %s", svc, firstLine(out, err))
 		}
 	}
 	return s.afterApply(ctx)
+}
+
+// undo puts the previous configuration back after a write that failed, and
+// reports whether it did. A write that was INTERRUPTED is not a write that
+// failed: this service is being stopped, what is written stays, and the
+// next start writes the rest and starts what is down (keepMail). Putting
+// the previous state back would mean taking main.cf away from a postfix
+// that is just starting, which ends as a failed unit in the log of the
+// first boot of a new server (HostZit's finding of 2026-11-16; the same
+// lines stand in e1's log of its installation).
+func (s *Server) undo(ctx context.Context, old map[string][]byte, files []mailconf.File) bool {
+	if ctx.Err() != nil {
+		s.Log.Warn("writing the mail configuration was interrupted: what is written stays, and the next start writes the rest")
+		return false
+	}
+	s.restore(old, files)
+	return true
+}
+
+// keepMail starts a mail service that is not running although its
+// configuration is in place. It is called only when every file already
+// holds what it should, so nothing is reloaded and nothing else would
+// bring the mail up before the next reboot.
+func (s *Server) keepMail(ctx context.Context) {
+	if ctx.Err() != nil {
+		return
+	}
+	svcs := []string{"postfix", "dovecot"}
+	if rspamdInstalled() {
+		svcs = append(svcs, "rspamd")
+	}
+	for _, svc := range svcs {
+		if _, err := s.Run(ctx, "systemctl", "is-active", "--quiet", svc); err == nil {
+			continue
+		}
+		if out, err := s.Run(ctx, "systemctl", "start", svc); err != nil {
+			s.Log.Warn("a mail service is not running and did not start", "service", svc, "err", firstLine(out, err))
+		}
+	}
 }
 
 func (s *Server) restore(old map[string][]byte, files []mailconf.File) {

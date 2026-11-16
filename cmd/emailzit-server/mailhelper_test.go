@@ -55,6 +55,22 @@ func TestTheMailConfigurationIsWrittenAgainAfterAnInterruptedTry(t *testing.T) {
 			t.Fatalf("%d tries, err %v", tries, err)
 		}
 	})
+	t.Run("a stopped service keeps what it wrote", func(t *testing.T) {
+		// The mail helper leaves the files of an interrupted write in
+		// place, so this start says so instead of claiming that another
+		// start wrote them (the caller logs that the next start finishes
+		// the job).
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		tries := 0
+		err := startMailConfig(ctx, quiet, func(context.Context) error {
+			tries++
+			return errors.New("terminated")
+		}, func() bool { return true })
+		if err == nil || tries != 1 {
+			t.Fatalf("%d tries, err %v", tries, err)
+		}
+	})
 	t.Run("a stopping service does not wait", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()

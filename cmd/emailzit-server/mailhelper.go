@@ -50,7 +50,9 @@ func mailConfigWritten() bool {
 // stayed down, and no mail flowed until an administrator saved the mail
 // settings by hand. A process that is being stopped gives up at once, and
 // a configuration another start wrote in the meantime counts — so the log
-// of a healthy new server carries no false alarm.
+// of a healthy new server carries no false alarm. The files of a write that
+// was interrupted stay in place (the mail helper's undo), so the next start
+// writes only the rest and starts what is down.
 func startMailConfig(ctx context.Context, log *slog.Logger, apply func(context.Context) error, written func() bool) error {
 	var err error
 	for try := 1; try <= mailConfigTries; try++ {
@@ -60,11 +62,17 @@ func startMailConfig(ctx context.Context, log *slog.Logger, apply func(context.C
 			}
 			return nil
 		}
+		if ctx.Err() != nil {
+			// This service is being stopped: what the write put in place
+			// stays there, and the next start writes the rest (the mail
+			// helper keeps the files of an interrupted write).
+			return err
+		}
 		if written() {
 			log.Warn("the write of the mail configuration was interrupted; another start wrote it", "err", err)
 			return nil
 		}
-		if ctx.Err() != nil || try == mailConfigTries {
+		if try == mailConfigTries {
 			break
 		}
 		log.Warn("writing the mail configuration at start failed, trying again", "attempt", try, "err", err)
@@ -142,7 +150,7 @@ func runMailHelper(ctx context.Context, dbURL, relay string) error {
 		// The package of a new server stops this service while the first
 		// write runs; the next start writes the configuration, so this is
 		// no error of the server (a fresh appliance shows it every time).
-		log.Warn("this service was stopped while it wrote the mail configuration; the next start writes it", "err", err)
+		log.Warn("this service was stopped while it wrote the mail configuration; the next start finishes it", "err", err)
 	default:
 		log.Error("writing the mail configuration at start failed", "err", err)
 	}

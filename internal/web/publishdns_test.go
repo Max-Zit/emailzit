@@ -336,4 +336,15 @@ func TestAVerifiedDomainTakesItsRecordOffHostZit(t *testing.T) {
 	if got, _ := st.DomainByID(ctx, store.Staff, b.ID); !got.Verified || withRecord("button.test") {
 		t.Fatalf("after the button: verified %v, _emailzit still in HostZit %v", got.Verified, withRecord("button.test"))
 	}
+	// the page of a domain whose records EmailZit keeps in HostZit does not
+	// also ask to put them at a DNS provider (J1: both sentences were shown)
+	resp, err := cl.Get(srv.URL + "/domains/" + b.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	page, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if !strings.Contains(string(page), "kept in HostZit") || strings.Contains(string(page), "Put these records at the DNS provider") {
+		t.Fatal("the page of a domain kept in HostZit's DNS asks to put the records at a DNS provider")
+	}
 }

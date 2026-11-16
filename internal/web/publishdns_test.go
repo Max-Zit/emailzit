@@ -7,7 +7,9 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/http/cookiejar"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"sync"
 	"testing"
@@ -241,5 +243,97 @@ func TestThePanelShowsTheRecordOfAWebsiteDomain(t *testing.T) {
 	got = states()
 	if got["waiting.test"].State != "missing" || got["proven.test"].State != "ok" {
 		t.Fatalf("after the grace the panel shows %+v", got)
+	}
+}
+
+// A domain whose DNS EmailZit keeps in HostZit takes its _emailzit record
+// back off HostZit once it is verified, by the hourly check and by the
+// button (joint test J1 on h1 ↔ e1: the record stayed in HostZit's zone).
+// The button asks the name servers of the zone like the check, so an
+// answer the system resolver remembered cannot keep it saying "not found".
+func TestAVerifiedDomainTakesItsRecordOffHostZit(t *testing.T) {
+	ctx := context.Background()
+	s, st := testServer(t)
+	s.DevNo2FA = true // the test signs in with a password only
+	var mu sync.Mutex
+	last := map[string][]hzRecord{}
+	hz := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		zone := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/api/v1/dns/zones/"), "/owned/emailzit")
+		var in struct {
+			Records []hzRecord `json:"records"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&in)
+		mu.Lock()
+		last[zone] = in.Records
+		mu.Unlock()
+		_, _ = io.WriteString(w, `{"zone":"`+zone+`"}`)
+	}))
+	defer hz.Close()
+	l := &store.HostZitLink{URL: hz.URL, Token: st.SealSecret("hostzit.token", "hzt_test"), Insecure: true, ScopeAll: true}
+	if err := st.SaveHostZitLink(ctx, l); err != nil {
+		t.Fatal(err)
+	}
+	withRecord := func(zone string) bool {
+		mu.Lock()
+		defer mu.Unlock()
+		for _, r := range last[zone] {
+			if strings.HasPrefix(r.Name, "_emailzit") {
+				return true
+			}
+		}
+		return false
+	}
+	inDNS := map[string]string{}
+	s.PublicTXT = func(_ context.Context, _, name string) ([]string, error) {
+		mu.Lock()
+		defer mu.Unlock()
+		if v, ok := inDNS[name]; ok {
+			return []string{v}, nil
+		}
+		return nil, &net.DNSError{Err: "no such host", IsNotFound: true}
+	}
+	publish := func(d *store.Domain) *store.Domain {
+		t.Helper()
+		s.publishDNS(ctx, d.ID, false, nil)
+		d, err := st.DomainByID(ctx, store.Staff, d.ID)
+		if err != nil || !d.DNSManaged || !withRecord(d.Name) {
+			t.Fatalf("%s before the verification: %+v (%v), record sent %v", d.Name, d, err, withRecord(d.Name))
+		}
+		mu.Lock()
+		inDNS[d.VerifyName()] = d.VerifyValue()
+		mu.Unlock()
+		return d
+	}
+
+	// the hourly check
+	d := publish(mailDomain(t, s, st, "job.test"))
+	s.verifyInDNS(ctx, d)
+	if got, _ := st.DomainByID(ctx, store.Staff, d.ID); !got.Verified || withRecord("job.test") {
+		t.Fatalf("after the check: verified %v, _emailzit still in HostZit %v", got.Verified, withRecord("job.test"))
+	}
+
+	// the button
+	b, err := st.CreateDomain(ctx, store.Staff, d.CustomerID, "button.test", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.installDKIM(ctx, b.ID)
+	b = publish(b)
+	const pw = "correct horse battery staple"
+	if _, err := st.CreateUser(ctx, store.NewUser{Username: "anna", Password: pw, Role: store.RoleAdmin}); err != nil {
+		t.Fatal(err)
+	}
+	srv := httptest.NewServer(s.Handler())
+	defer srv.Close()
+	jar, _ := cookiejar.New(nil)
+	cl := &http.Client{Jar: jar, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	if loc := post(t, cl, srv.URL, "/login", url.Values{"username": {"anna"}, "password": {pw}}); loc != "/" {
+		t.Fatalf("login went to %q", loc)
+	}
+	if loc := post(t, cl, srv.URL, "/domains/"+b.ID+"/verify", url.Values{}); loc != "/domains/"+b.ID {
+		t.Fatalf("the button went to %q", loc)
+	}
+	if got, _ := st.DomainByID(ctx, store.Staff, b.ID); !got.Verified || withRecord("button.test") {
+		t.Fatalf("after the button: verified %v, _emailzit still in HostZit %v", got.Verified, withRecord("button.test"))
 	}
 }

@@ -96,6 +96,7 @@ func (s *Server) verifyInDNS(ctx context.Context, d *store.Domain) {
 		d.Verified = true
 		s.log.Info("the domain is verified: its record is in the public DNS", "domain", d.Name, "record", d.VerifyName())
 		_ = s.store.Audit(ctx, "-", "local", "domain.verify", "domain:"+d.Name, "verified: the record "+d.VerifyName()+" is in the public DNS")
+		s.republishVerified(ctx, d)
 		return
 	}
 }

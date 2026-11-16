@@ -53,27 +53,6 @@ func mailRecords(d *store.Domain, m MailSettings, k *store.DKIMKey) []DNSRecord 
 	return withDKIM(out, k)
 }
 
-// Resolver looks names up (tests replace it).
-var Resolver interface {
-	LookupTXT(ctx context.Context, name string) ([]string, error)
-} = net.DefaultResolver
-
-// checkTXT reports whether name has a TXT record with exactly value.
-func (s *Server) checkTXT(ctx context.Context, name, value string) (bool, error) {
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-	list, err := Resolver.LookupTXT(ctx, name)
-	if err != nil {
-		return false, err
-	}
-	for _, t := range list {
-		if strings.TrimSpace(t) == value {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
 func init() {
 	// the DKIM record goes right after SPF
 	dkimRecord = func(k *store.DKIMKey) DNSRecord {

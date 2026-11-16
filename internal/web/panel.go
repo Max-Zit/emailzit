@@ -670,11 +670,20 @@ func (s *Server) handleDomainVerify(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		s.audit(r, "domain.verify", "domain:"+dom.Name, "verified=%v by hand", v)
+		s.republishVerified(r.Context(), dom)
 		s.redirect(w, r, to, "Saved.")
 		return
 	}
-	ok, err := s.checkTXT(r.Context(), dom.VerifyName(), dom.VerifyValue())
-	if err != nil || !ok {
+	// the same question as the hourly check: the name servers of the zone,
+	// with the absolute name, so an answer the server's own resolver
+	// remembered from before the record existed cannot keep the button
+	// saying "not found" for an hour
+	txt, _ := s.lookupTXT(r.Context(), dom.Name, dom.VerifyName())
+	ok := false
+	for _, t := range txt {
+		ok = ok || strings.TrimSpace(t) == dom.VerifyValue()
+	}
+	if !ok {
 		msg := translate(s.lang(r, userFrom(r)), "The TXT record %s with the value %s was not found yet. DNS changes can take a while; try again later.", dom.VerifyName(), dom.VerifyValue())
 		s.redirectErr(w, r, to, msg)
 		return
@@ -684,7 +693,18 @@ func (s *Server) handleDomainVerify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.audit(r, "domain.verify", "domain:"+dom.Name, "verified by TXT record")
+	s.republishVerified(r.Context(), dom)
 	s.redirect(w, r, to, "The domain is verified and receives mail now.")
+}
+
+// republishVerified writes the records of a domain whose DNS EmailZit keeps
+// in HostZit again after its verification changed: a verified domain needs
+// no _emailzit record any more, an unverified one needs it back (found in
+// the joint test J1 on h1 ↔ e1: the record stayed in HostZit's zone).
+func (s *Server) republishVerified(ctx context.Context, dom *store.Domain) {
+	if dom.DNSManaged {
+		s.publishDNS(ctx, dom.ID, false, nil)
+	}
 }
 
 func (s *Server) handleDomainDelete(w http.ResponseWriter, r *http.Request) {

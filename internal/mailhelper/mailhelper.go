@@ -123,6 +123,8 @@ var (
 	selRE        = regexp.MustCompile(`^[a-z0-9]{1,32}$`)
 	queueIDRE    = regexp.MustCompile(`^[0-9A-Za-z]{8,20}$`)
 	exportNameRE = regexp.MustCompile(`^[0-9]{8}-[0-9]{6}$`)
+	// addrRE is a mailbox address of this server: local part @ domain.
+	addrRE = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9_+-]|\.[a-z0-9_+-]){0,63}@[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$`)
 )
 
 // UID range of the customers' mail users.
@@ -195,6 +197,28 @@ func (r *Request) Validate() error {
 		return nil
 	case ActionStatus:
 		return nil
+	case ActionExpunge:
+		// 0 leaves a folder alone; ten years is the end of any span that
+		// still means something
+		if r.JunkDays < 0 || r.JunkDays > 3650 || r.TrashDays < 0 || r.TrashDays > 3650 {
+			return errors.New("invalid time span")
+		}
+		return nil
+	case ActionShare:
+		if !addrRE.MatchString(r.Owner) || !addrRE.MatchString(r.With) || r.Owner == r.With {
+			return errors.New("invalid mailboxes")
+		}
+		// the folder name ends up in a command line and in the rights
+		// file of the folder
+		if r.Folder == "" || len(r.Folder) > 120 || strings.HasPrefix(r.Folder, "-") ||
+			strings.ContainsAny(r.Folder, "\r\n\x00\\\"'") {
+			return errors.New("invalid folder")
+		}
+		switch r.Rights {
+		case "", "read", "write":
+			return nil
+		}
+		return errors.New("invalid rights")
 	case ActionNotice:
 		if !domainRE.MatchString(r.Domain) || !localRE.MatchString(r.Local) || r.Subject == "" || len(r.Subject) > 200 || strings.ContainsAny(r.Subject, "\r\n\x00") || len(r.Body) > 8000 {
 			return errors.New("invalid notice")

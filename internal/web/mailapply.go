@@ -112,6 +112,9 @@ func (s *Server) SyncMail(ctx context.Context) {
 	for _, d := range doms {
 		s.installDKIM(ctx, d.ID)
 	}
+	// the rights of the shared folders live in the mail store, which a
+	// backup of the panel does not hold: write them again
+	s.syncShares(ctx)
 }
 
 // installDKIM makes sure the domain has a key and the helper has it.

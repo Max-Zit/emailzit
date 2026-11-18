@@ -44,6 +44,7 @@ const (
 	ActionImport   = "import"   // write the mail of an uploaded archive into the customer's mailboxes
 	ActionNotice   = "notice"   // put a message of the server into a mailbox (quota warning)
 	ActionExpunge  = "expunge"  // delete old mail out of Junk and Trash
+	ActionShare    = "share"    // rights of a folder for another mailbox of the customer
 	ActionPing     = "ping"
 )
 
@@ -87,6 +88,12 @@ type Request struct {
 	IDs []string `json:"ids,omitempty"`
 	// cert: PEM chain and key
 	Chain string `json:"chain,omitempty"`
+	// share: the folder Folder of the mailbox Owner for the mailbox With,
+	// with Rights "read" or "write" ("" takes the rights away)
+	Owner  string `json:"owner,omitempty"`
+	With   string `json:"with,omitempty"`
+	Folder string `json:"folder,omitempty"`
+	Rights string `json:"rights,omitempty"`
 	// expunge: delete mail older than these days out of Junk and Trash
 	// (0 = leave the folder alone)
 	JunkDays  int `json:"junk_days,omitempty"`

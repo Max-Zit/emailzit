@@ -213,6 +213,8 @@ func (s *Server) do(ctx context.Context, r Request) error {
 		return s.notice(ctx, r)
 	case ActionExpunge:
 		return s.expunge(ctx, r)
+	case ActionShare:
+		return s.share(ctx, r)
 	}
 	return errors.New("unknown action")
 }

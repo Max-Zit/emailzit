@@ -9,6 +9,11 @@ import (
 	"github.com/max-zit/emailzit/internal/store"
 )
 
+// Share writes the rights of a shared folder (empty rights remove them).
+func (h *HelperMail) Share(ctx context.Context, owner, with, folder, rights string) error {
+	return h.C.Call(ctx, mailhelper.Request{Action: mailhelper.ActionShare, Owner: owner, With: with, Folder: folder, Rights: rights})
+}
+
 // Expunge deletes old mail out of Junk and Trash of every mailbox.
 func (h *HelperMail) Expunge(ctx context.Context, junkDays, trashDays int) error {
 	return h.C.Call(ctx, mailhelper.Request{Action: mailhelper.ActionExpunge, JunkDays: junkDays, TrashDays: trashDays})

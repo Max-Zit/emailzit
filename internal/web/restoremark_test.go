@@ -17,15 +17,16 @@ func (m *stubMail) Apply(_ context.Context, s MailSettings) error {
 	m.applied = append(m.applied, s)
 	return nil
 }
-func (m *stubMail) CustomerCreated(context.Context, *store.Customer) error { return nil }
-func (m *stubMail) DomainDeleted(context.Context, *store.Domain) error     { return nil }
-func (m *stubMail) MailboxDeleted(context.Context, *store.Mailbox) error   { return nil }
-func (m *stubMail) DKIM(context.Context, *store.DKIMKey) error             { return nil }
-func (m *stubMail) DKIMOff(context.Context, string) error                  { return nil }
-func (m *stubMail) Spam(context.Context, string, string) error             { return nil }
-func (m *stubMail) Unban(context.Context, string) error                    { return nil }
-func (m *stubMail) Notice(context.Context, string, string, string) error   { return nil }
-func (m *stubMail) Expunge(context.Context, int, int) error                { return nil }
+func (m *stubMail) CustomerCreated(context.Context, *store.Customer) error      { return nil }
+func (m *stubMail) DomainDeleted(context.Context, *store.Domain) error          { return nil }
+func (m *stubMail) MailboxDeleted(context.Context, *store.Mailbox) error        { return nil }
+func (m *stubMail) DKIM(context.Context, *store.DKIMKey) error                  { return nil }
+func (m *stubMail) DKIMOff(context.Context, string) error                       { return nil }
+func (m *stubMail) Spam(context.Context, string, string) error                  { return nil }
+func (m *stubMail) Unban(context.Context, string) error                         { return nil }
+func (m *stubMail) Notice(context.Context, string, string, string) error        { return nil }
+func (m *stubMail) Expunge(context.Context, int, int) error                     { return nil }
+func (m *stubMail) Share(context.Context, string, string, string, string) error { return nil }
 
 // After a restore the mail services still carry the configuration of the
 // machine they were installed on, so the panel writes the settings of the

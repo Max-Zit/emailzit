@@ -63,6 +63,41 @@
   {{end}}
 </section>
 {{if .User.CanWrite}}{{template "spamform" .}}{{end}}
+<section class="panel" id="shares">
+  <h2>{{template "icon" "users"}}{{.T "Shared folders"}}</h2>
+  <p class="muted">{{.T "A folder of this mailbox can be opened for other mailboxes of the same customer: the shared info@ that several people answer, without a password they all know and without copies in three places. They see it in their mail program under shared/, next to their own folders."}}</p>
+  {{if .Data.Shared}}
+  <div class="table-wrap"><table>
+    <thead><tr><th>{{.T "Folder"}}</th><th>{{.T "Open for"}}</th><th>{{.T "Rights"}}</th><th></th></tr></thead>
+    <tbody>{{range .Data.Shared}}<tr>
+      <td class="mono">{{.Folder}}</td>
+      <td class="mono">{{.WithAddress}}</td>
+      <td class="small">{{if eq .Rights "write"}}{{$.T "read and write"}}{{else}}{{$.T "read only"}}{{end}}</td>
+      <td class="actions">{{if $.User.CanWrite}}<form method="post" action="/mailboxes/{{$m.ID}}/share/delete" data-confirm="{{$.T "Close the folder %s for %s?" .Folder .WithAddress}}"><input type="hidden" name="with" value="{{.WithID}}"><input type="hidden" name="folder" value="{{.Folder}}"><button class="ghost sm">{{$.T "Close"}}</button></form>{{end}}</td>
+    </tr>{{end}}</tbody>
+  </table></div>
+  {{end}}
+  {{if .Data.Received}}
+  <p class="small">{{.T "This mailbox may use:"}}</p>
+  <ul class="small">{{range .Data.Received}}<li><span class="mono">shared/{{.OwnerAddress}}/{{.Folder}}</span> — {{if eq .Rights "write"}}{{$.T "read and write"}}{{else}}{{$.T "read only"}}{{end}}</li>{{end}}</ul>
+  {{end}}
+  {{if .User.CanWrite}}
+  {{if .Data.Others}}
+  <form method="post" action="/mailboxes/{{$m.ID}}/share" class="stack mt">
+    <div class="cols">
+      <label>{{.T "Folder"}}<input name="folder" value="INBOX" class="mono" required maxlength="120"><small>{{.T "INBOX is the mailbox itself; a folder of it is written as the mail program shows it (for example Projects/2026)."}}</small></label>
+      <label>{{.T "Open for"}}<select name="with">{{range .Data.Others}}<option value="{{.ID}}">{{.Address}}</option>{{end}}</select></label>
+      <label>{{.T "Rights"}}<select name="rights">
+        <option value="write">{{.T "read and write"}}</option>
+        <option value="read">{{.T "read only"}}</option>
+      </select></label>
+    </div>
+    <div><button class="primary">{{template "icon" "plus"}}{{.T "Share the folder"}}</button></div>
+  </form>
+  {{else}}<p class="muted">{{.T "The customer has no second mailbox to share a folder with."}}</p>{{end}}
+  {{end}}
+</section>
+
 <section class="panel">
   <h2>{{template "icon" "settings"}}{{.T "Settings for mail programs"}}</h2>
   {{template "clientsettings" (rowOf $ $m.Address)}}

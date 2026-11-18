@@ -99,6 +99,9 @@ type MailApplier interface {
 	// Expunge deletes mail older than the given days out of Junk and
 	// Trash of every mailbox (0 = leave the folder alone).
 	Expunge(ctx context.Context, junkDays, trashDays int) error
+	// Share gives another mailbox of the same customer the rights of a
+	// folder ("" takes them away).
+	Share(ctx context.Context, owner, with, folder, rights string) error
 }
 
 // New creates the server; settings are loaded from the database.
@@ -341,6 +344,8 @@ func (s *Server) Handler() http.Handler {
 	write("POST /mailboxes/{id}/apppasswords/{pid}/delete", s.handleMailboxAppPasswordDelete)
 	write("POST /mailboxes/{id}/import", s.handleMailboxImport)
 	write("POST /mailboxes/{id}/spam", s.handleMailboxSpam)
+	write("POST /mailboxes/{id}/share", s.handleMailboxShare)
+	write("POST /mailboxes/{id}/share/delete", s.handleMailboxShareDelete)
 	write("POST /mailboxes/{id}/delete", s.fourEyes("mailbox.delete", s.handleMailboxDelete))
 	app("GET /aliases", s.handleAliases)
 	write("POST /aliases/{id}", s.handleAliasUpdate)

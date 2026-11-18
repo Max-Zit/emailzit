@@ -809,6 +809,12 @@ type mailboxData struct {
 	Plans        []*store.CustomerPackage // staff: the plans the mailbox can be moved to
 	Staff        bool
 	Mail         MailSettings
+	// Shared and Received are the folders this mailbox opened for others
+	// and the ones others opened for it; Others are the mailboxes of the
+	// same customer a folder can be shared with.
+	Shared   []store.Share
+	Received []store.Share
+	Others   []*store.Mailbox
 }
 
 func (s *Server) loadMailbox(w http.ResponseWriter, r *http.Request) *store.Mailbox {
@@ -834,6 +840,14 @@ func (s *Server) handleMailbox(w http.ResponseWriter, r *http.Request) {
 			d.Imports, _ = s.store.Imports(r.Context(), m.ID)
 			if sp, err := s.store.MailboxSpamSettings(r.Context(), sc, m.ID); err == nil {
 				d.Spam = newSpamForm("/mailboxes/"+m.ID+"/spam", sp)
+			}
+			d.Shared, d.Received, _ = s.store.SharesOf(r.Context(), sc, m.ID)
+			if list, lerr := s.store.Mailboxes(r.Context(), sc, store.MailboxFilter{CustomerID: m.CustomerID, Limit: 200}); lerr == nil {
+				for _, o := range list {
+					if o.ID != m.ID {
+						d.Others = append(d.Others, o)
+					}
+				}
 			}
 			if d.Package, err = s.store.PackageByID(r.Context(), m.PackageID); err == nil && d.Staff {
 				d.Plans, err = s.store.CustomerPackages(r.Context(), store.Staff, m.CustomerID)

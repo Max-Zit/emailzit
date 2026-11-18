@@ -79,6 +79,7 @@
 
 {{define "settingstabs"}}<nav class="sidetabs" aria-label="{{.T "Settings"}}">
   <a href="/settings/mail" class="{{if eq .Title "Mail server"}}on{{end}}">{{template "icon" "mail"}}<span>{{.T "Mail server"}}<small>{{.T "Host name, domain verification, limits"}}</small></span></a>
+  <a href="/settings/routes" class="{{if eq .Title "Delivery routes"}}on{{end}}">{{template "icon" "route"}}<span>{{.T "Delivery routes"}}<small>{{.T "Another way out for single domains"}}</small></span></a>
   <a href="/settings/certificate" class="{{if eq .Title "Certificate"}}on{{end}}">{{template "icon" "lock"}}<span>{{.T "Certificate"}}<small>{{.T "TLS for IMAP, POP3 and SMTP"}}</small></span></a>
   <a href="/settings/backup" class="{{if eq .Title "Backup of the panel"}}on{{end}}">{{template "icon" "disk"}}<span>{{.T "Backup of the panel"}}<small>{{.T "Database, keys and settings, encrypted"}}</small></span></a>
   <a href="/settings/hostzit" class="{{if eq .Title "HostZit"}}on{{end}}">{{template "icon" "link"}}<span>HostZit<small>{{.T "DNS records and websites of the same customers"}}</small></span></a>

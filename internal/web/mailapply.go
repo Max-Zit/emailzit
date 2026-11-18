@@ -21,6 +21,14 @@ func (h *HelperMail) Apply(ctx context.Context, m MailSettings) error {
 	for _, o := range m.OutboundIPs {
 		req.OutboundIPs = append(req.OutboundIPs, mailconf.OutboundIP{Address: o.Address, HELO: o.HELO})
 	}
+	for _, t := range m.Routes {
+		if t.User != "" && t.password == "" {
+			// without its password the route would sign in with nothing; the
+			// rest of the configuration still goes out
+			continue
+		}
+		req.Routes = append(req.Routes, mailconf.Route{Domain: t.Domain, Host: t.Host, Port: t.Port, User: t.User, Password: t.password})
+	}
 	if m.RelayHost != "" {
 		relay, err := m.relay()
 		if err != nil {
@@ -86,7 +94,9 @@ func (s *Server) SyncMail(ctx context.Context) {
 	// the machine they were installed on; write the settings of the backup
 	mark := filepath.Join(s.DataDir, ApplyMailMark)
 	if _, err := os.Stat(mark); err == nil {
-		m := s.MailConfig(ctx)
+		// with the sealed passwords opened: after a restore the smart host
+		// and the relays of the routes have to sign in as before
+		m := s.mailWithSecrets(ctx)
 		if err := s.Mail.Apply(ctx, m); err != nil {
 			s.log.Error("mail configuration after a restore", "err", err)
 		} else {

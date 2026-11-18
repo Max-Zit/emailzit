@@ -67,6 +67,9 @@ type Request struct {
 	ExtraSignatures bool `json:"extra_signatures,omitempty"`
 	// OutboundIPs: extra sending addresses (address + host name)
 	OutboundIPs []mailconf.OutboundIP `json:"outbound_ips,omitempty"`
+	// Routes: the way out of single recipient domains (a relay the
+	// receiver accepts, or straight to the domain past a smart host)
+	Routes []mailconf.Route `json:"routes,omitempty"`
 	// customer, trash
 	Customer string `json:"customer,omitempty"` // UUID
 	UID      int    `json:"uid,omitempty"`

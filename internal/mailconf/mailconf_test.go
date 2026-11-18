@@ -213,3 +213,110 @@ func TestRenderDANEAndOutbound(t *testing.T) {
 		}
 	}
 }
+
+// A route sends the mail of one recipient domain another way: directly
+// past the smart host, over a relay without a login, or over a relay this
+// server signs in at. The receiver's own refusal (a provider that blocks
+// the whole address range) is nothing the server can mend, so the way out
+// has to be changeable per domain.
+func TestRenderRoutes(t *testing.T) {
+	base := Settings{Hostname: "mail.example.com", MaxMessageMB: 25, DBName: "emailzit",
+		CertFile: "/etc/emailzit/tls/mail.crt", KeyFile: "/etc/emailzit/tls/mail.key"}
+
+	t.Run("every kind of route is written", func(t *testing.T) {
+		s := base
+		s.Relay, s.RelayUser, s.RelayPassword = "[smart.example.net]:587", "smart", "pw"
+		s.Routes = []Route{
+			{Domain: "hotmail.com", Host: "relay.example.net", Port: 587, User: "me", Password: "secret"},
+			{Domain: "example.org"},
+			{Domain: "intern.example.com", Host: "10.0.0.5", Port: 25},
+		}
+		files, err := Render(s)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := map[string]File{}
+		for _, f := range files {
+			got[f.Path] = f
+		}
+		routes := string(got[RouteFile].Content)
+		for _, want := range []string{
+			"hotmail.com ezrelay:[relay.example.net]:587",
+			"example.org ezdirect:example.org",
+			"intern.example.com ezdirect:[10.0.0.5]:25",
+		} {
+			if !strings.Contains(routes, want) {
+				t.Errorf("the routes file lacks %q:\n%s", want, routes)
+			}
+		}
+		if got[RouteFile].Mode != 0o644 {
+			t.Errorf("the routes file has mode %o", got[RouteFile].Mode)
+		}
+		pw := string(got[RoutePasswordFile].Content)
+		if !strings.Contains(pw, "[relay.example.net]:587 me:secret") {
+			t.Errorf("the login of the route is missing:\n%s", pw)
+		}
+		if strings.Contains(pw, "10.0.0.5") || strings.Contains(pw, "example.org") {
+			t.Errorf("a route without a login has one:\n%s", pw)
+		}
+		if got[RoutePasswordFile].Mode != 0o600 {
+			t.Errorf("the logins of the routes are readable by others (mode %o)", got[RoutePasswordFile].Mode)
+		}
+		if !strings.Contains(string(got[PostfixMain].Content), "transport_maps = proxy:texthash:"+RouteFile+",") {
+			t.Error("main.cf does not read the routes first")
+		}
+		master := string(got[PostfixMaster].Content)
+		for _, want := range []string{"ezdirect  unix", "ezrelay  unix", "-o smtp_sasl_password_maps=texthash:" + RoutePasswordFile,
+			"-o smtp_tls_security_level=encrypt", "-o relayhost="} {
+			if !strings.Contains(master, want) {
+				t.Errorf("master.cf lacks %q", want)
+			}
+		}
+		// the way out of a route never carries the smart host's login
+		direct := master[strings.Index(master, "ezdirect  unix"):strings.Index(master, "ezrelay  unix")]
+		if !strings.Contains(direct, "-o smtp_sasl_auth_enable=no") {
+			t.Errorf("the direct transport may sign in:\n%s", direct)
+		}
+	})
+
+	t.Run("both files are written without a single route", func(t *testing.T) {
+		files, err := Render(base)
+		if err != nil {
+			t.Fatal(err)
+		}
+		seen := map[string]bool{}
+		for _, f := range files {
+			seen[f.Path] = true
+		}
+		if !seen[RouteFile] || !seen[RoutePasswordFile] {
+			t.Error("the configuration names a file that is not written")
+		}
+	})
+
+	t.Run("a route that would break a line is refused", func(t *testing.T) {
+		for name, r := range map[string]Route{
+			"domain with a space":   {Domain: "hot mail.com"},
+			"domain with a newline": {Domain: "hotmail.com\nexample.org relay:[evil]:25"},
+			"relay with a quote":    {Domain: "hotmail.com", Host: "a\"b", Port: 25},
+			"port out of range":     {Domain: "hotmail.com", Host: "relay.example.net", Port: 70000},
+			"login without relay":   {Domain: "hotmail.com", User: "me", Password: "pw"},
+			"login without pass":    {Domain: "hotmail.com", Host: "relay.example.net", Port: 587, User: "me"},
+			"password with newline": {Domain: "hotmail.com", Host: "relay.example.net", Port: 587, User: "me", Password: "a\nb"},
+			"login with a colon":    {Domain: "hotmail.com", Host: "relay.example.net", Port: 587, User: "a:b", Password: "pw"},
+		} {
+			s := base
+			s.Routes = []Route{r}
+			if _, err := Render(s); err == nil {
+				t.Errorf("%s was accepted", name)
+			}
+		}
+	})
+
+	t.Run("the same domain twice is refused", func(t *testing.T) {
+		s := base
+		s.Routes = []Route{{Domain: "hotmail.com"}, {Domain: "hotmail.com", Host: "relay.example.net", Port: 25}}
+		if _, err := Render(s); err == nil {
+			t.Error("two routes for one domain were accepted")
+		}
+	})
+}

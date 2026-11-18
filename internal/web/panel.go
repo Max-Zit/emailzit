@@ -94,6 +94,10 @@ type MailSettings struct {
 	// NoticeTo gets the notices for administrators (weekly report, block
 	// lists, automatic blocks); comma-separated, empty = none.
 	NoticeTo string `json:"notice_to,omitempty"`
+	// Routes send the mail of single recipient domains another way: a
+	// receiver that refuses the address range of this server is nothing
+	// the server can mend (see mailroutes.go).
+	Routes []MailRoute `json:"routes,omitempty"`
 }
 
 // OutboundAddr is an extra sending address with its host name.
@@ -129,6 +133,9 @@ func (m *MailSettings) Validate() error {
 	}
 	if len(m.RelayUser) > 256 || strings.ContainsAny(m.RelayUser, " \t\r\n:") {
 		return errors.New("the user name of the smart host is not valid")
+	}
+	if err := m.validateRoutes(); err != nil {
+		return err
 	}
 	return m.validateProtection()
 }
@@ -204,13 +211,25 @@ func (s *Server) applyMail(r *http.Request) {
 	if s.Mail == nil {
 		return
 	}
-	m := s.MailConfig(r.Context())
+	if err := s.Mail.Apply(r.Context(), s.mailWithSecrets(r.Context())); err != nil {
+		s.log.Error("applying the mail configuration failed", "err", err)
+	}
+}
+
+// mailWithSecrets is the mail configuration with every sealed password
+// opened: what the helper needs to write the files, and nothing the panel
+// keeps around longer than this call.
+func (s *Server) mailWithSecrets(ctx context.Context) MailSettings {
+	m := s.MailConfig(ctx)
 	if m.RelayPassword != "" {
 		m.relayPassword, _ = s.store.OpenSecret("mail.relay", m.RelayPassword)
 	}
-	if err := s.Mail.Apply(r.Context(), m); err != nil {
-		s.log.Error("applying the mail configuration failed", "err", err)
+	for i := range m.Routes {
+		if m.Routes[i].Password != "" {
+			m.Routes[i].password, _ = s.store.OpenSecret(routeSecret, m.Routes[i].Password)
+		}
 	}
+	return m
 }
 
 // ---- overview

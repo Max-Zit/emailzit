@@ -100,3 +100,31 @@ postlog   unix-dgram n  -       n       -       1       postlogd
 {{- end}}
 {{- end}}
 {{- end}}
+
+# The two ways out for single recipient domains (main.cf: transport_maps
+# reads them from the routes file). Both ignore a smart host set for
+# everything else, because the point of a route is to go another way.
+#
+# ezdirect delivers to the domain's own servers, or to a relay that needs
+# no login; it never signs in, so the smart host's password cannot reach
+# a server that is not the smart host.
+{{.DirectTransport}}  unix  -       -       y       -       -       smtp
+  -o syslog_name=postfix/{{.DirectTransport}}
+  -o relayhost=
+  -o smtp_sasl_auth_enable=no
+  -o smtp_tls_security_level={{if .DANE}}dane{{else}}may{{end}}{{if .IPv4Only}}
+  -o inet_protocols=ipv4{{end}}
+#
+# ezrelay signs in at the relay of the route. TLS is required, so the
+# login never leaves this server in the clear, and the policy of MTA-STS
+# does not apply to a relay we were told to use.
+{{.RelayTransport}}  unix  -       -       y       -       -       smtp
+  -o syslog_name=postfix/{{.RelayTransport}}
+  -o relayhost=
+  -o smtp_sasl_auth_enable=yes
+  -o smtp_sasl_password_maps=texthash:{{.RoutePasswordFile}}
+  -o smtp_sasl_security_options=noanonymous
+  -o smtp_sasl_tls_security_options=noanonymous
+  -o smtp_tls_security_level=encrypt
+  -o smtp_tls_policy_maps={{if .IPv4Only}}
+  -o inet_protocols=ipv4{{end}}

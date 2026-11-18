@@ -78,8 +78,11 @@ virtual_mailbox_domains = proxy:pgsql:/etc/postfix/emailzit/domains.cf
 virtual_mailbox_maps = proxy:pgsql:/etc/postfix/emailzit/mailboxes.cf
 virtual_alias_maps = proxy:pgsql:/etc/postfix/emailzit/aliases.cf
 virtual_transport = lmtp:unix:private/dovecot-lmtp
-# dmarc-reports@<domain> goes to the EmailZit server (emailzit-dmarc in master.cf)
-transport_maps = proxy:pgsql:/etc/postfix/emailzit/transport.cf
+# The routes of single recipient domains come first: mail for a domain
+# whose receiver refuses this server's address leaves another way
+# (master.cf: ezdirect, ezrelay). Then dmarc-reports@<domain>, which goes
+# to the EmailZit server (emailzit-dmarc in master.cf).
+transport_maps = proxy:texthash:{{.RouteFile}}, proxy:pgsql:/etc/postfix/emailzit/transport.cf
 {{- if .SenderTransports}}
 # customers with their own outbound address send through its transport
 # (master.cf: own address and HELO name)

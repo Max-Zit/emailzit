@@ -244,7 +244,7 @@ func (s *Server) apply(ctx context.Context, r Request) error {
 	files, err := mailconf.Render(mailconf.Settings{Hostname: host, MaxMessageMB: r.MaxMessageMB, DBName: s.DBName,
 		CertFile: s.CertFile, KeyFile: s.KeyFile, Relay: relay, RelayUser: relayUser, RelayPassword: relayPass, ClamAV: clam, IPv4Only: r.IPv4Only, PolicySocket: s.policySocket(), Rspamd: rspamdInstalled(),
 		AuthPolicyToken: s.authPolicyToken(), Unbound: unboundInstalled(), SystemResolver: sysResolver, AllowRiskyAttachments: r.AllowRiskyAttachments, AllowDMARCFailures: r.AllowDMARCFailures,
-		TLSPolicySocket: s.tlsPolicySocket(), OutboundIPs: presentAddrs(r.OutboundIPs)})
+		TLSPolicySocket: s.tlsPolicySocket(), OutboundIPs: presentAddrs(r.OutboundIPs), Routes: r.Routes})
 	if err != nil {
 		return err
 	}

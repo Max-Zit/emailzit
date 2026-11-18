@@ -17,6 +17,7 @@ import (
 	"net/netip"
 	"path"
 	"regexp"
+	"strconv"
 	"strings"
 	"text/template"
 )
@@ -74,6 +75,47 @@ type Settings struct {
 	// OutboundIPs are extra addresses for outgoing mail, each with its own
 	// host name (HELO, PTR); customers are assigned to one.
 	OutboundIPs []OutboundIP
+	// Routes send the mail of single RECIPIENT domains another way: over a
+	// relay the receiver accepts, or directly past the smart host. A large
+	// receiver can refuse a whole address range of a hosting provider
+	// (Outlook.com answers "part of their network is on our block list"),
+	// and then nothing on the server helps — only another way out.
+	Routes []Route
+}
+
+// Route is how the mail for one recipient domain leaves this server.
+type Route struct {
+	// Domain is the RECIPIENT domain, e.g. hotmail.com. Postfix looks a
+	// recipient up as the whole address first and as its domain after, so
+	// one row reaches every mailbox of the domain.
+	Domain string
+	// Host and Port are the relay; without a host the mail goes directly to
+	// the domain's own servers, past a smart host that is set for everything
+	// else.
+	Host string
+	Port int
+	// User and Password sign in at the relay. With a login the mail goes
+	// through a transport that requires TLS, so the password never leaves
+	// the server in the clear.
+	User, Password string
+}
+
+// Direct tells whether the route delivers to the domain itself.
+func (r Route) Direct() bool { return r.Host == "" }
+
+// Nexthop is the relay as Postfix writes it ([host]:port).
+func (r Route) Nexthop() string { return "[" + r.Host + "]:" + strconv.Itoa(r.Port) }
+
+// Transport is the transport_maps value of the route.
+func (r Route) Transport() string {
+	switch {
+	case r.Direct():
+		return DirectTransport + ":" + r.Domain
+	case r.User != "":
+		return RelayTransport + ":" + r.Nexthop()
+	default:
+		return DirectTransport + ":" + r.Nexthop()
+	}
 }
 
 // OutboundIP is an extra sending address.
@@ -144,6 +186,22 @@ func (s *Settings) Validate() error {
 		return errors.New("invalid TLS policy socket")
 	case len(s.OutboundIPs) > 64:
 		return errors.New("too many outbound addresses")
+	case len(s.Routes) > 64:
+		return errors.New("too many routes")
+	}
+	route := map[string]bool{}
+	for _, r := range s.Routes {
+		switch {
+		case !hostRE.MatchString(r.Domain) || len(r.Domain) > 253 || route[r.Domain]:
+			return errors.New("invalid route domain")
+		case r.Host != "" && !relayRE.MatchString(r.Nexthop()):
+			return errors.New("invalid route relay")
+		case r.Host != "" && (r.Port < 1 || r.Port > 65535):
+			return errors.New("invalid route port")
+		case r.User != "" && (r.Host == "" || !relayCredRE.MatchString(r.User) || r.Password == "" || len(r.Password) > 256 || strings.ContainsAny(r.Password, "\r\n\x00")):
+			return errors.New("invalid route login")
+		}
+		route[r.Domain] = true
 	}
 	seen := map[string]bool{}
 	for _, o := range s.OutboundIPs {
@@ -166,6 +224,15 @@ const (
 	PostfixMaps   = "/etc/postfix/emailzit"
 	// RelayPasswordFile holds the smart host login (root only).
 	RelayPasswordFile = "/etc/postfix/emailzit/relay_passwd" // #nosec G101 -- a file path, not a password
+	// RouteFile holds the way out of single recipient domains; it is read
+	// through proxymap, because trivial-rewrite is chrooted.
+	RouteFile = "/etc/postfix/emailzit/routes"
+	// RoutePasswordFile holds the logins of the routes (root only).
+	RoutePasswordFile = "/etc/postfix/emailzit/routes_passwd" // #nosec G101 -- a file path, not a password
+	// DirectTransport delivers past a smart host and without a login;
+	// RelayTransport signs in at a relay and insists on TLS.
+	DirectTransport = "ezdirect"
+	RelayTransport  = "ezrelay"
 	// PostfixOpenSSL holds the TLS settings main.cf cannot express.
 	PostfixOpenSSL = "/etc/postfix/emailzit/openssl.cnf"
 	DovecotConf    = "/etc/dovecot/dovecot.conf"
@@ -184,7 +251,12 @@ func Render(s Settings) ([]File, error) {
 		OpenSSLConf       string
 		DANE              bool
 		SenderTransports  bool // extra outbound addresses (only without a smart host)
-	}{s, s.MaxMessageMB << 20, RelayPasswordFile, strings.HasSuffix(s.Relay, ":465"), PostfixOpenSSL, s.DANE(), len(s.OutboundIPs) > 0 && s.Relay == ""}
+		RouteFile         string
+		RoutePasswordFile string
+		DirectTransport   string
+		RelayTransport    string
+	}{s, s.MaxMessageMB << 20, RelayPasswordFile, strings.HasSuffix(s.Relay, ":465"), PostfixOpenSSL, s.DANE(), len(s.OutboundIPs) > 0 && s.Relay == "",
+		RouteFile, RoutePasswordFile, DirectTransport, RelayTransport}
 	out := []File{
 		{Path: PostfixMain, Mode: 0o644, Content: nil},
 		{Path: PostfixMaster, Mode: 0o644},
@@ -223,6 +295,22 @@ func Render(s Settings) ([]File, error) {
 		// dropping privileges
 		out = append(out, File{Path: RelayPasswordFile, Mode: 0o600, Content: []byte("# EmailZit: written by the root helper.\n" + s.Relay + " " + s.RelayUser + ":" + s.RelayPassword + "\n")})
 	}
+	// The routes of single recipient domains. Both files are always written,
+	// empty when there is no route, so the configuration that names them
+	// never points at a missing file.
+	var rb, pb bytes.Buffer
+	rb.WriteString("# EmailZit: written by the root helper; changes are overwritten.\n")
+	pb.WriteString("# EmailZit: written by the root helper.\n")
+	for _, r := range s.Routes {
+		fmt.Fprintf(&rb, "%s %s\n", r.Domain, r.Transport())
+		if r.User != "" {
+			fmt.Fprintf(&pb, "%s %s:%s\n", r.Nexthop(), r.User, r.Password)
+		}
+	}
+	out = append(out,
+		File{Path: RouteFile, Mode: 0o644, Content: rb.Bytes()},
+		File{Path: RoutePasswordFile, Mode: 0o600, Content: pb.Bytes()},
+	)
 	if s.Unbound {
 		b, err := render("unbound.conf", data)
 		if err != nil {

@@ -1,0 +1,46 @@
+{{template "app" .}}
+{{define "content"}}
+<h1>{{.T "Settings"}}</h1>
+<div class="settings">
+{{template "settingstabs" .}}
+<div class="settings-body">
+<section class="panel">
+  <h2>{{template "icon" "route"}}{{.T "Delivery routes"}}</h2>
+  <p class="muted">{{.T "A route sends the mail for one recipient domain another way. It is for a receiver that refuses this server although everything here is in order: large providers block whole address ranges of hosting providers, and no record and no setting on this server lifts such a block. Mail to every other domain is untouched."}}</p>
+  {{if .Data.Mail.RelayHost}}<p class="small muted">{{.T "Everything else goes through the smart host %s." .Data.Mail.RelayHost}}</p>{{end}}
+  {{if .Data.Routes}}
+  <div class="table-wrap"><table>
+    <thead><tr><th>{{.T "Domain"}}</th><th>{{.T "Way out"}}</th><th class="hide-sm">{{.T "Note"}}</th><th></th></tr></thead>
+    <tbody>{{range .Data.Routes}}<tr>
+      <td class="mono">{{.Domain}}</td>
+      <td class="small">{{if .Direct}}{{$.T "straight to the domain"}}{{else}}<span class="mono">{{.Relay}}</span>{{if .User}}<br><small class="muted">{{$.T "signs in as %s" .User}}</small>{{end}}{{end}}</td>
+      <td class="hide-sm small muted">{{.Note}}</td>
+      <td class="actions"><form method="post" action="/settings/routes/delete" data-confirm="{{$.T "Remove the route? Mail for %s then goes the usual way again." .Domain}}"><input type="hidden" name="domain" value="{{.Domain}}"><button class="ghost sm">{{$.T "Remove"}}</button></form></td>
+    </tr>{{end}}</tbody>
+  </table></div>
+  {{else}}
+  <p class="muted">{{.T "No route: every message goes the usual way."}}</p>
+  {{end}}
+  <form method="post" action="/settings/routes" class="stack mt">
+    <div class="cols">
+      <label>{{.T "Recipient domain"}}<input name="domain" value="{{.Data.Edit.Domain}}" spellcheck="false" autocapitalize="none" class="mono" placeholder="hotmail.com" required><small>{{.T "The domain of the receivers, not one of yours. It counts for every address of that domain, and it replaces a route that exists for it."}}</small></label>
+      <label>{{.T "Way out"}}<select name="kind">
+        <option value="relay" {{if not .Data.Edit.Direct}}selected{{end}}>{{.T "Through a relay"}}</option>
+        <option value="direct" {{if .Data.Edit.Direct}}selected{{end}}>{{.T "Straight to the domain, past the smart host"}}</option>
+      </select><small>{{.T "A relay is a mail server that takes this server's mail and delivers it in its own name. \"Straight to the domain\" only helps when a smart host carries everything else."}}</small></label>
+    </div>
+    <div class="cols">
+      <label>{{.T "Relay"}}<input name="host" value="{{.Data.Edit.Host}}" spellcheck="false" autocapitalize="none" class="mono" placeholder="smtp.example.com"></label>
+      <label>{{.T "Port"}}<input type="number" name="port" value="{{if .Data.Edit.Port}}{{.Data.Edit.Port}}{{else}}587{{end}}" min="1" max="65535" class="num-sm"></label>
+    </div>
+    <div class="cols">
+      <label>{{.T "User name at the relay"}}<input name="user" value="{{.Data.Edit.User}}" spellcheck="false" autocapitalize="none" class="mono" autocomplete="off"><small>{{.T "Empty when the relay needs no sign-in."}}</small></label>
+      <label>{{.T "Password at the relay"}}<input type="password" name="password" autocomplete="new-password" placeholder="{{.T "unchanged"}}"><small>{{.T "Kept sealed, like every password here. Mail of a route with a sign-in only leaves over an encrypted connection."}}</small></label>
+    </div>
+    <label>{{.T "Note"}}<input name="note" value="{{.Data.Edit.Note}}" maxlength="200" placeholder="{{.T "why this route is here"}}"></label>
+    <div><button class="primary">{{template "icon" "plus"}}{{.T "Save route"}}</button></div>
+  </form>
+</section>
+</div>
+</div>
+{{end}}

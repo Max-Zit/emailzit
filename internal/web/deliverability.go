@@ -102,7 +102,7 @@ func (s *Server) blockedReceiverNotice(ctx context.Context) {
 		}
 	}
 	if len(fresh) > 0 {
-		s.notifyAdmins(ctx, "a receiver refuses our mail", blockedNoticeText(fresh))
+		s.notifyAdmins(ctx, "receiver-blocked", "a receiver refuses our mail", blockedNoticeText(fresh))
 		return
 	}
 	// nothing new: say so when a receiver takes mail again
@@ -114,7 +114,7 @@ func (s *Server) blockedReceiverNotice(ctx context.Context) {
 	}
 	if len(back) > 0 {
 		sort.Strings(back)
-		s.notifyAdmins(ctx, "a receiver takes our mail again",
+		s.notifyAdmins(ctx, "receiver-back", "a receiver takes our mail again",
 			"Mail is being delivered again to:\n\n  "+strings.Join(back, "\n  ")+"\n\nDeliverability shows the last day in the panel.\n")
 	}
 }

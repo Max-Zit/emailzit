@@ -154,7 +154,7 @@ func (s *Server) handleMailSettings(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) showMailSettings(w http.ResponseWriter, r *http.Request, status int, m MailSettings, errMsg string) {
-	p := &Page{Title: "Mail server", Nav: "settings", Data: &mailSettingsData{MailSettings: m}}
+	p := &Page{Title: "Mail server", Nav: "settings", Data: &mailSettingsData{MailSettings: m, Channels: s.channelSettings(r.Context())}}
 	if errMsg != "" {
 		p.Error = translate(s.lang(r, userFrom(r)), errMsg)
 	}

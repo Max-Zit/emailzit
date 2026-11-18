@@ -368,6 +368,8 @@ func (s *Server) Handler() http.Handler {
 	admin("GET /settings/mail", s.handleMailSettings)
 	admin("POST /settings/mail", s.handleMailSettingsSave)
 	admin("POST /settings/mail/check", s.handleMailSettingsCheck)
+	admin("POST /settings/mail/channels", s.handleChannelsSave)
+	admin("POST /settings/mail/channels/test", s.handleChannelsTest)
 	admin("GET /settings/routes", s.handleRoutes)
 	admin("POST /settings/routes", s.fourEyes("settings.route", s.handleRouteSave))
 	admin("POST /settings/routes/delete", s.fourEyes("settings.route", s.handleRouteDelete))

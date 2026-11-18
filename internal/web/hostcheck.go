@@ -89,11 +89,13 @@ func checkHost(ctx context.Context, res resolver, host string, local []netip.Add
 type mailSettingsData struct {
 	MailSettings
 	Check *hostCheck
+	// Channels are the notices that do not go by mail (channels.go).
+	Channels ChannelSettings
 }
 
 func (s *Server) handleMailSettingsCheck(w http.ResponseWriter, r *http.Request) {
 	m := s.MailConfig(r.Context())
-	d := &mailSettingsData{MailSettings: m}
+	d := &mailSettingsData{MailSettings: m, Channels: s.channelSettings(r.Context())}
 	if m.Hostname != "" {
 		d.Check = checkHost(r.Context(), net.DefaultResolver, m.Hostname, sourceAddrs())
 	}

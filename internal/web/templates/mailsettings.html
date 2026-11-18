@@ -71,6 +71,17 @@
   {{if .IPv6Bad}}<p class="notice-warn">{{if $.Data.IPv4Only}}{{$.T "The IPv6 address does not match the host name both ways; mail is sent over IPv4 only, as set above."}}{{else}}{{$.T "The IPv6 address does not match the host name both ways. Ask the provider for a PTR record of the IPv6 address and add an AAAA record for the host name, or switch on \"Send mail to other servers over IPv4 only\" above."}}{{end}}</p>{{end}}
   {{end}}
 </form>
+<form method="post" action="/settings/mail/channels" class="panel stack wide mt" id="channels">
+  <div class="panelhead"><h2>{{template "icon" "bell"}}{{.T "Notices without mail"}}</h2></div>
+  <p class="muted">{{.T "A mail server that cannot send mail cannot tell anybody by mail. The same notices the administrators get as mail — the weekly report, an address on a block list, a mailbox blocked for spam, a receiver that refuses everything — also go to a webhook and to Telegram, if you set them up here."}}</p>
+  <label>{{.T "Webhook"}}<input name="webhook" value="{{.Data.Channels.Webhook}}" spellcheck="false" autocapitalize="none" class="mono" placeholder="https://example.com/hook"><small>{{.T "Every notice is sent as a JSON POST: product, server, key, subject, text and time. HostZit sends the same fields, so one receiving end understands both."}}</small></label>
+  <div class="cols">
+    <label>{{.T "Telegram bot token"}}<input name="telegram_token" type="password" autocomplete="off" placeholder="{{if .Data.Channels.TelegramToken}}{{.T "unchanged"}}{{else}}123456:ABC…{{end}}"><small>{{.T "From @BotFather in Telegram."}}</small></label>
+    <label>{{.T "Telegram chat"}}<input name="telegram_chat" value="{{.Data.Channels.TelegramChat}}" spellcheck="false" autocapitalize="none" class="mono" placeholder="-1001234567890"><small>{{.T "The number of the chat or group, or @channel. Write to the bot once, or add it to the group, so it may send."}}</small></label>
+  </div>
+  {{if .Data.Channels.TelegramToken}}<label class="check"><input type="checkbox" name="telegram_off" value="1">{{.T "Remove the Telegram bot"}}</label>{{end}}
+  <div class="row"><button class="primary">{{.T "Save"}}</button><button class="secondary" formaction="/settings/mail/channels/test">{{template "icon" "online"}}{{.T "Send a test message"}}</button></div>
+</form>
 </div>
 </div>
 {{end}}

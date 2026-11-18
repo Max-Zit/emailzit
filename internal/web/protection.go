@@ -113,19 +113,25 @@ type SystemMailer func(ctx context.Context, domain string, to []string, subject,
 
 // notifyAdmins mails the administrators (Settings -> Mail server); without
 // an address the notice is only logged.
-func (s *Server) notifyAdmins(ctx context.Context, subject, body string) {
+func (s *Server) notifyAdmins(ctx context.Context, key, subject, body string) {
 	m := s.MailConfig(ctx)
 	to, _ := noticeAddresses(m.NoticeTo)
-	if len(to) == 0 || s.SystemMail == nil {
-		s.log.Info("notice for the administrators (no address set)", "subject", subject)
-		return
-	}
 	host := m.Hostname
 	if host == "" {
 		host = "this server"
 	}
-	if err := s.SystemMail(ctx, "", to, "EmailZit "+host+": "+subject, body); err != nil {
-		s.log.Warn("notice for the administrators", "subject", subject, "err", err)
+	switch {
+	case len(to) == 0 || s.SystemMail == nil:
+		s.log.Info("notice for the administrators (no address set)", "subject", subject)
+	default:
+		if err := s.SystemMail(ctx, "", to, "EmailZit "+host+": "+subject, body); err != nil {
+			s.log.Warn("notice for the administrators", "subject", subject, "err", err)
+		}
+	}
+	// The other channels are the point of the whole thing: a server whose
+	// mail is refused cannot say by mail that its mail is refused.
+	if err := s.sendChannels(ctx, key, subject, body); err != nil {
+		s.log.Warn("notice over the other channels", "subject", subject, "err", err)
 	}
 }
 
@@ -165,7 +171,7 @@ func (s *Server) BlockSpamSenders(ctx context.Context) {
 		reason := fmt.Sprintf("%d outgoing messages refused as spam or virus within an hour", x.Messages)
 		_ = s.store.Audit(ctx, "-", "local", "mailbox.send.blocked", "mailbox:"+x.Address, "sending blocked automatically: "+reason)
 		s.log.Warn("sending blocked automatically", "mailbox", x.Address, "reason", reason)
-		s.notifyAdmins(ctx, "sending of "+x.Address+" blocked",
+		s.notifyAdmins(ctx, "spam-block", "sending of "+x.Address+" blocked",
 			fmt.Sprintf("The mailbox %s sent spam or viruses: %s.\n\nIts sending is blocked; it still receives mail. This is usually a stolen password: set a new password for the mailbox (and its app passwords), check its forwarding rules, then lift the block on the mailbox's page (Sending: blocked).\n", x.Address, reason))
 		if s.Mail != nil {
 			_ = s.Mail.Notice(ctx, x.Address, translate(x.Lang, "Sending from your mailbox was stopped"),
@@ -200,10 +206,10 @@ func (s *Server) blocklistNotice(ctx context.Context) {
 	}
 	switch {
 	case now != "" && now != state:
-		s.notifyAdmins(ctx, "address on a block list",
+		s.notifyAdmins(ctx, "blocklist", "address on a block list",
 			"An address this server sends from is on a DNS block list:\n\n  "+strings.ReplaceAll(now, "; ", "\n  ")+"\n\nMail from it is refused or lands in spam at many receivers. Find out who sent spam (Delivery log, outgoing; mailboxes blocked automatically are in the audit log), stop it, then ask the list to remove the address (each list has a removal page). Check the state under Mail queue -> Blacklists.\n")
 	case now == "" && state != "":
-		s.notifyAdmins(ctx, "block lists clear again", "No address of this server is on a checked block list any more.\n")
+		s.notifyAdmins(ctx, "blocklist-clear", "block lists clear again", "No address of this server is on a checked block list any more.\n")
 	}
 }
 
@@ -246,7 +252,7 @@ func (s *Server) weeklyReport(ctx context.Context) {
 	if err := s.store.SetAdminNotice(ctx, noticeReport, ""); err != nil {
 		return
 	}
-	s.notifyAdmins(ctx, "weekly report", body)
+	s.notifyAdmins(ctx, "weekly-report", "weekly report", body)
 }
 
 // reportText is the weekly report.

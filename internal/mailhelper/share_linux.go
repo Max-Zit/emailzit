@@ -42,6 +42,7 @@ func (s *Server) share(ctx context.Context, r Request) error {
 		if err != nil {
 			return fmt.Errorf("doveadm acl delete: %s", firstLine(out, err))
 		}
+		s.recalcShares(ctx, owner)
 		s.Log.Info("a shared folder was closed", "owner", owner, "with", with, "folder", folder)
 		return nil
 	}
@@ -53,6 +54,18 @@ func (s *Server) share(ctx context.Context, r Request) error {
 	if out, err := s.Run(ctx, "doveadm", args...); err != nil {
 		return fmt.Errorf("doveadm acl set: %s", firstLine(out, err))
 	}
+	s.recalcShares(ctx, owner)
 	s.Log.Info("a folder was shared", "owner", owner, "with", with, "folder", folder, "rights", r.Rights)
 	return nil
+}
+
+// recalcShares writes the list of shared mailboxes of this customer
+// again. Setting the rights alone does not touch it (Dovecot 2.4.1,
+// found in the lab): the rights are then in the folder, and the other
+// mailbox still sees nothing, because a client is told about a shared
+// folder only through that list.
+func (s *Server) recalcShares(ctx context.Context, owner string) {
+	if out, err := s.Run(ctx, "doveadm", "acl", "recalc", "-u", owner); err != nil {
+		s.Log.Warn("the list of shared folders was not written again", "owner", owner, "err", firstLine(out, err))
+	}
 }

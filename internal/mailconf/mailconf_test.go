@@ -32,6 +32,18 @@ func TestRender(t *testing.T) {
 	if !strings.Contains(got[DovecotConf], "ssl = required") || !strings.Contains(got[DovecotConf], "mda_logins") {
 		t.Error("dovecot.conf")
 	}
+	// The list of the shared folders belongs to the customer (two levels
+	// above a mailbox home). One file for the whole server would have to
+	// be written by root and would show every customer the addresses of
+	// the others.
+	if !strings.Contains(got[DovecotConf], "path = %{home}/../../shared-mailboxes") {
+		t.Error("the list of shared mailboxes is not per customer")
+	}
+	for _, want := range []string{"acl_driver = vfile", "imap_acl = yes", "namespace shared {", "prefix = shared/$user/"} {
+		if !strings.Contains(got[DovecotConf], want) {
+			t.Errorf("dovecot.conf lacks %q", want)
+		}
+	}
 	if !strings.Contains(got[PostfixMaps+"/localsender.cf"], "REJECT") {
 		t.Error("localsender map")
 	}

@@ -211,6 +211,8 @@ func (s *Server) do(ctx context.Context, r Request) error {
 		return s.writeSpam(ctx, r)
 	case ActionNotice:
 		return s.notice(ctx, r)
+	case ActionExpunge:
+		return s.expunge(ctx, r)
 	}
 	return errors.New("unknown action")
 }

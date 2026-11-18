@@ -33,6 +33,15 @@
     <small class="muted">{{.T "A domain with a strict DMARC policy says that mail which passes neither SPF nor DKIM does not come from it; the large providers refuse it. Mailing lists and forwarded mail break DMARC by nature and are left to the spam score."}}</small>
     <p class="small">{{.T "Always on: messages with known phishing links (PhishTank) and messages whose sender poses as someone of this server in the name get \"[Phishing?]\" in front of the subject; spam sent by signed-in users is refused, and a mailbox whose mail is refused as spam or virus 3 times within an hour can no longer send (the administrators and the mailbox are told); unknown servers on DNS block lists or talking before the greeting are turned away at port 25."}}</p>
   </section>
+  <section class="panel" id="cleanup">
+    <h2>{{template "icon" "trash"}}{{.T "Old mail in Junk and Trash"}}</h2>
+    <p class="muted">{{.T "Spam nobody will read and mail somebody deleted long ago are what fills the disk of a mail server. Mail programs empty these two folders only for the mailboxes that are opened, so the server does it every night, for every mailbox, with Dovecot's own tool (the quota stays right). 0 leaves a folder alone."}}</p>
+    <div class="cols">
+      <label>{{.T "Delete mail in Junk after (days)"}}<input type="number" name="junk_days" value="{{.Data.JunkDays}}" min="0" max="3650" class="num-sm"><small>{{.T "30 is a usual value."}}</small></label>
+      <label>{{.T "Delete mail in Trash after (days)"}}<input type="number" name="trash_days" value="{{.Data.TrashDays}}" min="0" max="3650" class="num-sm"><small>{{.T "30 is a usual value."}}</small></label>
+    </div>
+    <p class="small notice-warn">{{.T "Deleted mail is gone: there is no second bin behind this one. It counts from when a message arrived in the folder, not from the date in its header."}}</p>
+  </section>
   <section class="panel" id="notices">
     <h2>{{template "icon" "mail"}}{{.T "Notices for administrators"}}</h2>
     <label>{{.T "Send notices to"}}<input name="notice_to" value="{{.Data.NoticeTo}}" spellcheck="false" autocapitalize="none" class="mono" placeholder="admin@example.com"><small>{{.T "Up to five addresses, separated by commas: a weekly report on Monday morning, a notice when an address of this server lands on a block list, and when a mailbox is blocked for sending spam. Empty: no notices."}}</small></label>

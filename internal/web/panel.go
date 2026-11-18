@@ -98,6 +98,10 @@ type MailSettings struct {
 	// receiver that refuses the address range of this server is nothing
 	// the server can mend (see mailroutes.go).
 	Routes []MailRoute `json:"routes,omitempty"`
+	// JunkDays and TrashDays delete mail older than that out of Junk and
+	// Trash of every mailbox (0 = the folder is left alone; cleanup.go).
+	JunkDays  int `json:"junk_days,omitempty"`
+	TrashDays int `json:"trash_days,omitempty"`
 }
 
 // OutboundAddr is an extra sending address with its host name.
@@ -137,6 +141,9 @@ func (m *MailSettings) Validate() error {
 	if err := m.validateRoutes(); err != nil {
 		return err
 	}
+	if !validCleanup(m.JunkDays) || !validCleanup(m.TrashDays) {
+		return errors.New("the clean-up of Junk and Trash must be 0–3650 days (0 = leave it alone)")
+	}
 	return m.validateProtection()
 }
 
@@ -166,13 +173,15 @@ func (s *Server) handleMailSettingsSave(w http.ResponseWriter, r *http.Request) 
 		Dedicated: r.FormValue("dedicated") == "1", MaxMessageMB: formInt(r, "max_message_mb"), AllowPrivateImports: r.FormValue("allow_private_imports") == "1", ClamAV: r.FormValue("clamav") == "1", IPv4Only: r.FormValue("ipv4_only") == "1",
 		RelayHost: r.FormValue("relay_host"), RelayUser: r.FormValue("relay_user"),
 		AllowRiskyAttachments: r.FormValue("block_attachments") != "1", AllowDMARCFailures: r.FormValue("block_dmarc_failures") != "1",
-		ExtraSignatures: r.FormValue("extra_signatures") == "1", NoticeTo: r.FormValue("notice_to")}
+		ExtraSignatures: r.FormValue("extra_signatures") == "1", NoticeTo: r.FormValue("notice_to"),
+		JunkDays: formInt(r, "junk_days"), TrashDays: formInt(r, "trash_days")}
 	if err := m.parseOutboundIPs(r.FormValue("outbound_ips")); err != nil {
 		s.showMailSettings(w, r, http.StatusBadRequest, m, err.Error())
 		return
 	}
 	// the saved password stays unless a new one is entered (for the same login)
 	old := s.MailConfig(r.Context())
+	m.Routes = old.Routes // the routes have their own page
 	if p := r.FormValue("relay_password"); p != "" {
 		if len(p) > 256 || strings.ContainsAny(p, "\r\n\x00") {
 			s.showMailSettings(w, r, http.StatusBadRequest, m, "The password of the smart host is not valid.")

@@ -96,6 +96,9 @@ type MailApplier interface {
 	Unban(ctx context.Context, ip string) error
 	// Notice puts a message of the server into a mailbox (quota warning).
 	Notice(ctx context.Context, address, subject, body string) error
+	// Expunge deletes mail older than the given days out of Junk and
+	// Trash of every mailbox (0 = leave the folder alone).
+	Expunge(ctx context.Context, junkDays, trashDays int) error
 }
 
 // New creates the server; settings are loaded from the database.

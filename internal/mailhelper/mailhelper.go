@@ -43,6 +43,7 @@ const (
 	ActionStatus   = "status"   // health of the mail system (WatchZit)
 	ActionImport   = "import"   // write the mail of an uploaded archive into the customer's mailboxes
 	ActionNotice   = "notice"   // put a message of the server into a mailbox (quota warning)
+	ActionExpunge  = "expunge"  // delete old mail out of Junk and Trash
 	ActionPing     = "ping"
 )
 
@@ -86,6 +87,10 @@ type Request struct {
 	IDs []string `json:"ids,omitempty"`
 	// cert: PEM chain and key
 	Chain string `json:"chain,omitempty"`
+	// expunge: delete mail older than these days out of Junk and Trash
+	// (0 = leave the folder alone)
+	JunkDays  int `json:"junk_days,omitempty"`
+	TrashDays int `json:"trash_days,omitempty"`
 	// notice: subject and text (Domain and Local name the mailbox)
 	Subject string `json:"subject,omitempty"`
 	Body    string `json:"body,omitempty"`

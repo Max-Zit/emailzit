@@ -145,6 +145,7 @@ func (s *Server) RunProtection(ctx context.Context) {
 		s.BlockSpamSenders(ctx)
 		s.blocklistNotice(ctx)
 		s.blockedReceiverNotice(ctx)
+		s.cleanupOldMail(ctx)
 		s.weeklyReport(ctx)
 		select {
 		case <-ctx.Done():

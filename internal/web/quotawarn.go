@@ -9,6 +9,11 @@ import (
 	"github.com/max-zit/emailzit/internal/store"
 )
 
+// Expunge deletes old mail out of Junk and Trash of every mailbox.
+func (h *HelperMail) Expunge(ctx context.Context, junkDays, trashDays int) error {
+	return h.C.Call(ctx, mailhelper.Request{Action: mailhelper.ActionExpunge, JunkDays: junkDays, TrashDays: trashDays})
+}
+
 // Notice puts a message of the server into a mailbox through the helper.
 func (h *HelperMail) Notice(ctx context.Context, address, subject, body string) error {
 	req := mailhelper.Request{Action: mailhelper.ActionNotice, Subject: subject, Body: body}

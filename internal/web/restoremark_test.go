@@ -25,6 +25,7 @@ func (m *stubMail) DKIMOff(context.Context, string) error                  { ret
 func (m *stubMail) Spam(context.Context, string, string) error             { return nil }
 func (m *stubMail) Unban(context.Context, string) error                    { return nil }
 func (m *stubMail) Notice(context.Context, string, string, string) error   { return nil }
+func (m *stubMail) Expunge(context.Context, int, int) error                { return nil }
 
 // After a restore the mail services still carry the configuration of the
 // machine they were installed on, so the panel writes the settings of the

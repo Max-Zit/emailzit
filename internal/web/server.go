@@ -343,6 +343,7 @@ func (s *Server) Handler() http.Handler {
 	write("POST /aliases/{id}", s.handleAliasUpdate)
 	write("POST /aliases/{id}/delete", s.handleAliasDelete)
 	app("GET /deliveries", s.handleDeliveries)
+	staff("GET /deliverability", s.handleDeliverability)
 	staff("GET /queue", s.handleQueue)
 	staffWrite("POST /queue", s.handleQueueAction)
 	staff("GET /blacklists", s.handleBlacklists)

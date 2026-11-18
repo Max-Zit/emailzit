@@ -1,0 +1,43 @@
+{{template "app" .}}
+{{define "content"}}
+<div class="pagehead">
+  <h1>{{.T "Deliverability"}}</h1>
+  <nav class="tabs">
+    <a href="/deliverability?days=1" class="{{if eq .Data.Days 1}}on{{end}}">{{.T "1 day"}}</a>
+    <a href="/deliverability?days=7" class="{{if eq .Data.Days 7}}on{{end}}">{{.T "7 days"}}</a>
+    <a href="/deliverability?days=30" class="{{if eq .Data.Days 30}}on{{end}}">{{.T "30 days"}}</a>
+  </nav>
+</div>
+
+{{if .Data.Blocked}}
+<div class="panel notice-warn">
+  <p><b>{{.T "A receiver takes nothing from this server."}}</b></p>
+  <ul>
+    {{range .Data.Blocked}}<li><span class="mono">{{.Domain}}</span> — {{$.T "%d refused, %d deferred, nothing delivered" .Bounced .Deferred}}{{if .LastInfo}}<br><small class="muted mono">{{.LastInfo}}</small>{{end}}</li>{{end}}
+  </ul>
+  <p class="small">{{.T "When the answer names this server's address and a block list of the receiver, the receiver refuses the whole address range of the hosting provider, and no record and no setting here changes that. Ask the provider to have the range delisted, and give the domain its own way out under Settings → Delivery routes."}}</p>
+</div>
+{{end}}
+
+<section class="panel">
+  <h2>{{template "icon" "online"}}{{.T "Outgoing mail by receiver"}}</h2>
+  <p class="muted">{{.T "Every domain this server sent to in the chosen time, the worst first. Mail between mailboxes of this server is not counted, because it never leaves the machine."}}</p>
+  <p class="small">{{.T "Delivered: %d · deferred: %d · refused: %d" .Data.Total.Sent .Data.Total.Deferred .Data.Total.Bounced}}</p>
+  {{if .Data.Receivers}}
+  <div class="table-wrap"><table>
+    <thead><tr><th>{{.T "Receiver"}}</th><th class="num">{{.T "Delivered"}}</th><th class="num">{{.T "Deferred"}}</th><th class="num">{{.T "Refused"}}</th><th>{{.T "Last answer"}}</th></tr></thead>
+    <tbody>{{range .Data.Receivers}}<tr>
+      <td class="mono">{{.Domain}}
+        {{- if .Blocked}} <span class="badge bad"><i></i>{{$.T "blocked"}}</span>{{end}}
+        {{- if index $.Data.Routes .Domain}} <span class="badge ok"><i></i>{{$.T "route"}}</span>{{end}}</td>
+      <td class="num">{{.Sent}}</td>
+      <td class="num">{{if .Deferred}}{{.Deferred}}{{end}}</td>
+      <td class="num">{{if .Bounced}}{{.Bounced}}{{end}}</td>
+      <td class="small">{{if .LastInfo}}<span class="muted">{{$.Ago .LastFail}}{{if .LastDSN}} · <span class="mono">{{.LastDSN}}</span>{{end}}</span><br>{{.LastInfo}}{{end}}</td>
+    </tr>{{end}}</tbody>
+  </table></div>
+  {{else}}
+  <p class="muted">{{.T "No mail left this server in the chosen time."}}</p>
+  {{end}}
+</section>
+{{end}}

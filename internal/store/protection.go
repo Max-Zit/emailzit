@@ -149,3 +149,78 @@ func (s *Store) SetAdminNotice(ctx context.Context, kind, state string) error {
 		ON CONFLICT (kind) DO UPDATE SET sent_at=now(), state=$2`, kind, state)
 	return err
 }
+
+// Receiver is what one receiving domain did with this server's mail. It
+// comes from the delivery log and is the only way to see that a receiver
+// stopped taking mail at all: a large provider refuses the whole address
+// range of a hosting provider, and nothing on this server says so.
+type Receiver struct {
+	Domain   string
+	Sent     int
+	Deferred int
+	Bounced  int
+	// LastFail is when the last message was refused or deferred, with what
+	// the receiver said.
+	LastFail  time.Time
+	LastDSN   string
+	LastInfo  string
+	LastRelay string
+}
+
+// Refused counts the mail that did not get through.
+func (r Receiver) Refused() int { return r.Deferred + r.Bounced }
+
+// Blocked reports a receiver that takes nothing at all: several messages
+// refused or deferred and not one delivered.
+func (r Receiver) Blocked() bool { return r.Sent == 0 && r.Refused() >= blockedFrom }
+
+// blockedFrom is how many refusals make a receiver count as blocked. One
+// refusal is a single bad address; five in a row to the same receiver,
+// with nothing delivered, is the receiver turning this server away.
+const blockedFrom = 5
+
+// Receivers groups the outgoing mail of the time span by the receiving
+// domain, the busiest and the worst first. Mail to domains of this server
+// is left out: it never leaves the machine.
+func (s *Store) Receivers(ctx context.Context, since time.Time, limit int) ([]Receiver, error) {
+	if limit <= 0 || limit > 500 {
+		limit = 100
+	}
+	rows, err := s.db.Query(ctx, `
+		WITH out AS (
+			SELECT split_part(recipient, '@', 2) AS domain, status, at, dsn, info, relay
+			FROM mail_log
+			WHERE at > $1 AND outbound AND recipient <> ''
+			  AND split_part(recipient, '@', 2) NOT IN (SELECT name FROM domains)
+		)
+		SELECT g.domain,
+			g.sent, g.deferred, g.bounced,
+			COALESCE(f.at, to_timestamp(0)), COALESCE(f.dsn, ''), COALESCE(f.info, ''), COALESCE(f.relay, '')
+		FROM (
+			SELECT domain,
+				count(*) FILTER (WHERE status = 'sent') AS sent,
+				count(*) FILTER (WHERE status = 'deferred') AS deferred,
+				count(*) FILTER (WHERE status IN ('bounced', 'rejected')) AS bounced
+			FROM out GROUP BY domain
+		) g
+		LEFT JOIN LATERAL (
+			SELECT at, dsn, info, relay FROM out
+			WHERE out.domain = g.domain AND status <> 'sent'
+			ORDER BY at DESC LIMIT 1
+		) f ON true
+		ORDER BY (g.deferred + g.bounced) DESC, g.sent DESC, g.domain
+		LIMIT $2`, since, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Receiver
+	for rows.Next() {
+		var r Receiver
+		if err := rows.Scan(&r.Domain, &r.Sent, &r.Deferred, &r.Bounced, &r.LastFail, &r.LastDSN, &r.LastInfo, &r.LastRelay); err != nil {
+			return nil, err
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
+}

@@ -89,3 +89,50 @@ func TestOutboundIPs(t *testing.T) {
 		t.Fatal("notice state")
 	}
 }
+
+// A receiver that refuses everything is the one thing the delivery log
+// cannot show message by message: our own server was refused by a large
+// provider for days while every single attempt stood in the log.
+func TestReceivers(t *testing.T) {
+	f := setup(t)
+	ctx := context.Background()
+	log := func(rcpt, status, info string, outbound bool) {
+		t.Helper()
+		_, err := f.st.db.Exec(ctx, `INSERT INTO mail_log(at, queue_id, sender, recipient, status, dsn, info, relay, outbound)
+			VALUES(now(), 'Q', 'ana@a.test', $1, $2, '5.7.1', $3, 'mx.example[203.0.113.9]:25', $4)`, rcpt, status, info, outbound)
+		must(t, err)
+	}
+	for i := 0; i < 6; i++ {
+		log("user@blocked.example", "bounced", "550 5.7.1 messages from [203.0.113.5] weren't sent (S3140)", true)
+	}
+	for i := 0; i < 4; i++ {
+		log("user@fine.example", "sent", "250 ok", true)
+	}
+	log("user@fine.example", "deferred", "451 try later", true)
+	log("marko@a.test", "sent", "250 ok", false)         // incoming: not ours to judge
+	log("ana@a.test", "bounced", "550 no mailbox", true) // a domain of this server
+
+	got, err := f.st.Receivers(ctx, time.Now().Add(-time.Hour), 10)
+	must(t, err)
+	if len(got) != 2 {
+		t.Fatalf("expected two receivers, got %+v", got)
+	}
+	blocked, fine := got[0], got[1]
+	if blocked.Domain != "blocked.example" {
+		t.Fatalf("the worst receiver should come first: %+v", got)
+	}
+	if blocked.Bounced != 6 || blocked.Sent != 0 || !blocked.Blocked() {
+		t.Errorf("a receiver that took nothing is not seen as blocked: %+v", blocked)
+	}
+	if blocked.LastInfo == "" || blocked.LastDSN != "5.7.1" || blocked.LastFail.IsZero() {
+		t.Errorf("what the receiver said is missing: %+v", blocked)
+	}
+	if fine.Domain != "fine.example" || fine.Sent != 4 || fine.Deferred != 1 || fine.Blocked() {
+		t.Errorf("a working receiver looks wrong: %+v", fine)
+	}
+	for _, r := range got {
+		if r.Domain == "a.test" {
+			t.Error("mail to a domain of this server is counted as outgoing")
+		}
+	}
+}

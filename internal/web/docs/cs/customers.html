@@ -11,7 +11,7 @@
 <h2>Zákazníci</h2>
 <p>Zákazník vlastní domény a schránky. Pošta každého zákazníka je uložena pod jeho <b>vlastním systémovým uživatelem</b>, takže ani chyba v poštovním softwaru nemůže jednomu zákazníkovi umožnit číst poštu jiného zákazníka. Zákazník nikdy nemůže směrovat poštu do schránek jiného zákazníka, odesílat jako jeho adresy ani vidět jeho domény.</p>
 <ul>
-  <li><b>Přihlášení do panelu</b>: zákazník se přihlašuje do zákaznického panelu na stejné adrese jako administrátorský panel. Každé přihlášení musí při prvním přihlášení nastavit dvoufázové přihlášení.</li>
+  <li><b>Přihlášení do panelu</b>: zákazník se přihlašuje do zákaznického panelu na stejné adrese jako administrátorský panel. Každé přihlášení musí při prvním přihlášení nastavit dvoufázové přihlášení. Jedno kliknutí z propojeného HostZitu nebo z fakturačního systému nepotřebuje heslo ani druhý krok, protože ten systém už zákazníka přihlásil (jako relace cPanelu z WHM); zákazník bez přihlášení ho dostane při prvním kliknutí a přihlášení vypnuté zde zůstává vypnuté. Takový zákazník si může v <b>Můj účet</b> zvolit heslo, aby se mohl přihlašovat i přímo zde. Prohlížeč drží jednu relaci EmailZitu: pokud jste přihlášeni jako personál, otevřete odkaz zákazníka v anonymním okně, jinak nahradí vaši relaci.</li>
   <li><b>ID ve fakturaci</b>: číslo zákazníka ve vašem fakturačním systému; REST API podle něj zákazníky vyhledává.</li>
   <li><b>Odchozí adresa</b> (když má server další odchozí adresy, viz Personál, nastavení a aktualizace): pošta zákazníka odchází z jeho vlastní IP adresy a vlastního názvu hostitele, takže jeho pověst odesílatele je jen jeho. Poté zveřejněte záznam SPF zobrazený u každé domény zákazníka.</li>
 </ul>

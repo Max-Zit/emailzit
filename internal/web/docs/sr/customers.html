@@ -11,7 +11,7 @@
 <h2>Kupci</h2>
 <p>Kupac poseduje domene i mailboxe. Pošta svakog kupca se čuva pod njegovim <b>sopstvenim sistemskim korisnikom</b>, pa ni greška u softveru za poštu ne može dozvoliti jednom kupcu da čita poštu drugog. Kupac nikad ne može da usmeri poštu u mailboxe drugog kupca, da šalje kao njegove adrese ili da vidi njegove domene.</p>
 <ul>
-  <li><b>Prijave za panel</b>: kupac se prijavljuje u panel za kupce na istoj adresi kao admin panel. Svaka prijava mora da podesi drugi faktor pri prvoj prijavi.</li>
+  <li><b>Prijave za panel</b>: kupac se prijavljuje u panel za kupce na istoj adresi kao admin panel. Svaka prijava mora da podesi drugi faktor pri prvoj prijavi. Jedan klik iz povezanog HostZit-a ili iz sistema za naplatu ne traži ni lozinku ni drugi korak, jer je taj sistem već prijavio kupca (kao cPanel sesija iz WHM-a); kupac bez prijave dobija je pri prvom kliku, a prijava koja je ovde isključena ostaje isključena. Takav kupac može pod <b>Moj nalog</b> da izabere lozinku da bi se i direktno prijavljivao ovde. Jedan browser drži jednu EmailZit sesiju: ako ste prijavljeni kao osoblje, link kupca otvorite u privatnom prozoru, inače zamenjuje vašu sesiju.</li>
   <li><b>ID za naplatu</b>: broj kupca u vašem sistemu za naplatu; REST API po njemu pronalazi kupce.</li>
   <li><b>Odlazna adresa</b> (kada server ima dodatne odlazne adrese, vidi Osoblje, podešavanja i ažuriranja): pošta kupca odlazi sa njegove IP adrese i imena hosta, pa je reputacija slanja samo njegova. Posle toga objavite SPF zapis prikazan na svakom domenu kupca.</li>
 </ul>

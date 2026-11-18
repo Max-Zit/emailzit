@@ -11,6 +11,9 @@ import (
 const (
 	StageMFA  = "mfa"  // password verified, second factor pending
 	StageFull = "full" // signed in
+
+	// ViaSSO marks a session opened by a one-time link (HostZit, billing).
+	ViaSSO = "sso"
 )
 
 // MFATimeout is how long a password-verified sign-in waits for the code.
@@ -26,6 +29,7 @@ type Session struct {
 	ExpiresAt time.Time
 	IP        string
 	UserAgent string
+	Via       string // how it was opened: "" (password), ViaSSO
 }
 
 // CreateSession starts a session and returns the cookie value.
@@ -48,8 +52,8 @@ func (s *Store) SessionByToken(ctx context.Context, tok string, idle time.Durati
 		return nil, ErrNotFound
 	}
 	x := &Session{Hash: auth.HashToken("session", tok)}
-	err := s.db.QueryRow(ctx, `SELECT user_id, stage, created_at, last_seen, expires_at, ip, user_agent FROM sessions WHERE token_hash=$1`, x.Hash).
-		Scan(&x.UserID, &x.Stage, &x.CreatedAt, &x.LastSeen, &x.ExpiresAt, &x.IP, &x.UserAgent)
+	err := s.db.QueryRow(ctx, `SELECT user_id, stage, created_at, last_seen, expires_at, ip, user_agent, via FROM sessions WHERE token_hash=$1`, x.Hash).
+		Scan(&x.UserID, &x.Stage, &x.CreatedAt, &x.LastSeen, &x.ExpiresAt, &x.IP, &x.UserAgent, &x.Via)
 	if err != nil {
 		return nil, notFound(err)
 	}
@@ -78,7 +82,10 @@ func (s *Store) PromoteSession(ctx context.Context, x *Session, life time.Durati
 	if err := s.DeleteSession(ctx, x.Hash); err != nil {
 		return "", err
 	}
-	tok, _, err := s.CreateSession(ctx, x.UserID, StageFull, life, x.IP, x.UserAgent)
+	tok, nx, err := s.CreateSession(ctx, x.UserID, StageFull, life, x.IP, x.UserAgent)
+	if err == nil && x.Via != "" {
+		_, err = s.db.Exec(ctx, `UPDATE sessions SET via=$2 WHERE token_hash=$1`, nx.Hash, x.Via)
+	}
 	return tok, err
 }
 

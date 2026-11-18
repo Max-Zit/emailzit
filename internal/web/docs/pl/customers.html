@@ -11,7 +11,7 @@
 <h2>Klienci</h2>
 <p>Klient jest właścicielem domen i skrzynek. Poczta każdego klienta jest przechowywana pod jego <b>własnym użytkownikiem systemowym</b>, więc nawet błąd w oprogramowaniu poczty nie pozwoli jednemu klientowi czytać poczty innego klienta. Klient nigdy nie może kierować poczty do skrzynek innego klienta, wysyłać jako jego adresy ani widzieć jego domen.</p>
 <ul>
-  <li><b>Loginy do panelu</b>: klient loguje się do panelu klienta pod tym samym adresem co panel administracyjny. Każdy login musi przy pierwszym logowaniu skonfigurować logowanie dwuskładnikowe.</li>
+  <li><b>Loginy do panelu</b>: klient loguje się do panelu klienta pod tym samym adresem co panel administracyjny. Każdy login musi przy pierwszym logowaniu skonfigurować logowanie dwuskładnikowe. Jedno kliknięcie z połączonego HostZit lub z systemu rozliczeń nie wymaga ani hasła, ani drugiego kroku, bo ten system już zalogował klienta (jak sesja cPanel otwarta z WHM); klient bez loginu dostaje go przy pierwszym kliknięciu, a login wyłączony tutaj pozostaje wyłączony. Taki klient może w <b>Moje konto</b> wybrać hasło, aby logować się też bezpośrednio tutaj. Przeglądarka trzyma jedną sesję EmailZit: jeśli jesteś zalogowany jako personel, otwórz link klienta w oknie prywatnym, inaczej zastąpi on twoją sesję.</li>
   <li><b>ID w rozliczeniach</b>: numer klienta w twoim systemie rozliczeniowym; REST API wyszukuje po nim klientów.</li>
   <li><b>Adres wychodzący</b> (gdy serwer ma dodatkowe adresy wychodzące, zobacz Personel, ustawienia i aktualizacje): poczta klienta wychodzi z jego własnego adresu IP i nazwy hosta, więc jego reputacja wysyłania należy tylko do niego. Następnie opublikuj rekord SPF pokazany przy każdej domenie klienta.</li>
 </ul>

@@ -551,6 +551,8 @@
   "Permissions": "Dozvole",
   "Plan": "Plan",
   "Please choose your own password before you continue.": "Pre nastavka izaberite svoju lozinku.",
+  "Choose a password": "Izaberite lozinku",
+  "You came in with one click from your hosting panel. You need no password for that; choose one here only if you also want to sign in to EmailZit directly.": "Ušli ste jednim klikom iz panela za hosting. Za to vam ne treba lozinka; izaberite je ovde samo ako želite da se prijavljujete i direktno na EmailZit.",
   "Point autoconfig, autodiscover and mta-sts at this server, and let its certificate cover them.": "Usmeri autoconfig, autodiscover i mta-sts na ovaj server i obuhvati ih njegovim sertifikatom.",
   "Port": "Port",
   "Private key": "Privatni ključ",

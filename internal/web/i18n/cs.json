@@ -551,6 +551,8 @@
   "Permissions": "Oprávnění",
   "Plan": "Balíček",
   "Please choose your own password before you continue.": "Než budete pokračovat, zvolte si vlastní heslo.",
+  "Choose a password": "Zvolte heslo",
+  "You came in with one click from your hosting panel. You need no password for that; choose one here only if you also want to sign in to EmailZit directly.": "Přišli jste jedním kliknutím z panelu hostingu. K tomu heslo nepotřebujete; zvolte si ho zde jen tehdy, pokud se chcete do EmailZitu přihlašovat i přímo.",
   "Point autoconfig, autodiscover and mta-sts at this server, and let its certificate cover them.": "Nasměrujte autoconfig, autodiscover a mta-sts na tento server a zahrňte je do jeho certifikátu.",
   "Port": "Port",
   "Private key": "Soukromý klíč",

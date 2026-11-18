@@ -551,6 +551,8 @@
   "Permissions": "İzinler",
   "Plan": "Paket",
   "Please choose your own password before you continue.": "Devam etmeden önce lütfen kendi parolanızı seçin.",
+  "Choose a password": "Bir parola seçin",
+  "You came in with one click from your hosting panel. You need no password for that; choose one here only if you also want to sign in to EmailZit directly.": "Barındırma panelinizden tek tıkla girdiniz. Bunun için parolaya gerek yok; yalnızca EmailZit'e doğrudan da giriş yapmak istiyorsanız burada bir parola seçin.",
   "Point autoconfig, autodiscover and mta-sts at this server, and let its certificate cover them.": "autoconfig, autodiscover ve mta-sts adlarını bu sunucuya yönlendirin ve sunucunun sertifikasının bunları kapsamasını sağlayın.",
   "Port": "Port",
   "Private key": "Özel anahtar",

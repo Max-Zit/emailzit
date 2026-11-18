@@ -26,6 +26,14 @@
       <label>{{.T "Keep the newest"}}<input type="number" name="keep" value="{{$b.Keep}}" min="1" max="90"></label>
     </div>
     <p class="small muted">{{.T "Backups are written to the folder backups in the data directory of the server."}}</p>
+    <fieldset class="box">
+      <legend>{{.T "Mail of the customers"}}</legend>
+      <label class="check"><input type="checkbox" name="mail_enabled" value="1" {{if $b.Mail.Enabled}}checked{{end}}>{{.T "Export the mail of every customer in the nightly run and copy it along"}}</label>
+      <p class="small muted">{{.T "This writes a FULL copy of every customer's mail every night, sealed with the same passphrase. That is right for a server with a few gigabytes of mail and wrong for a big one — there, back up /var/vmail with a backup program (BackupZit can do it) and leave this off."}}</p>
+      <label>{{.T "Keep per customer"}}<input type="number" name="mail_keep" value="{{if $b.Mail.Keep}}{{$b.Mail.Keep}}{{else}}3{{end}}" min="1" max="30" class="num-sm"><small>{{.T "On the SFTP target; on this server the newest three exports of each customer are kept, as before."}}</small></label>
+      {{with $b.Mail.LastRun}}<p class="small">{{$.T "Last run"}}: {{$.Time .}}{{if $b.Mail.LastCustomers}} · {{$.T "%d customers" $b.Mail.LastCustomers}}{{end}}{{if $b.Mail.LastBytes}} · {{$.Bytes $b.Mail.LastBytes}}{{end}}{{if $b.Mail.LastError}}<br><span class="bad">{{$b.Mail.LastError}}</span>{{end}}</p>{{end}}
+      <p class="small muted">{{.T "A copy is read back under Customers → the customer → Import: upload the file, sealed or not. The passphrase of the backups opens it."}}</p>
+    </fieldset>
 
     <fieldset class="box">
       <legend>{{.T "Encryption"}}</legend>

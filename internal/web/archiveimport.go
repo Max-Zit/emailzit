@@ -1,6 +1,7 @@
 package web
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"github.com/max-zit/emailzit/internal/auth"
+	"github.com/max-zit/emailzit/internal/backup"
 	"github.com/max-zit/emailzit/internal/mailhelper"
 	"github.com/max-zit/emailzit/internal/mailimport"
 	"github.com/max-zit/emailzit/internal/sieve"
@@ -43,9 +45,34 @@ func (s *Server) importDir(customerID string) string {
 }
 
 // saveUpload stores an archive for a customer; the name is the time.
-func (s *Server) saveUpload(customerID string, body io.Reader) (string, error) {
+// unsealIfNeeded lets a sealed mail backup be imported like a plain
+// export: the nightly backup seals the exports with the passphrase of the
+// backups, and a restore should need nothing but the panel and that
+// passphrase.
+func (s *Server) unsealIfNeeded(ctx context.Context, body io.Reader) (io.Reader, error) {
+	head := make([]byte, backup.MagicLen)
+	n, err := io.ReadFull(body, head)
+	if err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) {
+		return nil, err
+	}
+	whole := io.MultiReader(bytes.NewReader(head[:n]), body)
+	if n < backup.MagicLen || !backup.IsEncrypted(head) {
+		return whole, nil // a plain archive, or too short: the usual error follows
+	}
+	pass, perr := s.backupPassphrase(s.backupSettings(ctx))
+	if perr != nil {
+		return nil, perr
+	}
+	return backup.Unseal(whole, pass)
+}
+
+func (s *Server) saveUpload(ctx context.Context, customerID string, body io.Reader) (string, error) {
 	if s.DataDir == "" {
 		return "", errors.New("no data directory")
+	}
+	body, err := s.unsealIfNeeded(ctx, body)
+	if err != nil {
+		return "", err
 	}
 	dir := s.importDir(customerID)
 	if err := os.MkdirAll(dir, 0o700); err != nil {
@@ -58,6 +85,7 @@ func (s *Server) saveUpload(customerID string, body io.Reader) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	// from here on the stream is the plain archive, sealed or not
 	n, err := io.Copy(f, io.LimitReader(body, maxImport+1))
 	if cerr := f.Close(); err == nil {
 		err = cerr
@@ -263,7 +291,7 @@ func (s *Server) readImport(w http.ResponseWriter, r *http.Request, c *store.Cus
 	if format != mailimport.FormatEmailZit && format != mailimport.FormatCPanel {
 		return "", "", errors.New("format must be emailzit or cpanel")
 	}
-	name, err = s.saveUpload(c.ID, body)
+	name, err = s.saveUpload(r.Context(), c.ID, body)
 	return name, format, err
 }
 

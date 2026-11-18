@@ -57,6 +57,9 @@ type BackupSettings struct {
 	LastFile  string    `json:"last_file,omitempty"`
 	LastSize  int64     `json:"last_size,omitempty"`
 	LastCopy  string    `json:"last_copy,omitempty"` // SFTP result of the last backup
+	// Mail: the nightly run also exports the mail of the customers
+	// (mailbackup.go).
+	Mail MailBackup `json:"mail,omitempty"`
 }
 
 func (s *Server) backupSettings(ctx context.Context) BackupSettings {
@@ -140,8 +143,12 @@ func (s *Server) runBackup(ctx context.Context, by string) {
 			}
 		}
 	}
+	if b.Mail.Enabled {
+		b.Mail = s.runMailBackup(ctx, b, by)
+	}
 	fresh := s.backupSettings(ctx) // keep settings saved meanwhile
 	fresh.LastRun, fresh.LastOK, fresh.LastError, fresh.LastFile, fresh.LastSize, fresh.LastCopy = b.LastRun, b.LastOK, b.LastError, b.LastFile, b.LastSize, b.LastCopy
+	fresh.Mail = b.Mail
 	_ = s.store.SetSetting(ctx, settingBackup, fresh)
 	switch {
 	case err != nil:
@@ -313,6 +320,11 @@ func (s *Server) handleBackupSave(w http.ResponseWriter, r *http.Request) {
 	if b.Hour < 0 || b.Hour > 23 || b.Keep < 1 || b.Keep > 90 {
 		s.redirectErr(w, r, back, "Keep 1–90 backups.")
 		return
+	}
+	b.Mail.Enabled = r.FormValue("mail_enabled") == "1"
+	b.Mail.Keep, _ = strconv.Atoi(r.FormValue("mail_keep"))
+	if b.Mail.Keep < 1 || b.Mail.Keep > 30 {
+		b.Mail.Keep = 3
 	}
 	switch p := r.FormValue("passphrase"); {
 	case p != "":

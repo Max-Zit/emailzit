@@ -197,3 +197,27 @@ func (d *decReader) Read(p []byte) (int, error) {
 // IsEncrypted reports whether a file starting with head is an encrypted
 // backup.
 func IsEncrypted(head []byte) bool { return string(head) == encMagic }
+
+// Seal wraps a writer in the encryption of the backups: everything
+// written to it is sealed with the passphrase, Close finishes the last
+// chunk. The mail backups of the customers use it, so a copy that leaves
+// this server is readable only with the passphrase.
+func Seal(w io.Writer, passphrase string) (io.WriteCloser, error) { return newEncWriter(w, passphrase) }
+
+// Unseal reads what Seal wrote, from the first byte of the file: it
+// takes the magic off itself, unlike the internal reader, so a caller
+// that only peeked at the head can hand the whole stream over.
+// A wrong passphrase gives ErrPassphrase.
+func Unseal(r io.Reader, passphrase string) (io.Reader, error) {
+	head := make([]byte, len(encMagic))
+	if _, err := io.ReadFull(r, head); err != nil {
+		return nil, errors.New("this file is too short to be a backup")
+	}
+	if !IsEncrypted(head) {
+		return nil, errors.New("this is not an encrypted backup")
+	}
+	return newDecReader(r, passphrase)
+}
+
+// MagicLen is how many bytes IsEncrypted needs.
+const MagicLen = len(encMagic)

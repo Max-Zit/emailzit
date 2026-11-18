@@ -11,7 +11,7 @@
 <h2>Customers</h2>
 <p>A customer owns domains and mailboxes. Every customer's mail is stored under its <b>own system user</b>, so even a fault in the mail software cannot let one customer read another customer's mail. A customer can never route mail into another customer's mailboxes, send as their addresses or see their domains.</p>
 <ul>
-  <li><b>Panel logins</b>: the customer signs in to the customer panel at the same address as the admin panel. Every login must set up two-factor sign-in at the first sign-in.</li>
+  <li><b>Panel logins</b>: the customer signs in to the customer panel at the same address as the admin panel. Every login must set up two-factor sign-in at the first sign-in. One click from a linked HostZit or from the billing system needs neither a password nor the second step, because that system has already signed the customer in (like a cPanel session from WHM); a customer without a login gets one at the first click, and a login switched off here stays off. Such a customer can choose a password under <b>My account</b> to sign in here directly as well. A browser holds one EmailZit session: if you are signed in as staff, open a customer's link in a private window, otherwise it replaces your session.</li>
   <li><b>Billing ID</b>: the customer's number in your billing system; the REST API finds customers by it.</li>
   <li><b>Outbound address</b> (when the server has extra outbound addresses, see Staff, settings and updates): the customer's mail leaves from its own IP address and host name, so its sending reputation is its own. Publish the SPF record shown on each of the customer's domains afterwards.</li>
 </ul>

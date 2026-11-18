@@ -517,6 +517,8 @@
   "Permissions": "Autorisations",
   "Plan": "Forfait",
   "Please choose your own password before you continue.": "Veuillez choisir votre propre mot de passe avant de continuer.",
+  "Choose a password": "Choisir un mot de passe",
+  "You came in with one click from your hosting panel. You need no password for that; choose one here only if you also want to sign in to EmailZit directly.": "Vous êtes arrivé en un clic depuis votre panneau d'hébergement. Il ne vous faut pas de mot de passe pour cela ; choisissez-en un ici seulement si vous voulez aussi vous connecter directement à EmailZit.",
   "Point autoconfig, autodiscover and mta-sts at this server, and let its certificate cover them.": "Faites pointer autoconfig, autodiscover et mta-sts vers ce serveur et couvrez-les par son certificat.",
   "Port": "Port",
   "Private key": "Clé privée",

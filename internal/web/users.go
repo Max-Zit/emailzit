@@ -146,6 +146,8 @@ type accountData struct {
 	Sessions []store.Session
 	Current  string
 	Codes    []string
+	// First: a one-click customer who never chose a password (no current password asked)
+	First bool
 }
 
 func (s *Server) handleAccount(w http.ResponseWriter, r *http.Request) {
@@ -160,6 +162,7 @@ func (s *Server) showAccount(w http.ResponseWriter, r *http.Request, status int,
 		return
 	}
 	d.Sessions, d.Current = list, sessionFrom(r).Hash
+	d.First = u.MustChangePassword && oneClick(r)
 	p := &Page{Title: "My account", Nav: "account", Data: d}
 	if errMsg != "" {
 		p.Error = translate(s.lang(r, u), errMsg)
@@ -167,18 +170,25 @@ func (s *Server) showAccount(w http.ResponseWriter, r *http.Request, status int,
 	s.render(w, r, status, "account", p)
 }
 
+// handleAccountPassword changes the password. A customer who came in with
+// one click and never chose a password (the login was made for that click,
+// or staff set a first one the customer never got) chooses one without the
+// current password; everyone else needs it.
 func (s *Server) handleAccountPassword(w http.ResponseWriter, r *http.Request) {
 	u := userFrom(r)
-	if _, err := s.store.CheckPassword(r.Context(), u.Username, r.FormValue("current")); err != nil {
-		s.guard.fail(r.Context(), clientIP(r), u.Username, "password change")
-		s.showAccount(w, r, http.StatusBadRequest, &accountData{}, "The current password is wrong.")
-		return
+	first := u.MustChangePassword && oneClick(r)
+	if !first {
+		if _, err := s.store.CheckPassword(r.Context(), u.Username, r.FormValue("current")); err != nil {
+			s.guard.fail(r.Context(), clientIP(r), u.Username, "password change")
+			s.showAccount(w, r, http.StatusBadRequest, &accountData{}, "The current password is wrong.")
+			return
+		}
 	}
 	if r.FormValue("password") != r.FormValue("password2") {
 		s.showAccount(w, r, http.StatusBadRequest, &accountData{}, "The passwords do not match.")
 		return
 	}
-	if r.FormValue("password") == r.FormValue("current") {
+	if !first && r.FormValue("password") == r.FormValue("current") {
 		s.showAccount(w, r, http.StatusBadRequest, &accountData{}, "The new password must be different.")
 		return
 	}
@@ -186,7 +196,11 @@ func (s *Server) handleAccountPassword(w http.ResponseWriter, r *http.Request) {
 		s.showAccount(w, r, http.StatusBadRequest, &accountData{}, storeErr(err))
 		return
 	}
-	s.audit(r, "account.password", "user:"+u.Username, "password changed; other sessions ended")
+	if first {
+		s.audit(r, "account.password", "user:"+u.Username, "first password chosen after a one-click sign-in; other sessions ended")
+	} else {
+		s.audit(r, "account.password", "user:"+u.Username, "password changed; other sessions ended")
+	}
 	s.redirect(w, r, "/account", "Password changed. Your other sessions were signed out.")
 }
 

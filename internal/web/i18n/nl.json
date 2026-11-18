@@ -517,6 +517,8 @@
   "Permissions": "Rechten",
   "Plan": "Pakket",
   "Please choose your own password before you continue.": "Kies uw eigen wachtwoord voordat u doorgaat.",
+  "Choose a password": "Kies een wachtwoord",
+  "You came in with one click from your hosting panel. You need no password for that; choose one here only if you also want to sign in to EmailZit directly.": "U bent met één klik vanuit uw hostingpaneel binnengekomen. Daarvoor hebt u geen wachtwoord nodig; kies hier alleen een wachtwoord als u ook rechtstreeks bij EmailZit wilt aanmelden.",
   "Point autoconfig, autodiscover and mta-sts at this server, and let its certificate cover them.": "Laat autoconfig, autodiscover en mta-sts naar deze server wijzen en door het certificaat gedekt worden.",
   "Port": "Poort",
   "Private key": "Privésleutel",

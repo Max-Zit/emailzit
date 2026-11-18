@@ -517,6 +517,8 @@
   "Permissions": "权限",
   "Plan": "方案",
   "Please choose your own password before you continue.": "继续之前，请设置您自己的密码。",
+  "Choose a password": "设置密码",
+  "You came in with one click from your hosting panel. You need no password for that; choose one here only if you also want to sign in to EmailZit directly.": "您是从主机面板一键进入的，无需密码。只有当您也想直接登录 EmailZit 时，才需要在这里设置密码。",
   "Point autoconfig, autodiscover and mta-sts at this server, and let its certificate cover them.": "把 autoconfig、autodiscover 和 mta-sts 指向本服务器，并让服务器的证书涵盖它们。",
   "Port": "端口",
   "Private key": "私钥",

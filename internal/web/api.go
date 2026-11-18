@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/max-zit/emailzit/internal/auth"
 	"github.com/max-zit/emailzit/internal/store"
 )
 
@@ -544,7 +545,10 @@ func (s *Server) apiCustomerUsage(w http.ResponseWriter, r *http.Request) {
 }
 
 // apiCustomerSSO gives a one-time link into the customer panel (60 s) for
-// the customer's first enabled panel login.
+// the customer's first enabled panel login. Like cPanel, where every
+// account has its login, a customer with no panel login at all gets one on
+// the first click (from a linked HostZit or the billing system); a login
+// staff switched off stays off and the answer is 409 no_login.
 func (s *Server) apiCustomerSSO(w http.ResponseWriter, r *http.Request) {
 	c := s.apiLoadCustomer(w, r)
 	if c == nil {
@@ -565,6 +569,15 @@ func (s *Server) apiCustomerSSO(w http.ResponseWriter, r *http.Request) {
 			uid = u.ID
 			break
 		}
+	}
+	if len(logins) == 0 {
+		u, err := s.oneClickLogin(r.Context(), c)
+		if err != nil {
+			s.apiInternal(w, r, err)
+			return
+		}
+		uid = u.ID
+		s.apiAudit(r, "customer.login.create", "customer:"+c.ID, "panel login %s made for a one-time link", u.Username)
 	}
 	if uid == 0 {
 		apiError(w, http.StatusConflict, "no_login", "the customer has no enabled panel login", "")
@@ -601,8 +614,34 @@ func (s *Server) handleSSO(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
-	x := &store.Session{UserID: u.ID, IP: ip, UserAgent: r.UserAgent()}
-	if s.finishLogin(w, r, x, u, "one-time link from the billing system") {
+	x := &store.Session{UserID: u.ID, IP: ip, UserAgent: r.UserAgent(), Via: store.ViaSSO}
+	if s.finishLogin(w, r, x, u, "one-time link") {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 	}
+}
+
+// oneClickLogin makes the panel login of a customer who comes in with one
+// click: the username the customer shares with HostZit (or c-<id> when it is
+// missing or taken) and a random password nobody knows. The customer needs
+// no password for one-click sign-ins and may choose one in My account to
+// sign in here directly (then with two-factor sign-in, like every login).
+func (s *Server) oneClickLogin(ctx context.Context, c *store.Customer) (*store.User, error) {
+	names := []string{"c-" + strings.ReplaceAll(c.ID, "-", "")[:12]}
+	if c.Username != "" {
+		names = append([]string{c.Username}, names...)
+	}
+	var err error
+	for _, n := range names {
+		var u *store.User
+		u, err = s.store.CreateUser(ctx, store.NewUser{Username: n, DisplayName: c.Name, Password: auth.RandomToken(24),
+			CustomerID: c.ID, MustChangePassword: true})
+		if err == nil {
+			return u, nil
+		}
+		// two clicks at once: the other one made the login already
+		if list, lerr := s.store.CustomerUsers(ctx, c.ID); lerr == nil && len(list) > 0 && !list[0].Disabled {
+			return list[0], nil
+		}
+	}
+	return nil, err
 }

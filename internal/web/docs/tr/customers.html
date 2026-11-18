@@ -11,7 +11,7 @@
 <h2>Müşteriler</h2>
 <p>Bir müşterinin alan adları ve posta kutuları vardır. Her müşterinin postası kendi <b>sistem kullanıcısı</b> altında saklanır; böylece posta yazılımındaki bir hata bile bir müşterinin başka bir müşterinin postasını okumasına izin veremez. Bir müşteri, başka bir müşterinin posta kutularına asla posta yönlendiremez, onun adresleri olarak gönderemez veya alan adlarını göremez.</p>
 <ul>
-  <li><b>Panel girişleri</b>: müşteri, müşteri paneline yönetim paneliyle aynı adresten giriş yapar. Her giriş, ilk oturum açmada iki adımlı girişi ayarlamalıdır.</li>
+  <li><b>Panel girişleri</b>: müşteri, müşteri paneline yönetim paneliyle aynı adresten giriş yapar. Her giriş, ilk oturum açmada iki adımlı girişi ayarlamalıdır. Bağlı bir HostZit'ten veya faturalama sisteminden gelen tek tık ne parola ne de ikinci adım ister, çünkü o sistem müşteriyi zaten oturum açmış olarak getirir (WHM'den açılan bir cPanel oturumu gibi); girişi olmayan bir müşteriye ilk tıkta bir giriş oluşturulur ve burada kapatılan bir giriş kapalı kalır. Böyle bir müşteri buraya doğrudan da giriş yapmak için <b>Hesabım</b> altında bir parola seçebilir. Bir tarayıcı tek bir EmailZit oturumu tutar: personel olarak oturum açtıysanız müşterinin bağlantısını gizli bir pencerede açın, yoksa oturumunuzun yerine geçer.</li>
   <li><b>Faturalama kimliği</b>: müşterinin faturalama sisteminizdeki numarası; REST API müşterileri bununla bulur.</li>
   <li><b>Giden adres</b> (sunucunun ek giden adresleri olduğunda, bkz. Personel, ayarlar ve güncellemeler): müşterinin postası kendi IP adresinden ve ana bilgisayar adından çıkar, böylece gönderim itibarı yalnızca kendisine aittir. Ardından müşterinin her alan adında gösterilen SPF kaydını yayımlayın.</li>
 </ul>

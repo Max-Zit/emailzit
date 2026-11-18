@@ -517,6 +517,8 @@
   "Permissions": "Права",
   "Plan": "Тариф",
   "Please choose your own password before you continue.": "Прежде чем продолжить, выберите собственный пароль.",
+  "Choose a password": "Выберите пароль",
+  "You came in with one click from your hosting panel. You need no password for that; choose one here only if you also want to sign in to EmailZit directly.": "Вы вошли одним щелчком из панели хостинга. Для этого пароль не нужен; задайте его здесь, только если хотите входить в EmailZit и напрямую.",
   "Point autoconfig, autodiscover and mta-sts at this server, and let its certificate cover them.": "Направьте autoconfig, autodiscover и mta-sts на этот сервер и включите их в его сертификат.",
   "Port": "Порт",
   "Private key": "Закрытый ключ",

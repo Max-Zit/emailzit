@@ -106,7 +106,9 @@ func (s *Server) requireUser(next http.HandlerFunc) http.Handler {
 			http.Error(w, "signed out", http.StatusUnauthorized)
 			return
 		}
-		if u.MustChangePassword && r.URL.Path != "/account" && r.URL.Path != "/account/password" {
+		// a one-click session (HostZit, billing) is not stopped: the customer
+		// never used the password, like a cPanel session from WHM
+		if u.MustChangePassword && !oneClick(r) && r.URL.Path != "/account" && r.URL.Path != "/account/password" {
 			http.Redirect(w, r, "/account", http.StatusSeeOther)
 			return
 		}
@@ -616,4 +618,11 @@ func (s *Server) customerActive(ctx context.Context, u *store.User) bool {
 	}
 	c, err := s.store.CustomerByID(ctx, u.CustomerID)
 	return err == nil && c.Active()
+}
+
+// oneClick reports a session opened by a one-time link from a linked
+// HostZit or the billing system.
+func oneClick(r *http.Request) bool {
+	x := sessionFrom(r)
+	return x != nil && x.Via == store.ViaSSO
 }

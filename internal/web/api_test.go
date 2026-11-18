@@ -107,7 +107,8 @@ func TestAPI(t *testing.T) {
 		t.Fatalf("sso while suspended: %d %v", c, m)
 	}
 	call(t, h, "POST", "/api/v1/customers/ext:C-77/unsuspend", full, "")
-	if c, m := call(t, h, "POST", "/api/v1/customers/ext:C-77/sso", full, ""); c != 409 || m["error"].(map[string]any)["code"] != "no_login" {
+	// like cPanel, the first click makes the panel login (oneclick_test.go)
+	if c, m := call(t, h, "POST", "/api/v1/customers/ext:C-77/sso", full, ""); c != 200 {
 		t.Fatalf("sso without login: %d %v", c, m)
 	}
 	_, err = st.CreateUser(ctx, store.NewUser{Username: "acme-owner", Password: "Test-password-123", CustomerID: "0b8a5b9e-4f1e-4c55-9a3b-2a1f1d6f7e10"})
